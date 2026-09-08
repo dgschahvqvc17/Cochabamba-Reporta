@@ -1,0 +1,28 @@
+@startuml HU06 - Registrar incidente
+title HU06 — Registrar incidente
+left to right direction
+skinparam actorStyle awesome
+
+actor "Ciudadano" as ciudadano
+
+rectangle "Registrar incidente" {
+  usecase "Iniciar nuevo reporte" as UC1
+  usecase "Seleccionar categoría" as UC2
+  usecase "Ingresar título y descripción" as UC3
+  usecase "Adjuntar evidencia" as UC4
+  usecase "Registrar ubicación" as UC5
+  usecase "Validar campos obligatorios" as UC6
+  usecase "Guardar incidente (estado REPORTADO)" as UC7
+  usecase "Mostrar confirmación" as UC8
+}
+
+ciudadano --> UC1
+UC1 ..> UC2
+UC1 ..> UC3
+UC1 ..> UC4
+UC1 ..> UC5
+UC1 ..> UC6
+UC2 ..> UC7
+UC3 ..> UC7
+UC7 ..> UC8
+@enduml

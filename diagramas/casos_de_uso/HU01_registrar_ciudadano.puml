@@ -1,0 +1,21 @@
+@startuml HU01 - Registrar ciudadano
+title HU01 — Registrar ciudadano
+left to right direction
+skinparam actorStyle awesome
+
+actor "Ciudadano" as ciudadano
+
+rectangle "Registrar ciudadano" {
+  usecase "Acceder al formulario de registro" as UC1
+  usecase "Completar datos personales" as UC2
+  usecase "Validar datos del formulario" as UC3
+  usecase "Registrar cuenta" as UC4
+  usecase "Confirmar registro exitoso" as UC5
+}
+
+ciudadano --> UC1
+UC1 ..> UC2
+UC2 ..> UC3
+UC3 ..> UC4
+UC4 ..> UC5
+@enduml

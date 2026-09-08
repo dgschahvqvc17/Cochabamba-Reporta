@@ -1,0 +1,42 @@
+@startuml HU14 - Recibir notificaciones y consultar seguimiento
+title HU14 — Recibir notificaciones y consultar seguimiento
+left to right direction
+skinparam actorStyle awesome
+
+actor "Ciudadano" as ciudadano
+actor "Funcionario" as funcionario
+
+rectangle "Notificaciones y seguimiento" {
+  usecase "Ver incidentes reportados" as UC1
+  usecase "Ver estado actual y fecha del último cambio" as UC2
+  usecase "Consultar historial de estados" as UC3
+  usecase "Consultar quién realizó cada cambio" as UC4
+  usecase "Ver notificaciones dentro del sistema" as UC5
+  usecase "Consultar detalle de notificación" as UC6
+  usecase "Marcar notificación como leída" as UC7
+}
+
+funcionario --> UC1_alt
+rectangle "Generación de notificaciones" as gen {
+  usecase "Cambiar estado de un incidente" as UC1_alt
+  usecase "Validar el cambio" as UC1b
+  usecase "Actualizar incidente" as UC1c
+  usecase "Registrar historial" as UC1d
+  usecase "Generar notificación" as UC1e
+  usecase "Enviar notificación al ciudadano" as UC1f
+}
+UC1_alt ..> UC1b
+UC1b ..> UC1c
+UC1c ..> UC1d
+UC1d ..> UC1e
+UC1e ..> UC1f
+UC1f ..> UC5
+
+ciudadano --> UC1
+ciudadano --> UC2
+ciudadano --> UC3
+ciudadano --> UC4
+ciudadano --> UC5
+ciudadano --> UC6
+ciudadano --> UC7
+@enduml

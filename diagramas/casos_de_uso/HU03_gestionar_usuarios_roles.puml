@@ -1,0 +1,26 @@
+@startuml HU03 - Gestionar usuarios y roles
+title HU03 — Gestionar usuarios y roles
+left to right direction
+skinparam actorStyle awesome
+
+actor "Administrador" as admin
+
+rectangle "Gestionar usuarios y roles" {
+  usecase "Listar usuarios registrados" as UC1
+  usecase "Registrar usuario interno" as UC2
+  usecase "Consultar detalle de usuario" as UC3
+  usecase "Editar usuario" as UC4
+  usecase "Activar / desactivar usuario" as UC5
+  usecase "Asignar rol" as UC6
+  usecase "Validar campos / evitar duplicados" as UC7
+}
+
+admin --> UC1
+admin --> UC2
+admin --> UC3
+admin --> UC4
+admin --> UC5
+admin --> UC6
+UC2 ..> UC7
+UC4 ..> UC7
+@enduml
