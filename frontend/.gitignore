@@ -71,6 +71,9 @@ yarn-error.log
 # testing
 /coverage
 
+# build web (react-native-web + webpack)
+/dist
+
 # Yarn
 .yarn/*
 !.yarn/patches

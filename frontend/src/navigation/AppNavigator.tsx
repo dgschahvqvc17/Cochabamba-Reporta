@@ -1,32 +1,43 @@
 /**
  * Configuración de navegación de la aplicación (MVC - src/navigation).
  *
- * En este módulo se definen las rutas y la estructura de navegación
- * entre las diferentes pantallas de la aplicación.
+ * Auth Stack: mientras no exista sesión se muestra Registro / Inicio.
+ * (Con HU02 se completará con la autenticación real.)
  *
  * @format
  */
 
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import type { EdgeInsets } from 'react-native-safe-area-context';
-import { Colors } from '../assets/colors';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import { Colors } from '../theme';
 
 type AppNavigatorProps = {
   safeAreaInsets: EdgeInsets;
 };
 
-function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
+type AuthScreen = 'register' | 'login';
+
+function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
+  const [screen, setScreen] = useState<AuthScreen>('register');
+
+  const goToLogin = () => setScreen('login');
+  const goToRegister = () => setScreen('register');
+
+  if (screen === 'login') {
+    return (
+      <View style={styles.container}>
+        <LoginScreen onGoToRegister={goToRegister} />
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingTop: safeAreaInsets.top, paddingBottom: safeAreaInsets.bottom },
-      ]}
-    >
-      <Text style={styles.title}>Alcaldía de Cochabamba</Text>
-      <Text style={styles.subtitle}>Reporte de Incidentes Urbanos</Text>
+    <View style={styles.container}>
+      <RegisterScreen onGoToLogin={goToLogin} />
     </View>
   );
 }
@@ -34,19 +45,7 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: Colors.background,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    color: Colors.textSecondary,
   },
 });
 
