@@ -1,0 +1,1 @@
+module.exports = { uri: 'cbba1.jfif' };
