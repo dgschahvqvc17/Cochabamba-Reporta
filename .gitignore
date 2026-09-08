@@ -1,0 +1,39 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (nunca subir credenciales)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Builds
+build/
+dist/
+coverage/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# React Native / Frontend
+frontend/.gradle/
+frontend/android/.gradle/
+frontend/ios/Pods/
+frontend/local.properties
+
+# Base de datos
+backend/uploads/
+
+# Backups
+*.backup
+*.sql.gz
