@@ -1,7 +1,8 @@
 /**
  * Modelo de Usuario (MVC - Model).
  *
- * Define la estructura de datos del usuario en el frontend.
+ * Define la estructura de datos del usuario autenticado (HU02),
+ * tal como lo devuelve el backend en el inicio de sesión.
  *
  * @format
  */
@@ -18,7 +19,11 @@ export interface User {
   id: number;
   firstName: string;
   lastName: string;
-  email: string;
+  birthDate: string;
+  identityNumber: string;
   phone: string;
+  email: string;
+  address: string | null;
   role: Role;
+  active: boolean;
 }

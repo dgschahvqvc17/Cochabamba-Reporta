@@ -25,6 +25,34 @@ const findByEmail = async (email) => {
   return data;
 };
 
+const findByEmailWithRole = async (email) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*, roles(name)')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findByIdWithRole = async (id) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*, roles(name)')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 const findByIdentityNumber = async (identityNumber) => {
   const { data, error } = await supabaseAdmin
     .from('users')
@@ -84,6 +112,8 @@ const create = async (user) => {
 
 module.exports = {
   findByEmail,
+  findByEmailWithRole,
+  findByIdWithRole,
   findByIdentityNumber,
   findByRoleName,
   createAuthUser,

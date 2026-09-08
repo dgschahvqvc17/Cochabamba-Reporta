@@ -24,12 +24,31 @@ const authController = {
   },
 
   async login(req, res, next) {
-    // TODO: HU02 — Iniciar sesión.
     try {
       const { email, password } = req.body;
-      const user = await authService.login(email, password);
+      const loginData = await authService.login(email, password);
 
-      return ok(res, 200, 'Inicio de sesión exitoso.', { user });
+      return ok(res, 200, 'Inicio de sesión exitoso.', loginData);
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async me(req, res, next) {
+    try {
+      const user = await authService.getCurrentUser(req.user.id);
+
+      return ok(res, 200, 'Sesión válida.', { user });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async logout(req, res, next) {
+    try {
+      await authService.logout(req.accessToken);
+
+      return ok(res, 200, 'Sesión cerrada correctamente.');
     } catch (error) {
       return next(error);
     }
