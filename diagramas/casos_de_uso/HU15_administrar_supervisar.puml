@@ -1,0 +1,42 @@
+@startuml HU15 - Administrar y supervisar el sistema
+title HU15 — Administrar y supervisar el sistema
+left to right direction
+skinparam actorStyle awesome
+
+actor "Administrador" as admin
+
+rectangle "Administrar y supervisar el sistema" {
+  usecase "Ver panel administrativo" as UC1
+  usecase "Consultar cantidad de ciudadanos registrados" as UC2
+  usecase "Consultar cantidad de incidentes por estado" as UC3
+  usecase "Consultar incidentes por categoría" as UC4
+  usecase "Consultar incidentes atendidos / pendientes" as UC5
+  usecase "Gestionar usuarios" as UC6
+  usecase "Gestionar roles" as UC7
+  usecase "Gestionar categorías" as UC8
+  usecase "Consultar incidentes y su historial" as UC9
+  usecase "Consultar información de atención" as UC10
+  usecase "Filtrar información" as UC11
+  usecase "Registrar acciones administrativas" as UC12
+}
+
+admin --> UC1
+admin --> UC2
+admin --> UC3
+admin --> UC4
+admin --> UC5
+admin --> UC6
+admin --> UC7
+admin --> UC8
+admin --> UC9
+admin --> UC10
+admin --> UC11
+UC6 ..> UC12
+UC7 ..> UC12
+UC8 ..> UC12
+
+note bottom of UC1
+  Acceso restringido
+  exclusivamente al administrador.
+end note
+@enduml

@@ -1,18 +1,21 @@
 /**
  * Servicio de autenticación (MVC - Service).
  *
- * Contiene la lógica de negocio del registro de ciudadano (HU01):
- *   - Detecta correos y documentos duplicados.
- *   - Crea la identidad en Supabase Auth (la contraseña nunca se
- *     almacena en texto plano; Supabase la guarda con hash seguro).
- *   - Crea el registro del ciudadano en la tabla `users` con rol CIUDADANO.
+ * Contiene la lógica de negocio de autenticación:
+ *   - HU01: Registro de ciudadano (detecta duplicados, crea la
+ *     identidad en Supabase Auth y el registro en la tabla `users`).
+ *   - HU02: Inicio de sesión (valida credenciales contra Supabase
+ *     Auth, devuelve sesión y datos del usuario).
+ *
+ * La contraseña nunca se almacena en texto plano; Supabase la guarda
+ * con hash seguro.
  *
  * @format
  */
 
 'use strict';
 
-const { supabaseAdmin } = require('../config/supabase');
+const { supabaseAdmin, supabasePublic } = require('../config/supabase');
 const userRepository = require('../repositories/user.repository');
 
 const ROLE_CIUDADANO = 'CIUDADANO';
@@ -24,7 +27,7 @@ const buildError = (message, status, code) => {
   return error;
 };
 
-const toPublicUser = (user) => ({
+const toPublicUser = (user, roleName) => ({
   id: user.id,
   firstName: user.first_name,
   lastName: user.last_name,
@@ -33,7 +36,7 @@ const toPublicUser = (user) => ({
   phone: user.phone,
   email: user.email,
   address: user.address,
-  role: ROLE_CIUDADANO,
+  role: roleName,
   active: user.active,
 });
 
@@ -97,7 +100,76 @@ const authService = {
       throw error;
     }
 
-    return toPublicUser(createdUser);
+    return toPublicUser(createdUser, ROLE_CIUDADANO);
+  },
+
+  async login(email, password) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const { data: sessionData, error: signInError } =
+      await supabasePublic.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+    if (signInError || !sessionData.session) {
+      throw buildError(
+        'Correo o contraseña incorrectos.',
+        401,
+        'INVALID_CREDENTIALS',
+      );
+    }
+
+    const appUser = await userRepository.findByEmailWithRole(normalizedEmail);
+    if (!appUser) {
+      throw buildError(
+        'La cuenta no se encontró en la aplicación.',
+        401,
+        'ACCOUNT_NOT_FOUND',
+      );
+    }
+
+    if (appUser.active === false) {
+      throw buildError(
+        'Tu cuenta está inactiva. Contacta con el soporte.',
+        403,
+        'USER_INACTIVE',
+      );
+    }
+
+    const { session } = sessionData;
+
+    return {
+      user: toPublicUser(appUser, appUser.roles.name),
+      session: {
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token,
+        expiresAt: session.expires_at,
+      },
+    };
+  },
+
+  async getCurrentUser(appUserId) {
+    const appUser = await userRepository.findByIdWithRole(appUserId);
+    if (!appUser) {
+      throw buildError('La cuenta no se encontró.', 404, 'ACCOUNT_NOT_FOUND');
+    }
+
+    return toPublicUser(appUser, appUser.roles.name);
+  },
+
+  async logout(accessToken) {
+    const { error } = await supabaseAdmin.auth.admin.signOut(accessToken);
+
+    if (error) {
+      throw buildError(
+        'No se pudo cerrar la sesión. Intenta nuevamente.',
+        400,
+        'LOGOUT_FAILED',
+      );
+    }
+
+    return true;
   },
 };
 

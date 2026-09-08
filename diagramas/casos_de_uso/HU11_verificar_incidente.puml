@@ -1,0 +1,29 @@
+@startuml HU11 - Verificar incidente
+title HU11 — Verificar incidente
+left to right direction
+skinparam actorStyle awesome
+
+actor "Personal de verificación" as verificador
+
+rectangle "Verificar incidente" {
+  usecase "Ver incidentes asignados" as UC1
+  usecase "Ver ubicación, descripción y fotografías" as UC2
+  usecase "Registrar observaciones" as UC3
+  usecase "Indicar problema verificado / no encontrado" as UC4
+  usecase "Adjuntar evidencia de verificación" as UC5
+  usecase "Cambiar estado a VERIFICADO / RECHAZADO" as UC6
+  usecase "Solicitar motivo (si corresponde)" as UC7
+  usecase "Notificar al ciudadano" as UC8
+  usecase "Registrar en historial" as UC9
+}
+
+verificador --> UC1
+verificador --> UC2
+verificador --> UC3
+verificador --> UC4
+verificador --> UC5
+UC4 --> UC6
+UC6 --> UC7
+UC6 --> UC8
+UC6 --> UC9
+@enduml

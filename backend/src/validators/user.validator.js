@@ -103,6 +103,21 @@ const validateAddress = body('address')
   .isLength({ max: 200 })
   .withMessage('La dirección no debe superar los 200 caracteres.');
 
+const validateLoginEmail = body('email')
+  .trim()
+  .notEmpty()
+  .withMessage('El correo electrónico es obligatorio.')
+  .isEmail()
+  .withMessage('El correo electrónico no tiene un formato válido.')
+  .isLength({ max: 150 })
+  .withMessage('El correo electrónico no debe superar los 150 caracteres.');
+
+const validateLoginPassword = body('password')
+  .notEmpty()
+  .withMessage('La contraseña es obligatoria.');
+
+const loginValidation = [validateLoginEmail, validateLoginPassword];
+
 const registerValidation = [
   validateFirstName,
   validateLastName,
@@ -117,5 +132,6 @@ const registerValidation = [
 
 module.exports = {
   registerValidation,
+  loginValidation,
   MIN_PASSWORD_LENGTH,
 };

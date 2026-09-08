@@ -1,0 +1,27 @@
+@startuml HU04 - Gestionar categorías
+title HU04 — Gestionar categorías de incidentes
+left to right direction
+skinparam actorStyle awesome
+
+actor "Administrador" as admin
+
+rectangle "Gestionar categorías" {
+  usecase "Listar categorías" as UC1
+  usecase "Crear categoría" as UC2
+  usecase "Editar categoría" as UC3
+  usecase "Activar / desactivar categoría" as UC4
+  usecase "Validar nombre obligatorio / evitar duplicados" as UC5
+}
+
+admin --> UC1
+admin --> UC2
+admin --> UC3
+admin --> UC4
+UC2 ..> UC5
+UC3 ..> UC5
+
+note bottom of UC1
+  Al ciudadano se muestran
+  únicamente categorías activas.
+end note
+@enduml

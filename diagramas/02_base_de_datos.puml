@@ -1,0 +1,159 @@
+@startuml Diagrama de Base de Datos - Supabase (PostgreSQL)
+title Diagrama Entidad-Relación - Base de Datos Supabase (PostgreSQL)
+
+hide circle
+skinparam linetype ortho
+skinparam shadowing false
+
+' ============================================================
+' TABLA: users
+' ============================================================
+entity "users" as users {
+  * id : serial PK
+  --
+  auth_id : uuid FK -> auth.users.id
+  first_name : varchar(100) NOT NULL
+  last_name : varchar(100) NOT NULL
+  birth_date : date
+  identity_number : varchar(20) UNIQUE
+  phone : varchar(20)
+  email : varchar(150) UNIQUE NOT NULL
+  role_id : int FK -> roles.id
+  active : boolean DEFAULT true
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+' ============================================================
+' TABLA: roles
+' ============================================================
+entity "roles" as roles {
+  * id : serial PK
+  --
+  name : varchar(50) UNIQUE NOT NULL
+  description : varchar(255)
+  active : boolean DEFAULT true
+}
+
+' ============================================================
+' TABLA: categories
+' ============================================================
+entity "categories" as categories {
+  * id : serial PK
+  --
+  name : varchar(100) NOT NULL
+  description : varchar(255)
+  active : boolean DEFAULT true
+  created_at : timestamp
+}
+
+' ============================================================
+' TABLA: incidents
+' ============================================================
+entity "incidents" as incidents {
+  * id : serial PK
+  --
+  citizen_id : int FK -> users.id
+  category_id : int FK -> categories.id
+  title : varchar(150) NOT NULL
+  description : text NOT NULL
+  status : varchar(30) NOT NULL "REPORTADO"
+  reported_at : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+' ============================================================
+' TABLA: evidence
+' ============================================================
+entity "evidence" as evidence {
+  * id : serial PK
+  --
+  incident_id : int FK -> incidents.id
+  file_url : varchar(500) NOT NULL
+  file_type : varchar(50)
+  uploaded_by : int FK -> users.id
+  uploaded_at : timestamp
+}
+
+' ============================================================
+' TABLA: locations
+' ============================================================
+entity "locations" as locations {
+  * id : serial PK
+  --
+  incident_id : int FK -> incidents.id
+  latitude : decimal(10,8)
+  longitude : decimal(11,8)
+  address : varchar(255)
+  reference : varchar(255)
+  captured_at : timestamp
+}
+
+' ============================================================
+' TABLA: assignments
+' ============================================================
+entity "assignments" as assignments {
+  * id : serial PK
+  --
+  incident_id : int FK -> incidents.id
+  assigned_by : int FK -> users.id
+  assigned_to : int FK -> users.id
+  type : varchar(30) "VERIFICACION | SOLUCION"
+  created_at : timestamp
+}
+
+' ============================================================
+' TABLA: history
+' ============================================================
+entity "history" as history {
+  * id : serial PK
+  --
+  incident_id : int FK -> incidents.id
+  previous_status : varchar(30)
+  new_status : varchar(30)
+  changed_by : int FK -> users.id
+  description : text
+  created_at : timestamp
+}
+
+' ============================================================
+' TABLA: notifications
+' ============================================================
+entity "notifications" as notifications {
+  * id : serial PK
+  --
+  user_id : int FK -> users.id
+  incident_id : int FK -> incidents.id
+  title : varchar(150)
+  message : text
+  read : boolean DEFAULT false
+  created_at : timestamp
+}
+
+' ============================================================
+' RELACIONES
+' ============================================================
+users }o--|| roles : "tiene"
+incidents }o--|| users : "reportado por (citizen)"
+incidents }o--|| categories : "clasificado en"
+evidence }o--|| incidents : "pertenece a"
+evidence }o--|| users : "subido por"
+locations }o--|| incidents : "tiene"
+assignments }o--|| incidents : "sobre"
+assignments }o--|| users : "asignado por"
+assignments }o--|| users : "asignado a"
+history }o--|| incidents : "registra cambios"
+history }o--|| users : "realizado por"
+notifications }o--|| users : "dirigida a"
+notifications }o--|| incidents : "sobre"
+
+note top of incidents
+  Estados: REPORTADO -> RECIBIDO ->
+  EN_VERIFICACION -> VERIFICADO ->
+  ASIGNADO_PARA_SOLUCION -> EN_ATENCION ->
+  ATENDIDO -> CERRADO
+  (también RECHAZADO)
+end note
+
+@enduml

@@ -1,0 +1,58 @@
+@startuml Comunicación de la API REST
+title Diagrama de Comunicación - API REST
+skinparam shadowing false
+skinparam maxMessageSize 200
+
+' ============================================================
+' PARTICIPANTES
+' ============================================================
+actor "Usuario" as user
+participant "FRONTEND\n(React Native)" as fe
+box "BACKEND - API REST (Express)" #ECECEC
+  participant "Routes" as routes
+  participant "Middleware" as mw
+  participant "Controller" as ctrl
+  participant "Service" as svc
+end box
+participant "Repository" as repo
+database "SUPABASE\n(PostgreSQL + Auth + Storage)" as db
+
+' ============================================================
+' FLUJO DE UNA PETICIÓN TÍPICA
+' ============================================================
+== 1. Petición HTTP (JSON) ==
+user -> fe : Interacción (login, reportar,\nadjuntar evidencia, etc.)
+fe -> routes : fetch() HTTP/HTTPS + JSON\nPOST /api/v1/auth/register ...\nAuthorization: Bearer <JWT>
+routes -> mw : Pasa por validación / autenticación
+mw -> ctrl : Validado, req.user cargado
+ctrl -> svc : Delega lógica de negocio
+svc -> repo : Solicita acceso a datos
+repo -> db : Consulta / operación\n(supabaseAdmin.from('tabla')...)
+db --> repo : Resultado (filas / error)
+repo --> svc : Datos procesados
+svc --> ctrl : Resultado de negocio
+ctrl --> fe : Respuesta JSON\n{ success, message, data }
+fe -> user : Muestra resultado / alerta
+
+' ============================================================
+' NOTAS
+' ============================================================
+note over fe, db
+  Todo se comunica con HTTP/HTTPS y formato JSON.
+  Formato de respuesta consistente:
+  { success, message, data }  o  { success, message, error }
+end note
+
+note right of fe
+  El frontend **NUNCA** accede a la base de
+  datos directamente ni usa la clave secret.
+  Solo usa la clave publishable o su JWT.
+end note
+
+note right of repo
+  Repository es la única capa que
+  accede a Supabase. Se usa el cliente
+  supabaseAdmin (service role) en el backend.
+end note
+
+@enduml

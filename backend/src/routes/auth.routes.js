@@ -11,12 +11,19 @@
 const express = require('express');
 
 const authController = require('../controllers/auth.controller');
-const { registerValidation } = require('../validators/user.validator');
+const { authenticate } = require('../middlewares/auth.middleware');
+const {
+  loginValidation,
+  registerValidation,
+} = require('../validators/user.validator');
 const { validate } = require('../middlewares/validation.middleware');
 
 const router = express.Router();
 
 router.post('/register', validate(registerValidation), authController.register);
-router.post('/login', authController.login);
+router.post('/login', validate(loginValidation), authController.login);
+
+router.get('/me', authenticate, authController.me);
+router.post('/logout', authenticate, authController.logout);
 
 module.exports = router;

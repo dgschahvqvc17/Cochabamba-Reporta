@@ -1,8 +1,10 @@
 /**
  * Configuración de navegación de la aplicación (MVC - src/navigation).
  *
- * Auth Stack: mientras no exista sesión se muestra Registro / Inicio.
- * (Con HU02 se completará con la autenticación real.)
+ * HU02 — Navegación por estado:
+ *   - Sin sesión: pantallas de Registro / Inicio de sesión.
+ *   - Con sesión: módulo principal del ciudadano.
+ * La sesión se restaura al abrir la app y se limpia al cerrar sesión.
  *
  * @format
  */
@@ -13,6 +15,8 @@ import { StyleSheet, View } from 'react-native';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import HomeScreen from '../screens/HomeScreen';
+import { getStoredSession, type StoredSession } from '../utils/session';
 import { Colors } from '../theme';
 
 type AppNavigatorProps = {
@@ -22,22 +26,41 @@ type AppNavigatorProps = {
 type AuthScreen = 'register' | 'login';
 
 function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
-  const [screen, setScreen] = useState<AuthScreen>('register');
+  const [session, setSession] = useState<StoredSession | null>(() =>
+    getStoredSession(),
+  );
+  const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
 
-  const goToLogin = () => setScreen('login');
-  const goToRegister = () => setScreen('register');
+  const goToLogin = () => setAuthScreen('login');
+  const goToRegister = () => setAuthScreen('register');
 
-  if (screen === 'login') {
+  const handleLoginSuccess = (newSession: StoredSession) => {
+    setSession(newSession);
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    setAuthScreen('login');
+  };
+
+  if (session) {
     return (
       <View style={styles.container}>
-        <LoginScreen onGoToRegister={goToRegister} />
+        <HomeScreen user={session.user} onLogout={handleLogout} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <RegisterScreen onGoToLogin={goToLogin} />
+      {authScreen === 'login' ? (
+        <LoginScreen
+          onGoToRegister={goToRegister}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      ) : (
+        <RegisterScreen onGoToLogin={goToLogin} />
+      )}
     </View>
   );
 }

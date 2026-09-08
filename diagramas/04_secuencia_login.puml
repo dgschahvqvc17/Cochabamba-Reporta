@@ -1,0 +1,46 @@
+@startuml Comunicación API REST - Secuencia Login
+title Comunicación de la API REST — Secuencia de LOGIN (HU02)
+skinparam shadowing false
+
+actor "Usuario" as user
+participant "Screens\n(LoginScreen)" as view
+participant "Controller\n(AuthController)" as fc
+participant "Service\n(authService.ts)" as fs
+participant "Routes\n(AuthRoutes)" as routes
+participant "Middleware\n(validation)" as mw
+participant "Controller\n(auth.controller)" as bctrl
+participant "Service\n(auth.service)" as bsvc
+participant "Repository\n(user.repository)" as repo
+database "Supabase\nAuth + PostgreSQL" as db
+
+user -> view : Ingresa email y contraseña, pulsa "Iniciar sesión"
+view -> fc : handleLogin(email, password)
+fc -> fs : login(email, password)
+fs -> routes : fetch('http://localhost:3000/api/v1/auth/login')\nPOST + JSON {email, password}
+
+routes -> mw : /login (validate)
+mw -> bctrl : req.body validado
+bctrl -> bsvc : authService.login(email, password)
+bsvc -> db : supabasePublic.auth.signInWithPassword(FAIL)
+db --> bsvc : Session + tokens JWT
+bsvc -> repo : findByEmailWithRole(email)
+repo -> db : Select * from users + roles
+db --> repo : user + roles
+repo --> bsvc : appUser
+bsvc --> bctrl : { user, session }
+bctrl --> fs : HTTP 200 JSON\n{ success, message, data:{user, session} }
+
+fs --> fc : ApiResponse<LoginData>
+fc -> fc : saveSession(session) (guarda tokens)
+fc --> view : LoginResult { success: true, session }
+view -> user : Redirige a Home / muestra alerta
+
+note over fs, bctrl
+  Endpoint: POST /api/v1/auth/login
+  Request : { "email":..., "password":... }
+  Response: { success, message, data:{ user, session } }
+  El JWT (accessToken/refreshToken) se usa como
+  Authorization: Bearer en peticiones posteriores.
+end note
+
+@enduml
