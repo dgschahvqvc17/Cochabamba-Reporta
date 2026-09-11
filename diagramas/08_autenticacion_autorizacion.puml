@@ -1,0 +1,75 @@
+@startuml Diagrama de autenticación y autorización
+title Diagrama de Autenticación y Autorización
+skinparam shadowing false
+
+' ============================================================
+' AUTENTICACIÓN
+' ============================================================
+start
+:Usuario envía credenciales\n(email + password);
+
+:POST /api/v1/auth/login;
+
+:Valida credenciales en SUPABASE AUTH\n(supabasePublic.signInWithPassword);
+
+if (¿Credenciales correctas?) then (No)
+  :Error 401 "Credenciales incorrectas";
+  stop
+else (Sí)
+endif
+
+:Verifica usuario activo en tabla users;
+
+if (¿Usuario activo?) then (No)
+  :Error 403 "Cuenta inactiva";
+  stop
+else (Sí)
+endif
+
+:Obtiene rol del usuario (join roles);
+
+:Genera tokens JWT\n(access_token + refresh_token);
+
+:Devuelve { user, session } al frontend;
+
+:Frontend guarda sesión y\nañade "Authorization: Bearer <JWT>";
+
+' ============================================================
+' AUTORIZACIÓN (endpoints protegidos)
+' ============================================================
+repeat
+  :Petición a endpoint protegido\ncon Bearer token;
+  :Middleware verifica JWT (getUser);
+
+  if (¿El token es válido?) then (No)
+    :Error 401 "Token inválido o expirado";
+    stop
+  else (Sí)
+  endif
+
+  :Carga usuario y rol en req.user;
+
+  switch (¿Rol permitido para la operación?)
+  case (Ciudadano)
+    :Acceso a: registrar incidentes, adjuntar evidencia,\nubicación, seguimiento, notificaciones;
+  case (Encargado recepción)
+    :Acceso a: consultar/gestionar y asignar verificación;
+  case (Personal verificación)
+    :Acceso a: verificar incidentes;
+  case (Encargado solución)
+    :Acceso a: asignar para solución;
+  case (Personal solución)
+    :Acceso a: atender y cerrar incidentes;
+  case (Administrador)
+    :Acceso a: usuarios, roles, categorías,\nsupervisión y estadísticas;
+  case (Rol no autorizado)
+    :Error 403 "Acceso denegado";
+    stop
+  endswitch
+
+  :Ejecuta operación y devuelve respuesta JSON;
+repeat while (¿Hay más peticiones?) is (Sí) not (No)
+
+stop
+
+@enduml

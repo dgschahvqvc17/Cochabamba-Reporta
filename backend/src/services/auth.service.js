@@ -17,8 +17,10 @@
 
 const { supabaseAdmin, supabasePublic } = require('../config/supabase');
 const userRepository = require('../repositories/user.repository');
+const { toPublicUser } = require('../utils/userMapper');
+const ROLES = require('../utils/roles');
 
-const ROLE_CIUDADANO = 'CIUDADANO';
+const ROLE_CIUDADANO = ROLES.CIUDADANO;
 
 const buildError = (message, status, code) => {
   const error = new Error(message);
@@ -26,19 +28,6 @@ const buildError = (message, status, code) => {
   error.code = code;
   return error;
 };
-
-const toPublicUser = (user, roleName) => ({
-  id: user.id,
-  firstName: user.first_name,
-  lastName: user.last_name,
-  birthDate: user.birth_date,
-  identityNumber: user.identity_number,
-  phone: user.phone,
-  email: user.email,
-  address: user.address,
-  role: roleName,
-  active: user.active,
-});
 
 const claimDuplicateEmail = 'Ya existe una cuenta con este correo electrónico.';
 const claimDuplicateIdentity =

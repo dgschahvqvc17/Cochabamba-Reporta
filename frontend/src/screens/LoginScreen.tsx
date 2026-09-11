@@ -14,7 +14,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Easing,
   ImageBackground,
@@ -27,16 +26,19 @@ import {
   View,
 } from 'react-native';
 
+import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import BrandHeader from '../components/BrandHeader';
 import GradientOverlay from '../components/GradientOverlay';
+import Icon from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
 import { cityBackground } from '../assets/images';
 import {
   handleLogin,
   type FieldErrors,
 } from '../controllers/AuthController';
-import { Colors, fontSizes, fontWeights, radius, spacing } from '../theme';
+import { useDialog } from '../hooks/useDialog';
+import { Colors, fontSizes, fontWeights, layout, radius, spacing } from '../theme';
 import { isValidEmail } from '../utils/validators';
 import type { StoredSession } from '../utils/session';
 
@@ -49,6 +51,7 @@ function LoginScreen({
   onGoToRegister,
   onLoginSuccess,
 }: LoginScreenProps) {
+  const { dialog, info, close } = useDialog();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -97,7 +100,7 @@ function LoginScreen({
       if (result.fieldErrors) {
         setErrors(result.fieldErrors);
       }
-      Alert.alert('No pudimos iniciar sesión', result.error);
+      info({ title: 'No pudimos iniciar sesión', message: result.error });
       return;
     }
 
@@ -210,7 +213,9 @@ function LoginScreen({
                     remember && styles.checkboxChecked,
                   ]}
                 >
-                  {remember ? <Text style={styles.checkmark}>✓</Text> : null}
+                  {remember ? (
+                    <Icon name="check" size={14} color={Colors.textOnPrimary} />
+                  ) : null}
                 </View>
                 <Text style={styles.rememberText}>
                   Mantener mi sesión iniciada
@@ -244,6 +249,8 @@ function LoginScreen({
           </ScrollView>
         </KeyboardAvoidingView>
       </ImageBackground>
+
+      <AppDialog dialog={dialog} onCancel={close} />
     </View>
   );
 }
@@ -270,6 +277,9 @@ const styles = StyleSheet.create({
     shadowRadius: 36,
     elevation: 18,
     overflow: 'hidden',
+    width: '100%',
+    maxWidth: layout.cardMaxWidth,
+    alignSelf: 'center',
   },
   cardAccentBar: {
     height: 6,
@@ -320,12 +330,6 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
-  },
-  checkmark: {
-    color: Colors.surface,
-    fontSize: 14,
-    fontWeight: fontWeights.bold,
-    lineHeight: 16,
   },
   rememberText: {
     marginLeft: spacing.sm,

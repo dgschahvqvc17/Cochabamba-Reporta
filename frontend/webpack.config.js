@@ -13,6 +13,11 @@ module.exports = {
   resolve: {
     alias: {
       'react-native$': 'react-native-web',
+      '@react-native/assets-registry/registry': path.resolve(
+        __dirname,
+        'config',
+        'asset-registry.stub.js',
+      ),
     },
     extensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'],
   },

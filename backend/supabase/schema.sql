@@ -143,6 +143,21 @@ create table if not exists notifications (
   created_at   timestamptz   not null default now()
 );
 
+-- ---------- user_audit_log ----------
+-- Trazabilidad de la gestión de usuarios (HU03):
+-- registra creación, edición, activación/desactivación y
+-- asignación de roles realizadas por el administrador.
+create table if not exists user_audit_log (
+  id          bigint generated always as identity primary key,
+  user_id     bigint       not null references users (id) on delete cascade,
+  action      varchar(30)  not null,
+  field_name  varchar(50),
+  old_value   text,
+  new_value   text,
+  changed_by  bigint       references users (id) on delete set null,
+  created_at  timestamptz  not null default now()
+);
+
 -- ============================================================
 -- ÍNDICES
 -- ============================================================
@@ -157,6 +172,7 @@ create index if not exists idx_assignments_to        on assignments (assigned_to
 create index if not exists idx_history_incident      on history (incident_id, created_at);
 create index if not exists idx_notifications_user    on notifications (user_id, read);
 create index if not exists idx_users_role            on users (role_id);
+create index if not exists idx_user_audit_user       on user_audit_log (user_id, created_at);
 
 -- ============================================================
 -- TRIGGERS (actualización automática de updated_at)
@@ -199,6 +215,7 @@ alter table locations     enable row level security;
 alter table assignments   enable row level security;
 alter table history       enable row level security;
 alter table notifications enable row level security;
+alter table user_audit_log enable row level security;
 
 -- ============================================================
 -- DATOS INICIALES (seed)

@@ -11,6 +11,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, fontSizes, fontWeights, radius, spacing } from '../theme';
+import Icon from './Icon';
 
 type AppDateFieldProps = {
   label: string;
@@ -39,7 +40,7 @@ function AppDateField({ label, value, onPress, error }: AppDateFieldProps) {
           {value || 'Elige una fecha'}
         </Text>
         <View style={styles.chevronBadge}>
-          <Text style={styles.chevron}>›</Text>
+          <Icon name="chevronRight" size={18} color={Colors.accent} />
         </View>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -92,12 +93,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: spacing.sm,
-  },
-  chevron: {
-    color: Colors.accent,
-    fontSize: 20,
-    lineHeight: 22,
-    marginTop: -1,
   },
   error: {
     color: Colors.danger,

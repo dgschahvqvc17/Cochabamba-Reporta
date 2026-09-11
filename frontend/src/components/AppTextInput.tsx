@@ -23,6 +23,7 @@ type AppTextInputProps = {
   keyboardType?: 'default' | 'email-address' | 'number-pad' | 'phone-pad';
   maxLength?: number;
   autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
+  editable?: boolean;
 };
 
 function AppTextInput({
@@ -35,6 +36,7 @@ function AppTextInput({
   keyboardType = 'default',
   maxLength,
   autoCapitalize = 'words',
+  editable = true,
 }: AppTextInputProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -45,6 +47,7 @@ function AppTextInput({
     styles.inputWrapper,
     isFocused && styles.inputWrapperFocused,
     error && styles.inputWrapperError,
+    !editable && styles.inputWrapperDisabled,
   ];
 
   return (
@@ -65,6 +68,7 @@ function AppTextInput({
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
           selectionColor={Colors.accent}
+          editable={editable}
         />
         {showPasswordToggle && (
           <Pressable
@@ -109,6 +113,10 @@ const styles = StyleSheet.create({
   },
   inputWrapperError: {
     borderColor: Colors.danger,
+  },
+  inputWrapperDisabled: {
+    backgroundColor: 'rgba(230, 236, 241, 0.5)',
+    borderColor: Colors.border,
   },
   input: {
     flex: 1,

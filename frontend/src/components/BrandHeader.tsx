@@ -12,7 +12,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { brandLogo } from '../assets/images';
-import { Colors, fontSizes, fontWeights, spacing } from '../theme';
+import { Colors, fontSizes, fontWeights, layout, spacing } from '../theme';
 
 type BrandHeaderProps = {
   title: string;
@@ -47,6 +47,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
+    width: '100%',
+    maxWidth: layout.cardMaxWidth,
+    alignSelf: 'center',
   },
   logoWrap: {
     width: '94%',
