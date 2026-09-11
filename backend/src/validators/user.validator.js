@@ -16,7 +16,10 @@
 
 const { body } = require('express-validator');
 
+const ROLES = require('../utils/roles');
+
 const MIN_PASSWORD_LENGTH = 8;
+const ROLE_VALUES = Object.values(ROLES);
 
 const validateFirstName = body('firstName')
   .trim()
@@ -116,6 +119,59 @@ const validateLoginPassword = body('password')
   .notEmpty()
   .withMessage('La contraseña es obligatoria.');
 
+const validateUserEmail = body('email')
+  .trim()
+  .notEmpty()
+  .withMessage('El correo electrónico es obligatorio.')
+  .isEmail()
+  .withMessage('El correo electrónico no tiene un formato válido.')
+  .isLength({ max: 150 })
+  .withMessage('El correo electrónico no debe superar los 150 caracteres.');
+
+const validateUserPassword = body('password')
+  .notEmpty()
+  .withMessage('La contraseña es obligatoria.')
+  .isLength({ min: MIN_PASSWORD_LENGTH })
+  .withMessage(
+    `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+  );
+
+const validateRoleRequired = body('role')
+  .trim()
+  .notEmpty()
+  .withMessage('El rol es obligatorio.')
+  .isIn(ROLE_VALUES)
+  .withMessage('El rol seleccionado no es válido.');
+
+const validateOptionalPhone = body('phone')
+  .optional({ values: 'falsy' })
+  .trim()
+  .matches(/^\d{7,8}$/)
+  .withMessage('El teléfono debe contener entre 7 y 8 dígitos.');
+
+const validateOptionalIdentity = body('identityNumber')
+  .optional({ values: 'falsy' })
+  .trim()
+  .matches(/^\d{5,8}$/)
+  .withMessage('El documento de identidad debe contener entre 5 y 8 dígitos.');
+
+const validateOptionalBirthDate = body('birthDate')
+  .optional({ values: 'falsy' })
+  .trim()
+  .matches(/^\d{4}-\d{2}-\d{2}$/)
+  .withMessage('La fecha de nacimiento debe tener el formato AAAA-MM-DD.');
+
+const validateOptionalAddress = body('address')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: 200 })
+  .withMessage('La dirección no debe superar los 200 caracteres.');
+
+const validateUserStatus = body('active')
+  .toBoolean()
+  .isBoolean()
+  .withMessage('El estado debe ser un valor booleano.');
+
 const loginValidation = [validateLoginEmail, validateLoginPassword];
 
 const registerValidation = [
@@ -130,8 +186,37 @@ const registerValidation = [
   validateAddress,
 ];
 
+const createInternalUserValidation = [
+  validateFirstName,
+  validateLastName,
+  validateUserEmail,
+  validateUserPassword,
+  validateRoleRequired,
+  validateOptionalPhone,
+  validateOptionalIdentity,
+  validateOptionalBirthDate,
+  validateOptionalAddress,
+];
+
+const updateUserValidation = [
+  validateFirstName.optional(),
+  validateLastName.optional(),
+  validateOptionalPhone,
+  validateOptionalIdentity,
+  validateOptionalBirthDate,
+  validateOptionalAddress,
+];
+
+const updateUserStatusValidation = [validateUserStatus];
+
+const updateUserRoleValidation = [validateRoleRequired];
+
 module.exports = {
   registerValidation,
   loginValidation,
+  createInternalUserValidation,
+  updateUserValidation,
+  updateUserStatusValidation,
+  updateUserRoleValidation,
   MIN_PASSWORD_LENGTH,
 };

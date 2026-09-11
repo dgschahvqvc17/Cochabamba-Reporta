@@ -14,7 +14,6 @@
 
 import React, { useState } from 'react';
 import {
-  Alert,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +25,7 @@ import {
 } from 'react-native';
 
 import AppDateField from '../components/AppDateField';
+import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import BrandHeader from '../components/BrandHeader';
 import CalendarModal from '../components/CalendarModal';
@@ -33,8 +33,9 @@ import GradientOverlay from '../components/GradientOverlay';
 import PrimaryButton from '../components/PrimaryButton';
 import { cityBackground } from '../assets/images';
 import { handleRegister, type FieldErrors } from '../controllers/AuthController';
+import { useDialog } from '../hooks/useDialog';
 import type { CitizenRegistration } from '../models/Citizen';
-import { Colors, fontSizes, fontWeights, spacing } from '../theme';
+import { Colors, fontSizes, fontWeights, layout, spacing } from '../theme';
 import {
   isValidAdultBirthDate,
   isValidEmail,
@@ -72,6 +73,7 @@ const EMPTY_FORM: FormState = {
 };
 
 function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
+  const { dialog, info, close } = useDialog();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -161,15 +163,15 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
       if (result.fieldErrors) {
         setErrors(result.fieldErrors);
       }
-      Alert.alert('Error', result.message);
+      info({ title: 'Error', message: result.message });
       return;
     }
 
-    Alert.alert(
-      '¡Cuenta creada!',
-      'Tu cuenta se registró correctamente. Ya puedes iniciar sesión.',
-      [{ text: 'Iniciar sesión', onPress: onGoToLogin }],
-    );
+    info({
+      title: '¡Cuenta creada!',
+      message: 'Tu cuenta se registró correctamente. Ya puedes iniciar sesión.',
+      onAccept: onGoToLogin,
+    });
     setForm(EMPTY_FORM);
   };
 
@@ -315,6 +317,8 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
         onConfirm={handleConfirmBirthDate}
         onClose={() => setIsCalendarOpen(false)}
       />
+
+      <AppDialog dialog={dialog} onCancel={close} />
     </View>
   );
 }
@@ -350,6 +354,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.28,
     shadowRadius: 32,
     elevation: 16,
+    width: '100%',
+    maxWidth: layout.cardMaxWidth,
+    alignSelf: 'center',
   },
   sectionHeading: {
     flexDirection: 'row',

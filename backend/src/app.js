@@ -16,6 +16,7 @@ const environment = require('./config/environment');
 const { supabaseAdmin } = require('./config/supabase');
 
 const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
 const errorMiddleware = require('./middlewares/error.middleware');
 
 const app = express();
@@ -56,6 +57,7 @@ app.get('/api/health', async (req, res, next) => {
 });
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
 app.use(errorMiddleware);
 

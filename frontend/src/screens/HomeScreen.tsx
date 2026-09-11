@@ -8,9 +8,8 @@
  * @format
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  Alert,
   ImageBackground,
   StyleSheet,
   Text,
@@ -18,36 +17,18 @@ import {
 } from 'react-native';
 
 import GradientOverlay from '../components/GradientOverlay';
-import PrimaryButton from '../components/PrimaryButton';
 import { cityBackground } from '../assets/images';
-import { handleLogout } from '../controllers/AuthController';
 import type { User } from '../models/User';
-import { Colors, fontSizes, fontWeights, radius, spacing } from '../theme';
+import { Colors, fontSizes, fontWeights, layout, radius, spacing } from '../theme';
 
 type HomeScreenProps = {
   user: User;
-  onLogout: () => void;
 };
 
-function HomeScreen({ user, onLogout }: HomeScreenProps) {
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
+function HomeScreen({ user }: HomeScreenProps) {
   const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
     .toUpperCase()
     .slice(0, 2);
-
-  const handleLogoutPress = async () => {
-    setIsLoggingOut(true);
-    const result = await handleLogout();
-    setIsLoggingOut(false);
-
-    if (!result.success) {
-      Alert.alert('Error', result.error);
-      return;
-    }
-
-    onLogout();
-  };
 
   return (
     <View style={styles.flex}>
@@ -97,12 +78,6 @@ function HomeScreen({ user, onLogout }: HomeScreenProps) {
                 (Sprint 2).
               </Text>
             </View>
-
-            <PrimaryButton
-              label="Cerrar sesión"
-              onPress={handleLogoutPress}
-              loading={isLoggingOut}
-            />
           </View>
         </View>
       </ImageBackground>
@@ -116,6 +91,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    alignItems: 'center',
     paddingHorizontal: spacing.base,
     paddingTop: spacing.xxxl,
     paddingBottom: spacing.xxl,
@@ -148,6 +124,8 @@ const styles = StyleSheet.create({
     shadowRadius: 32,
     elevation: 16,
     alignItems: 'center',
+    width: '100%',
+    maxWidth: layout.cardMaxWidth,
   },
   avatar: {
     width: 84,
