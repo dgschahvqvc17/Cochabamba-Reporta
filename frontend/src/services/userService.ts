@@ -16,6 +16,7 @@ import type {
   UserListData,
   UserUpdatePayload,
 } from '../models/User';
+import { clearSession } from '../utils/session';
 
 const BASE_URL = 'http://localhost:3000/api/v1';
 
@@ -50,6 +51,10 @@ const api = async <T>(
       ...(options.headers || {}),
     },
   });
+
+  if (response.status === 401) {
+    clearSession();
+  }
 
   return response.json();
 };

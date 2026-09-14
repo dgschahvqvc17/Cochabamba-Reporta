@@ -1,9 +1,8 @@
 /**
- * Pantalla de formulario de usuario (MVC - View).
+ * Pantalla: Formulario de usuario (MVC - View).
  *
- * HU03 — Registro de usuarios internos y edición de usuarios.
- * En modo creación se solicita el rol; en edición el correo no se
- * puede modificar y el rol se administra desde el detalle.
+ * HU03 — Dark immersive layout: cityBackground + overlay, glassmorphic
+ * section cards con inputs dark mode, rol picker con chips, AnimatedHeader.
  *
  * @format
  */
@@ -11,6 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,7 +26,10 @@ import AppDateField from '../components/AppDateField';
 import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import CalendarModal from '../components/CalendarModal';
+import GradientOverlay from '../components/GradientOverlay';
+import Icon, { type IconName } from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
+import { cityBackground } from '../assets/images';
 import {
   createUser,
   editUser,
@@ -35,10 +38,23 @@ import {
 } from '../controllers/userController';
 import { useDialog } from '../hooks/useDialog';
 import type { Role } from '../models/User';
-import { Colors, fontSizes, fontWeights, layout, radius, spacing } from '../theme';
+import {
+  Colors,
+  fontSizes,
+  fontWeights,
+  layout,
+  letterSpacings,
+  radius,
+  spacing,
+} from '../theme';
 import { formatDate } from '../utils/format';
 import { ROLE_LABELS, ROLES } from '../utils/roles';
-import { isValidEmail, isValidIdentityNumber, isValidPhone, parseBirthDate } from '../utils/validators';
+import {
+  isValidEmail,
+  isValidIdentityNumber,
+  isValidPhone,
+  parseBirthDate,
+} from '../utils/validators';
 
 type UserFormScreenProps = {
   mode: 'create' | 'edit';
@@ -73,6 +89,15 @@ const EMPTY_FORM: FormState = {
   role: '',
 };
 
+const ROLE_COLORS: Record<Role, string> = {
+  CIUDADANO: Colors.accent,
+  RECEPCION: Colors.textSecondary,
+  VERIFICADOR: Colors.warning,
+  ENCARGADO_SOLUCION: Colors.info,
+  PERSONAL_SOLUCION: Colors.success,
+  ADMINISTRADOR: Colors.danger,
+};
+
 function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) {
   const insets = useSafeAreaInsets();
   const { dialog, info, close } = useDialog();
@@ -86,19 +111,14 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
   const isEdit = mode === 'edit';
 
   useEffect(() => {
-    if (!isEdit || userId === undefined) {
-      return;
-    }
-
+    if (!isEdit || userId === undefined) return;
     (async () => {
       const result = await loadUserDetail(userId);
-
       if (!result.success) {
         setLoadError(result.message);
         setIsLoading(false);
         return;
       }
-
       const user = result.data?.user;
       if (user) {
         setForm({
@@ -114,71 +134,39 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
           role: user.role,
         });
       }
-
       setIsLoading(false);
     })();
   }, [isEdit, userId]);
 
-  const onChangeField = (field: keyof FormState) => (value: string) => {
-    setForm((current) => ({ ...current, [field]: value }));
+  const field = (key: keyof FormState) => (v: string) => {
+    setForm((c) => ({ ...c, [key]: v }));
+    setErrors((c) => { const n = { ...c }; delete n[key]; return n; });
   };
 
   const validateForm = (): FieldErrors => {
-    const fieldErrors: FieldErrors = {};
-
-    if (!form.firstName.trim()) {
-      fieldErrors.firstName = 'El nombre es obligatorio.';
-    }
-
-    if (!form.lastName.trim()) {
-      fieldErrors.lastName = 'El apellido es obligatorio.';
-    }
-
-    if (!form.email.trim()) {
-      fieldErrors.email = 'El correo electrónico es obligatorio.';
-    } else if (!isValidEmail(form.email)) {
-      fieldErrors.email = 'El correo no tiene un formato válido.';
-    }
-
+    const errs: FieldErrors = {};
+    if (!form.firstName.trim()) errs.firstName = 'El nombre es obligatorio.';
+    if (!form.lastName.trim()) errs.lastName = 'El apellido es obligatorio.';
+    if (!form.email.trim()) errs.email = 'El correo electrónico es obligatorio.';
+    else if (!isValidEmail(form.email)) errs.email = 'El correo no tiene un formato válido.';
     if (!isEdit) {
-      if (form.role === '') {
-        fieldErrors.role = 'Debes seleccionar un rol.';
-      }
-      if (!form.password) {
-        fieldErrors.password = 'La contraseña es obligatoria.';
-      } else if (form.password.length < 8) {
-        fieldErrors.password = 'La contraseña debe tener al menos 8 caracteres.';
-      }
-      if (!form.confirmPassword) {
-        fieldErrors.confirmPassword = 'Confirma la contraseña.';
-      } else if (form.confirmPassword !== form.password) {
-        fieldErrors.confirmPassword = 'Las contraseñas no coinciden.';
-      }
+      if (form.role === '') errs.role = 'Debes seleccionar un rol.';
+      if (!form.password) errs.password = 'La contraseña es obligatoria.';
+      else if (form.password.length < 8) errs.password = 'Mínimo 8 caracteres.';
+      if (!form.confirmPassword) errs.confirmPassword = 'Confirma la contraseña.';
+      else if (form.confirmPassword !== form.password) errs.confirmPassword = 'Las contraseñas no coinciden.';
     }
-
-    if (form.phone.trim() && !isValidPhone(form.phone)) {
-      fieldErrors.phone = 'El teléfono debe contener entre 7 y 8 dígitos.';
-    }
-
-    if (form.identityNumber.trim() && !isValidIdentityNumber(form.identityNumber)) {
-      fieldErrors.identityNumber = 'El documento debe contener entre 5 y 8 dígitos.';
-    }
-
-    if (form.birthDate.trim() && !parseBirthDate(form.birthDate)) {
-      fieldErrors.birthDate = 'Elige una fecha válida.';
-    }
-
-    return fieldErrors;
+    if (form.phone.trim() && !isValidPhone(form.phone)) errs.phone = 'Entre 7 y 8 dígitos.';
+    if (form.identityNumber.trim() && !isValidIdentityNumber(form.identityNumber))
+      errs.identityNumber = 'Entre 5 y 8 dígitos.';
+    if (form.birthDate.trim() && !parseBirthDate(form.birthDate)) errs.birthDate = 'Fecha inválida.';
+    return errs;
   };
 
   const handleSubmit = async () => {
-    const fieldErrors = validateForm();
-    setErrors(fieldErrors);
-
-    if (Object.keys(fieldErrors).length > 0) {
-      return;
-    }
-
+    const errs = validateForm();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setIsSubmitting(true);
 
     if (isEdit && userId !== undefined) {
@@ -190,29 +178,17 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
         birthDate: form.birthDate.trim() ? (parseBirthDate(form.birthDate) ?? undefined) : undefined,
         address: form.address.trim() || undefined,
       });
-
       setIsSubmitting(false);
-
       if (!result.success) {
-        if (result.fieldErrors) {
-          setErrors(result.fieldErrors);
-        }
+        if (result.fieldErrors) setErrors(result.fieldErrors);
         info({ title: 'No se pudo actualizar', message: result.message });
         return;
       }
-
-      info({
-        title: 'Usuario actualizado',
-        message: 'Los datos del usuario se actualizaron correctamente.',
-        onAccept: onSaved,
-      });
+      info({ title: 'Usuario actualizado', message: 'Datos actualizados correctamente.', onAccept: onSaved });
       return;
     }
 
-    if (form.role === '') {
-      setIsSubmitting(false);
-      return;
-    }
+    if (form.role === '') { setIsSubmitting(false); return; }
 
     const result = await createUser({
       firstName: form.firstName.trim(),
@@ -222,42 +198,22 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
       role: form.role,
       phone: form.phone.trim() || undefined,
       identityNumber: form.identityNumber.trim() || undefined,
-      birthDate: form.birthDate.trim()
-        ? (parseBirthDate(form.birthDate) ?? undefined)
-        : undefined,
+      birthDate: form.birthDate.trim() ? (parseBirthDate(form.birthDate) ?? undefined) : undefined,
       address: form.address.trim() || undefined,
     });
-
     setIsSubmitting(false);
-
     if (!result.success) {
-      if (result.fieldErrors) {
-        setErrors(result.fieldErrors);
-      }
+      if (result.fieldErrors) setErrors(result.fieldErrors);
       info({ title: 'No se pudo registrar', message: result.message });
       return;
     }
-
-    info({
-      title: 'Usuario registrado',
-      message: 'El usuario interno se registró correctamente.',
-      onAccept: onSaved,
-    });
+    info({ title: 'Usuario registrado', message: 'El usuario se registró correctamente.', onAccept: onSaved });
   };
 
-  const handleConfirmBirthDate = (displayDate: string) => {
-    setForm((current) => ({ ...current, birthDate: displayDate }));
-    setErrors((current) => {
-      const next = { ...current };
-      delete next.birthDate;
-      return next;
-    });
-    setIsCalendarOpen(false);
-  };
-
+  // ── Loading / Error states ────────────────────────────────────────
   if (isLoading) {
     return (
-      <View style={styles.flex}>
+      <View style={styles.root}>
         <AdminHeader title="Editar usuario" onBack={onBack} />
         <View style={styles.centerBox}>
           <ActivityIndicator color={Colors.accent} size="large" />
@@ -269,20 +225,35 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
 
   if (loadError) {
     return (
-      <View style={styles.flex}>
+      <View style={styles.root}>
         <AdminHeader title="Editar usuario" onBack={onBack} />
-        <View style={[styles.centerBox, styles.errorBox]}>
+        <View style={styles.centerBox}>
+          <Icon name="warning" size={36} color={Colors.danger} />
           <Text style={styles.errorText}>{loadError}</Text>
         </View>
       </View>
     );
   }
 
+  // ── Main render ───────────────────────────────────────────────────
   return (
-    <View style={styles.flex}>
+    <View style={styles.root}>
+      {/* Dark immersive background */}
+      <ImageBackground source={cityBackground} style={styles.bg} resizeMode="cover">
+        <GradientOverlay
+          colors={[
+            'rgba(4, 9, 18, 0.96)',
+            'rgba(5, 14, 26, 0.92)',
+            'rgba(3, 9, 18, 0.97)',
+          ]}
+        />
+        <View style={styles.orbTL} />
+        <View style={styles.orbBR} />
+      </ImageBackground>
+
       <AdminHeader
         title={isEdit ? 'Editar usuario' : 'Nuevo usuario'}
-        subtitle={isEdit ? form.email : 'Registrar un usuario interno'}
+        subtitle={isEdit ? form.email : 'Registrar usuario interno'}
         onBack={onBack}
       />
 
@@ -294,154 +265,112 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
           style={styles.flex}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: insets.bottom + spacing.xxl },
+            { paddingBottom: insets.bottom + spacing.huge },
           ]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.formCard}>
-            <SectionTitle>Datos personales</SectionTitle>
-            <AppTextInput
-              label="Nombres *"
-              value={form.firstName}
-              onChangeText={onChangeField('firstName')}
-              placeholder="Ej. Juan Carlos"
-              error={errors.firstName}
-            />
-            <AppTextInput
-              label="Apellidos *"
-              value={form.lastName}
-              onChangeText={onChangeField('lastName')}
-              placeholder="Ej. Pérez Mamani"
-              error={errors.lastName}
-            />
+          {/* Datos personales */}
+          <DarkSectionCard title="Datos personales" icon="person" color={Colors.accent}>
+            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={field('firstName')} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" dark />
+            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={field('lastName')} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" dark />
+          </DarkSectionCard>
 
-            <SectionTitle>Acceso</SectionTitle>
+          {/* Acceso */}
+          <DarkSectionCard title="Acceso" icon="lock" color={Colors.warning}>
             <AppTextInput
               label="Correo electrónico *"
               value={form.email}
-              onChangeText={onChangeField('email')}
+              onChangeText={field('email')}
               placeholder="tucorreo@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!isEdit}
               error={errors.email}
+              icon="person"
+              dark
             />
-
-            {!isEdit ? (
+            {!isEdit && (
               <>
-                <AppTextInput
-                  label="Contraseña *"
-                  value={form.password}
-                  onChangeText={onChangeField('password')}
-                  placeholder="Mínimo 8 caracteres"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  error={errors.password}
-                />
-                <AppTextInput
-                  label="Confirmar contraseña *"
-                  value={form.confirmPassword}
-                  onChangeText={onChangeField('confirmPassword')}
-                  placeholder="Repite la contraseña"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  error={errors.confirmPassword}
-                />
+                <AppTextInput label="Contraseña *" value={form.password} onChangeText={field('password')} placeholder="Mínimo 8 caracteres" secureTextEntry autoCapitalize="none" error={errors.password} icon="lock" dark />
+                <AppTextInput label="Confirmar contraseña *" value={form.confirmPassword} onChangeText={field('confirmPassword')} placeholder="Repite la contraseña" secureTextEntry autoCapitalize="none" error={errors.confirmPassword} icon="shieldCheck" dark />
               </>
-            ) : null}
+            )}
+          </DarkSectionCard>
 
-            <SectionTitle>Contacto e identificación</SectionTitle>
-            <AppTextInput
-              label="Teléfono"
-              value={form.phone}
-              onChangeText={onChangeField('phone')}
-              placeholder="Ej. 78901234"
-              keyboardType="phone-pad"
-              maxLength={8}
-              error={errors.phone}
-            />
-            <AppTextInput
-              label="Documento de identidad"
-              value={form.identityNumber}
-              onChangeText={onChangeField('identityNumber')}
-              placeholder="Ej. 7654321"
-              keyboardType="number-pad"
-              maxLength={8}
-              error={errors.identityNumber}
-            />
-            <AppDateField
-              label="Fecha de nacimiento"
-              value={form.birthDate}
-              onPress={() => setIsCalendarOpen(true)}
-              error={errors.birthDate}
-            />
-            <AppTextInput
-              label="Dirección o referencia"
-              value={form.address}
-              onChangeText={onChangeField('address')}
-              placeholder="Ej. Av. Heroínas, zona..."
-              error={errors.address}
-            />
+          {/* Contacto */}
+          <DarkSectionCard title="Contacto e identificación" icon="badge" color={Colors.success}>
+            <AppTextInput label="Teléfono" value={form.phone} onChangeText={field('phone')} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" dark />
+            <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={field('identityNumber')} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" dark />
+            <AppDateField label="Fecha de nacimiento" value={form.birthDate} onPress={() => setIsCalendarOpen(true)} error={errors.birthDate} dark />
+            <AppTextInput label="Dirección o referencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." icon="pin" dark />
+          </DarkSectionCard>
 
-            {isEdit ? (
-              <View style={styles.roleDisplay}>
-                <Text style={styles.roleDisplayLabel}>Rol actual</Text>
-                <Text style={styles.roleDisplayValue}>
-                  {form.role ? ROLE_LABELS[form.role] : '—'}
-                </Text>
-                <Text style={styles.roleDisplayHint}>
-                  Para cambiar el rol, abre el detalle del usuario.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <SectionTitle>Rol del usuario *</SectionTitle>
-                <View style={styles.roleGrid}>
-                  {ROLES.map((role) => (
+          {/* Rol */}
+          {isEdit ? (
+            <View style={styles.roleDisplayCard}>
+              <Text style={styles.roleDisplayLabel}>ROL ACTUAL</Text>
+              <Text style={styles.roleDisplayValue}>
+                {form.role ? ROLE_LABELS[form.role] : '—'}
+              </Text>
+              <Text style={styles.roleDisplayHint}>
+                Para cambiar el rol, abre el detalle del usuario.
+              </Text>
+            </View>
+          ) : (
+            <DarkSectionCard title="Rol del usuario *" icon="badge" color={Colors.info}>
+              <View style={styles.roleGrid}>
+                {ROLES.map((role) => {
+                  const active = form.role === role;
+                  const rc = ROLE_COLORS[role];
+                  return (
                     <Pressable
                       key={role}
-                      onPress={() => {
-                        setForm((current) => ({ ...current, role }));
-                        setErrors((current) => {
-                          const next = { ...current };
-                          delete next.role;
-                          return next;
-                        });
-                      }}
+                      onPress={() => field('role')(role)}
                       style={[
                         styles.roleChip,
-                        form.role === role && styles.roleChipSelected,
+                        active && { borderColor: rc, backgroundColor: rc + '1A' },
                       ]}
                     >
+                      {active && <View style={[styles.roleChipDot, { backgroundColor: rc }]} />}
                       <Text
                         style={[
                           styles.roleChipText,
-                          form.role === role && styles.roleChipTextSelected,
+                          active && { color: rc, fontWeight: fontWeights.bold },
                         ]}
                         numberOfLines={1}
                       >
                         {ROLE_LABELS[role]}
                       </Text>
                     </Pressable>
-                  ))}
+                  );
+                })}
+              </View>
+              {errors.role && (
+                <View style={styles.roleErrorRow}>
+                  <Icon name="warning" size={12} color={Colors.danger} />
+                  <Text style={styles.roleError}>{errors.role}</Text>
                 </View>
-                {errors.role ? <Text style={styles.roleError}>{errors.role}</Text> : null}
-              </>
-            )}
+              )}
+            </DarkSectionCard>
+          )}
 
-            <PrimaryButton
-              label={isEdit ? 'Guardar cambios' : 'Registrar usuario'}
-              onPress={handleSubmit}
-              loading={isSubmitting}
-            />
-          </View>
+          <PrimaryButton
+            label={isEdit ? 'Guardar cambios' : 'Registrar usuario'}
+            onPress={handleSubmit}
+            loading={isSubmitting}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
       <CalendarModal
         visible={isCalendarOpen}
         value={form.birthDate}
-        onConfirm={handleConfirmBirthDate}
+        onConfirm={(d) => {
+          setForm((c) => ({ ...c, birthDate: d }));
+          setErrors((c) => { const n = { ...c }; delete n.birthDate; return n; });
+          setIsCalendarOpen(false);
+        }}
         onClose={() => setIsCalendarOpen(false)}
       />
       <AppDialog dialog={dialog} onCancel={close} />
@@ -449,129 +378,153 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+// ── Dark glassmorphic section card ─────────────────────────────────────────
+function DarkSectionCard({
+  title,
+  icon,
+  color,
+  children,
+}: {
+  title: string;
+  icon: IconName;
+  color: string;
+  children: React.ReactNode;
+}) {
   return (
-    <View style={styles.sectionHeading}>
-      <View style={styles.sectionBar} />
-      <Text style={styles.sectionTitle}>{children}</Text>
+    <View style={[dsc.card, { borderColor: color + '30' }]}>
+      <View style={[dsc.header, { borderBottomColor: color + '20' }]}>
+        <View style={[dsc.iconWrap, { backgroundColor: color + '16', borderColor: color + '35' }]}>
+          <Icon name={icon} size={15} color={color} />
+        </View>
+        <Text style={[dsc.title, { color }]}>{title}</Text>
+      </View>
+      <View style={dsc.body}>{children}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
+const dsc = StyleSheet.create({
+  card: {
+    backgroundColor: 'rgba(7, 22, 36, 0.82)',
+    borderRadius: radius.card,
+    borderWidth: 1,
+    marginBottom: spacing.base,
+    overflow: 'hidden',
   },
-  content: {
-    padding: spacing.base,
-    width: '100%',
-    maxWidth: layout.contentMaxWidth,
-    alignSelf: 'center',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: 1,
+    gap: spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
+  iconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.wider,
+    textTransform: 'uppercase',
+  },
+  body: { padding: spacing.base },
+});
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: Colors.bgDeep },
+  bg: { ...StyleSheet.absoluteFillObject },
+  flex: { flex: 1 },
+  orbTL: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(0, 212, 255, 0.05)',
+    top: -50,
+    left: -50,
+  },
+  orbBR: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255, 184, 0, 0.04)',
+    bottom: 200,
+    right: -40,
   },
   centerBox: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.xxl,
+    gap: spacing.base,
   },
-  centerText: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.body,
-    marginTop: spacing.sm,
-  },
-  errorBox: {
-    backgroundColor: 'rgba(230, 57, 70, 0.08)',
-  },
-  errorText: {
-    color: Colors.danger,
-    fontSize: fontSizes.body,
-    textAlign: 'center',
-  },
-  formCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: radius.card + 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  centerText: { color: Colors.textMuted, fontSize: fontSizes.body },
+  errorText: { color: Colors.danger, fontSize: fontSizes.body, textAlign: 'center' },
+  content: {
     padding: spacing.base,
-    shadowColor: '#0B4A6F',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 3,
-  },
-  sectionHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.base,
-    marginTop: spacing.sm,
-  },
-  sectionBar: {
-    width: 4,
-    height: 18,
-    borderRadius: 2,
-    backgroundColor: Colors.warning,
-    marginRight: spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: fontSizes.h3,
-    fontWeight: fontWeights.semiBold,
-    color: Colors.primary,
+    width: '100%',
+    maxWidth: layout.contentMaxWidth,
+    alignSelf: 'center',
   },
   roleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: spacing.xs,
   },
   roleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceSubtle,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm - 1,
+    gap: 5,
   },
-  roleChipSelected: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accent,
-  },
+  roleChipDot: { width: 6, height: 6, borderRadius: 3 },
   roleChipText: {
-    color: Colors.textPrimary,
+    color: 'rgba(232,240,248,0.65)',
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.medium,
   },
-  roleChipTextSelected: {
-    color: Colors.textOnPrimary,
-    fontWeight: fontWeights.bold,
-  },
-  roleError: {
-    color: Colors.danger,
-    fontSize: fontSizes.caption,
+  roleErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: spacing.xs,
   },
-  roleDisplay: {
-    marginTop: spacing.base,
-    padding: spacing.base,
-    borderRadius: radius.element,
-    backgroundColor: Colors.surfaceSubtle,
+  roleError: { color: Colors.danger, fontSize: fontSizes.caption, flexShrink: 1 },
+  roleDisplayCard: {
+    backgroundColor: 'rgba(7, 22, 36, 0.82)',
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(0, 212, 255, 0.18)',
+    padding: spacing.base,
+    marginBottom: spacing.base,
   },
   roleDisplayLabel: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.semiBold,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    color: Colors.textMuted,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.widest,
   },
   roleDisplayValue: {
-    color: Colors.textPrimary,
+    color: Colors.textOnDark,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
     marginTop: spacing.xs,
   },
   roleDisplayHint: {
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },

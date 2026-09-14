@@ -1,8 +1,8 @@
 /**
- * Pantalla de detalle de usuario (MVC - View).
+ * Pantalla: Detalle de usuario (MVC - View).
  *
- * HU03 — Consulta el detalle de un usuario, activa/desactiva su
- * cuenta, asigna roles y muestra el historial de cambios registrados.
+ * HU03 — Dark immersive layout: cityBackground + overlay, profile hero
+ * con anillo de color por rol, info cards glassmorphic, acciones y timeline.
  *
  * @format
  */
@@ -10,6 +10,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  ImageBackground,
   Modal,
   Pressable,
   ScrollView,
@@ -21,8 +22,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AdminHeader from '../components/AdminHeader';
 import AppDialog from '../components/AppDialog';
+import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import PillBadge, { type PillTone } from '../components/PillBadge';
+import { cityBackground } from '../assets/images';
 import {
   assignUserRole,
   loadRoles,
@@ -31,7 +34,15 @@ import {
 } from '../controllers/userController';
 import { useDialog } from '../hooks/useDialog';
 import type { Role, RoleOption, User, UserAuditEntry } from '../models/User';
-import { Colors, fontSizes, fontWeights, layout, radius, spacing } from '../theme';
+import {
+  Colors,
+  fontSizes,
+  fontWeights,
+  layout,
+  letterSpacings,
+  radius,
+  spacing,
+} from '../theme';
 import { formatDate, formatDateTime } from '../utils/format';
 import { ROLE_LABELS, ROLES } from '../utils/roles';
 import { getSessionUser } from '../utils/session';
@@ -45,13 +56,22 @@ type UserDetailScreenProps = {
 const ROLE_TONES: Record<Role, PillTone> = {
   CIUDADANO: 'accent',
   RECEPCION: 'neutral',
-  VERIFICADOR: 'neutral',
-  ENCARGADO_SOLUCION: 'neutral',
-  PERSONAL_SOLUCION: 'neutral',
+  VERIFICADOR: 'warning',
+  ENCARGADO_SOLUCION: 'info',
+  PERSONAL_SOLUCION: 'success',
   ADMINISTRADOR: 'primary',
 };
 
-const AUDIT_ROLE_TONES: Record<UserAuditEntry['action'], PillTone> = {
+const ROLE_COLORS: Record<Role, string> = {
+  CIUDADANO: Colors.accent,
+  RECEPCION: Colors.textSecondary,
+  VERIFICADOR: Colors.warning,
+  ENCARGADO_SOLUCION: Colors.info,
+  PERSONAL_SOLUCION: Colors.success,
+  ADMINISTRADOR: Colors.danger,
+};
+
+const AUDIT_TONES: Record<UserAuditEntry['action'], PillTone> = {
   create: 'success',
   update: 'accent',
   activate: 'success',
@@ -71,7 +91,7 @@ const FIELD_LABELS: Record<string, string> = {
   firstName: 'Nombres',
   lastName: 'Apellidos',
   phone: 'Teléfono',
-  identityNumber: 'Documento de identidad',
+  identityNumber: 'Documento',
   birthDate: 'Fecha de nacimiento',
   address: 'Dirección',
   role: 'Rol',
@@ -86,7 +106,6 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-
   const [roles, setRoles] = useState<RoleOption[]>([]);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
@@ -96,37 +115,22 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
   const load = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
-
     const result = await loadUserDetail(userId);
-
-    if (!result.success) {
-      setLoadError(result.message);
-      setIsLoading(false);
-      return;
-    }
-
+    if (!result.success) { setLoadError(result.message); setIsLoading(false); return; }
     setUser(result.data?.user ?? null);
     setAudit(result.data?.audit ?? []);
     setIsLoading(false);
   }, [userId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     let active = true;
-
     (async () => {
       const result = await loadRoles();
-      if (active && result.success && result.data) {
-        setRoles(result.data);
-      }
+      if (active && result.success && result.data) setRoles(result.data);
     })();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   if (isLoading || !user) {
@@ -134,7 +138,8 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
       <View style={styles.flex}>
         <AdminHeader title="Detalle del usuario" onBack={onBack} />
         {loadError ? (
-          <View style={[styles.centerBox, styles.errorBox]}>
+          <View style={styles.centerBox}>
+            <Icon name="warning" size={36} color={Colors.danger} />
             <Text style={styles.errorText}>{loadError}</Text>
           </View>
         ) : (
@@ -147,54 +152,26 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
     );
   }
 
-  const handleToggleActive = async () => {
-    if (!user) {
-      return;
-    }
-
-    const targetState = !user.active;
-
-    if (targetState === false) {
-      confirm({
-        title: 'Desactivar usuario',
-        message: `¿Estás seguro de que deseas desactivar a ${user.firstName} ${user.lastName}? No podrá iniciar sesión.`,
-        confirmLabel: 'Desactivar',
-        cancelLabel: 'Cancelar',
-        tone: 'danger',
-        onConfirm: () => {
-          confirmToggleActive(false);
-        },
-      });
-      return;
-    }
-
+  const handleToggleActive = () => {
+    const target = !user.active;
     confirm({
-      title: 'Activar usuario',
-      message: `¿Deseas activar a ${user.firstName} ${user.lastName}?`,
-      confirmLabel: 'Activar',
+      title: target ? 'Activar usuario' : 'Desactivar usuario',
+      message: target
+        ? `¿Activar a ${user.firstName} ${user.lastName}?`
+        : `¿Desactivar a ${user.firstName} ${user.lastName}? No podrá iniciar sesión.`,
+      confirmLabel: target ? 'Activar' : 'Desactivar',
       cancelLabel: 'Cancelar',
-      tone: 'success',
-      onConfirm: () => {
-        confirmToggleActive(true);
-      },
+      tone: target ? 'success' : 'danger',
+      onConfirm: () => doToggleActive(target),
     });
   };
 
-  const confirmToggleActive = async (active: boolean) => {
-    if (!user) {
-      return;
-    }
-
+  const doToggleActive = async (active: boolean) => {
     setIsUpdating(true);
     close();
     const result = await setUserActive(user.id, active);
     setIsUpdating(false);
-
-    if (!result.success) {
-      info({ title: 'Operación no realizada', message: result.message });
-      return;
-    }
-
+    if (!result.success) { info({ title: 'Error', message: result.message }); return; }
     setUser(result.data ?? null);
     info({ title: 'Operación exitosa', message: result.message });
   };
@@ -202,151 +179,137 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
   const roleOptions: RoleOption[] =
     roles.length > 0
       ? [...roles].sort((a, b) => (a.name < b.name ? -1 : 1))
-      : ROLES.map((role, index) => ({ id: index + 1, name: role, description: null, active: true }));
+      : ROLES.map((r, i) => ({ id: i + 1, name: r, description: null, active: true }));
 
-  const confirmRoleChange = async (role: Role) => {
-    if (!user) {
-      return;
-    }
+  const proposeRole = (role: Role) => {
+    setIsRoleModalOpen(false);
+    confirm({
+      title: 'Asignar rol',
+      message: `¿Asignar "${ROLE_LABELS[role]}" a ${user.firstName} ${user.lastName}?`,
+      confirmLabel: 'Asignar',
+      cancelLabel: 'Cancelar',
+      tone: 'accent',
+      onConfirm: () => doAssignRole(role),
+    });
+  };
 
+  const doAssignRole = async (role: Role) => {
     setIsUpdating(true);
     close();
     const result = await assignUserRole(user.id, role);
     setIsUpdating(false);
-
-    if (!result.success) {
-      info({ title: 'No se pudo asignar el rol', message: result.message });
-      return;
-    }
-
+    if (!result.success) { info({ title: 'Error', message: result.message }); return; }
     setUser(result.data ?? null);
-    setIsRoleModalOpen(false);
     info({ title: 'Rol asignado', message: result.message });
   };
 
-  const proposeRole = (role: Role) => {
-    setIsRoleModalOpen(false);
-    if (!user) {
-      return;
-    }
-
-    confirm({
-      title: 'Asignar rol',
-      message: `¿Asignar el rol "${ROLE_LABELS[role]}" a ${user.firstName} ${user.lastName}?`,
-      confirmLabel: 'Asignar',
-      cancelLabel: 'Cancelar',
-      tone: 'accent',
-      onConfirm: () => {
-        confirmRoleChange(role);
-      },
-    });
-  };
+  const roleColor = ROLE_COLORS[user.role];
+  const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <View style={styles.flex}>
+      {/* Dark immersive background — absoluteFill under everything */}
+      <ImageBackground source={cityBackground} style={styles.bgAbsolute} resizeMode="cover">
+        <GradientOverlay
+          colors={[
+            'rgba(4, 9, 18, 0.96)',
+            'rgba(5, 14, 26, 0.92)',
+            'rgba(3, 9, 18, 0.97)',
+          ]}
+        />
+        <View style={styles.orbTL} />
+        <View style={styles.orbBR} />
+      </ImageBackground>
+
       <AdminHeader title="Detalle del usuario" onBack={onBack} />
 
       <ScrollView
         style={styles.flex}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: insets.bottom + spacing.xxl },
-        ]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
       >
-        <View style={styles.heroCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {`${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-                .toUpperCase()
-                .slice(0, 2)}
-            </Text>
-          </View>
-          <Text style={styles.name}>
-            {user.firstName} {user.lastName}
-          </Text>
-          <Text style={styles.email}>{user.email}</Text>
-          <View style={styles.badgeRow}>
-            <PillBadge label={ROLE_LABELS[user.role]} tone={ROLE_TONES[user.role]} />
-            <PillBadge
-              label={user.active ? 'Activo' : 'Inactivo'}
-              tone={user.active ? 'success' : 'danger'}
-            />
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>INFORMACIÓN</Text>
-        <View style={styles.infoCard}>
-          <InfoRow label="Documento de identidad" value={user.identityNumber || '—'} />
-          <InfoRow label="Teléfono" value={user.phone || '—'} />
-          <InfoRow label="Fecha de nacimiento" value={user.birthDate ? formatDate(user.birthDate) : '—'} />
-          <InfoRow label="Dirección" value={user.address || '—'} />
-        </View>
-
-        <Text style={styles.sectionLabel}>ACCIONES</Text>
-        <View style={styles.actionsCard}>
-          <Pressable
-            onPress={() => onEdit(user.id)}
-            style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
-          >
-            <View style={styles.actionContent}>
-              <Icon name="edit" size={18} color={Colors.textPrimary} />
-              <Text style={styles.actionButtonText}>Editar datos</Text>
+        {/* Hero card */}
+        <View style={[styles.heroCard, { borderColor: roleColor + '30' }]}>
+          <View style={[styles.heroTop, { backgroundColor: roleColor + '0C' }]}>
+            <View style={[styles.avatarRing, { borderColor: roleColor + '60' }]}>
+              <View style={[styles.avatarInner, { backgroundColor: roleColor + '1A' }]}>
+                <Text style={[styles.avatarText, { color: roleColor }]}>{initials}</Text>
+              </View>
             </View>
-          </Pressable>
-
-          <Pressable
-            onPress={handleToggleActive}
-            disabled={isUpdating || isSelf}
-            style={({ pressed }) => [
-              styles.actionButton,
-              user.active ? styles.actionDanger : styles.actionSuccess,
-              pressed && styles.actionButtonPressed,
-              (isUpdating || isSelf) && styles.actionButtonDisabled,
-            ]}
-          >
-            <View style={styles.actionContent}>
-              <Icon
-                name="power"
-                size={18}
-                color={user.active ? Colors.danger : '#2E7D46'}
+            {user.active && (
+              <View style={styles.onlineDot} />
+            )}
+          </View>
+          <View style={styles.heroBody}>
+            <Text style={styles.heroName}>{user.firstName} {user.lastName}</Text>
+            <Text style={styles.heroEmail}>{user.email}</Text>
+            <View style={styles.badgeRow}>
+              <PillBadge label={ROLE_LABELS[user.role]} tone={ROLE_TONES[user.role]} dot />
+              <PillBadge
+                label={user.active ? 'Activo' : 'Inactivo'}
+                tone={user.active ? 'success' : 'danger'}
+                dot
               />
-              <Text
-                style={[styles.actionButtonText, user.active ? styles.actionDangerText : styles.actionSuccessText]}
-              >
-                {user.active ? 'Desactivar cuenta' : 'Activar cuenta'}
+            </View>
+          </View>
+        </View>
+
+        {/* Info */}
+        <SectionLabel label="INFORMACIÓN PERSONAL" />
+        <View style={styles.infoCard}>
+          <InfoRow label="Documento" value={user.identityNumber || '—'} icon="badge" />
+          <InfoRow label="Teléfono" value={user.phone || '—'} icon="bell" last={false} />
+          <InfoRow label="Fecha de nacimiento" value={user.birthDate ? formatDate(user.birthDate) : '—'} icon="calendar" last={false} />
+          <InfoRow label="Dirección" value={user.address || '—'} icon="pin" last />
+        </View>
+
+        {/* Actions */}
+        <SectionLabel label="ACCIONES" />
+        <View style={styles.actionsCard}>
+          <ActionButton
+            icon="edit"
+            label="Editar datos"
+            color={Colors.accent}
+            onPress={() => onEdit(user.id)}
+          />
+          <ActionButton
+            icon="power"
+            label={user.active ? 'Desactivar cuenta' : 'Activar cuenta'}
+            color={user.active ? Colors.danger : Colors.success}
+            disabled={isUpdating || isSelf}
+            onPress={handleToggleActive}
+          />
+          <ActionButton
+            icon="badge"
+            label="Cambiar rol"
+            color={Colors.info}
+            disabled={isUpdating || isSelf}
+            onPress={() => setIsRoleModalOpen(true)}
+          />
+          {isSelf && (
+            <View style={styles.selfNote}>
+              <Icon name="info" size={14} color={Colors.textSecondary} />
+              <Text style={styles.selfNoteText}>
+                No puedes modificar tu propia cuenta de administrador.
               </Text>
             </View>
-          </Pressable>
-          {isSelf ? (
-            <Text style={styles.actionHint}>No puedes desactivar tu propia cuenta.</Text>
-          ) : null}
-
-          <Pressable
-            onPress={() => setIsRoleModalOpen(true)}
-            disabled={isUpdating || isSelf}
-            style={({ pressed }) => [
-              styles.actionButton,
-              pressed && styles.actionButtonPressed,
-              (isUpdating || isSelf) && styles.actionButtonDisabled,
-            ]}
-          >
-            <View style={styles.actionContent}>
-              <Icon name="badge" size={18} color={Colors.textPrimary} />
-              <Text style={styles.actionButtonText}>Cambiar rol</Text>
-            </View>
-          </Pressable>
-          {isSelf ? (
-            <Text style={styles.actionHint}>No puedes cambiar tu propio rol de administrador.</Text>
-          ) : null}
+          )}
         </View>
 
-        <Text style={styles.sectionLabel}>HISTORIAL DE CAMBIOS</Text>
+        {/* Audit */}
+        <SectionLabel label="HISTORIAL DE CAMBIOS" />
         {audit.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>Aún no se registraron cambios sobre este usuario.</Text>
+            <Icon name="clock" size={24} color={Colors.textSecondary} />
+            <Text style={styles.emptyText}>Aún no se registraron cambios.</Text>
           </View>
         ) : (
-          audit.map((entry) => <AuditRow key={entry.id} entry={entry} />)
+          <View style={styles.timeline}>
+            {audit.map((entry, i) => (
+              <AuditRow key={entry.id} entry={entry} isLast={i === audit.length - 1} />
+            ))}
+          </View>
         )}
       </ScrollView>
 
@@ -362,38 +325,145 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
   );
 }
 
-type InfoRowProps = {
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <Text style={sLabelStyles.label}>{label}</Text>
+  );
+}
+
+const sLabelStyles = StyleSheet.create({
+  label: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.widest,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+  },
+});
+
+function InfoRow({
+  label,
+  value,
+  icon,
+  last = false,
+}: {
   label: string;
   value: string;
-};
-
-function InfoRow({ label, value }: InfoRowProps) {
+  icon: Parameters<typeof Icon>[0]['name'];
+  last?: boolean;
+}) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+    <View style={[infoStyles.row, !last && infoStyles.rowBorder]}>
+      <View style={infoStyles.iconWrap}>
+        <Icon name={icon} size={16} color={Colors.accent} />
+      </View>
+      <View style={infoStyles.text}>
+        <Text style={infoStyles.label}>{label}</Text>
+        <Text style={infoStyles.value}>{value}</Text>
+      </View>
     </View>
   );
 }
 
-type AuditRowProps = {
-  entry: UserAuditEntry;
-};
+const infoStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 212, 255, 0.1)',
+  },
+  iconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: Colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: { flex: 1 },
+  label: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  value: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.semiBold,
+    marginTop: 2,
+  },
+});
 
-function AuditRow({ entry }: AuditRowProps) {
+function ActionButton({
+  icon,
+  label,
+  color,
+  disabled,
+  onPress,
+}: {
+  icon: Parameters<typeof Icon>[0]['name'];
+  label: string;
+  color: string;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        actionBtnStyles.btn,
+        { borderColor: color + '40', backgroundColor: color + '08' },
+        pressed && actionBtnStyles.pressed,
+        disabled && actionBtnStyles.disabled,
+      ]}
+    >
+      <View style={[actionBtnStyles.iconWrap, { backgroundColor: color + '14' }]}>
+        <Icon name={icon} size={18} color={color} />
+      </View>
+      <Text style={[actionBtnStyles.label, { color }]}>{label}</Text>
+      <Icon name="chevronRight" size={16} color={color + '80'} />
+    </Pressable>
+  );
+}
+
+const actionBtnStyles = StyleSheet.create({
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.element,
+    borderWidth: 1.5,
+    padding: spacing.base,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  iconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: { flex: 1, fontSize: fontSizes.body, fontWeight: fontWeights.bold },
+  pressed: { transform: [{ scale: 0.98 }], opacity: 0.85 },
+  disabled: { opacity: 0.35 },
+});
+
+function AuditRow({ entry, isLast }: { entry: UserAuditEntry; isLast: boolean }) {
   const changeSummary = (): string | null => {
-    if (entry.action === 'create') {
-      return null;
-    }
-    if (entry.action === 'role_change') {
-      return `${entry.oldValue ?? '—'} → ${entry.newValue ?? '—'}`;
-    }
+    if (entry.action === 'create') return null;
+    if (entry.action === 'role_change') return `${entry.oldValue ?? '—'} → ${entry.newValue ?? '—'}`;
     if (entry.action === 'update' && entry.fieldName) {
-      const fieldLabel = FIELD_LABELS[entry.fieldName] ?? entry.fieldName;
-      if (entry.oldValue === null) {
-        return `${fieldLabel}: ${entry.newValue ?? ''}`;
-      }
-      return `${fieldLabel}: ${entry.oldValue ?? '—'} → ${entry.newValue ?? '—'}`;
+      const fl = FIELD_LABELS[entry.fieldName] ?? entry.fieldName;
+      return entry.oldValue === null ? `${fl}: ${entry.newValue ?? ''}` : `${fl}: ${entry.oldValue ?? '—'} → ${entry.newValue ?? '—'}`;
     }
     if (entry.action === 'activate' || entry.action === 'deactivate') {
       return entry.newValue === 'true' ? 'Cuenta habilitada' : 'Cuenta deshabilitada';
@@ -402,26 +472,59 @@ function AuditRow({ entry }: AuditRowProps) {
   };
 
   return (
-    <View style={styles.auditCard}>
-      <View style={styles.auditHeader}>
-        <PillBadge label={ACTION_LABELS[entry.action]} tone={AUDIT_ROLE_TONES[entry.action]} />
-        <Text style={styles.auditDate}>{formatDateTime(entry.createdAt)}</Text>
+    <View style={timelineStyles.row}>
+      {/* Line + dot */}
+      <View style={timelineStyles.lineCol}>
+        <View style={timelineStyles.dot} />
+        {!isLast && <View style={timelineStyles.line} />}
       </View>
-      {changeSummary() ? <Text style={styles.auditSummary}>{changeSummary()}</Text> : null}
-      {entry.changedByName ? (
-        <Text style={styles.auditActor}>Por: {entry.changedByName}</Text>
-      ) : null}
+      {/* Content */}
+      <View style={timelineStyles.card}>
+        <View style={timelineStyles.cardHeader}>
+          <PillBadge label={ACTION_LABELS[entry.action]} tone={AUDIT_TONES[entry.action]} />
+          <Text style={timelineStyles.date}>{formatDateTime(entry.createdAt)}</Text>
+        </View>
+        {changeSummary() ? <Text style={timelineStyles.summary}>{changeSummary()}</Text> : null}
+        {entry.changedByName ? <Text style={timelineStyles.actor}>Por: {entry.changedByName}</Text> : null}
+      </View>
     </View>
   );
 }
 
-type RolePickerModalProps = {
-  visible: boolean;
-  currentRole: Role;
-  roles: RoleOption[];
-  onSelect: (role: Role) => void;
-  onClose: () => void;
-};
+const timelineStyles = StyleSheet.create({
+  row: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  lineCol: { alignItems: 'center', width: 20, paddingTop: 6 },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.accent,
+  },
+  line: { flex: 1, width: 2, backgroundColor: 'rgba(0, 212, 255, 0.15)', marginTop: 4 },
+  card: {
+    flex: 1,
+    backgroundColor: 'rgba(7, 22, 36, 0.82)',
+    borderRadius: radius.element,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.12)',
+    padding: spacing.sm,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  date: { color: Colors.textMuted, fontSize: fontSizes.micro },
+  summary: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.medium,
+    marginTop: spacing.xs,
+  },
+  actor: { color: Colors.textMuted, fontSize: fontSizes.micro, marginTop: 2 },
+});
 
 function RolePickerModal({
   visible,
@@ -429,52 +532,63 @@ function RolePickerModal({
   roles,
   onSelect,
   onClose,
-}: RolePickerModalProps) {
+}: {
+  visible: boolean;
+  currentRole: Role;
+  roles: RoleOption[];
+  onSelect: (role: Role) => void;
+  onClose: () => void;
+}) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+      <View style={modalStyles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={modalStyles.sheet}>
+          <View style={modalStyles.handle} />
+          <View style={modalStyles.headerRow}>
+            <View style={modalStyles.headerIcon}>
+              <Icon name="badge" size={20} color={Colors.accent} />
+            </View>
+            <View>
+              <Text style={modalStyles.title}>Seleccionar rol</Text>
+              <Text style={modalStyles.subtitle}>El usuario adoptará este nuevo rol.</Text>
+            </View>
+          </View>
 
-        <View style={styles.modalCard}>
-          <View style={styles.handle} />
-          <Text style={styles.modalTitle}>Seleccionar rol</Text>
-          <Text style={styles.modalSubtitle}>El usuario pasará a tener estos permisos.</Text>
-
-          <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+          <ScrollView style={modalStyles.list} showsVerticalScrollIndicator={false}>
             {roles.map((role) => {
               const isCurrent = role.name === currentRole;
+              const rc = ROLE_COLORS[role.name];
               return (
                 <Pressable
                   key={role.id}
-                  onPress={() => onSelect(role.name)}
-                  disabled={isCurrent}
+                  onPress={() => !isCurrent && onSelect(role.name)}
                   style={[
-                    styles.roleOption,
-                    isCurrent && styles.roleOptionCurrent,
+                    modalStyles.roleOption,
+                    { borderColor: rc + '25' },
+                    isCurrent && modalStyles.roleOptionCurrent,
                   ]}
                 >
-                  <View style={styles.roleOptionInfo}>
-                    <Text style={styles.roleOptionName}>
+                  <View style={[modalStyles.roleOptionDot, { backgroundColor: rc }]} />
+                  <View style={modalStyles.roleOptionText}>
+                    <Text style={[modalStyles.roleOptionName, { color: isCurrent ? rc : Colors.textPrimary }]}>
                       {ROLE_LABELS[role.name] ?? role.name}
                     </Text>
                     {role.description ? (
-                      <Text style={styles.roleOptionDesc} numberOfLines={2}>
-                        {role.description}
-                      </Text>
+                      <Text style={modalStyles.roleOptionDesc} numberOfLines={2}>{role.description}</Text>
                     ) : null}
                   </View>
-                  {isCurrent ? (
-                    <Text style={styles.roleOptionCurrentText}>Actual</Text>
-                  ) : (
-                    <Icon name="chevronRight" size={20} color={Colors.accent} />
-                  )}
+                  {isCurrent
+                    ? <PillBadge label="Actual" tone="success" />
+                    : <Icon name="chevronRight" size={18} color={Colors.textSecondary} />
+                  }
                 </Pressable>
               );
             })}
           </ScrollView>
 
-          <Pressable onPress={onClose} style={styles.modalCancel}>
-            <Text style={styles.modalCancelText}>Cancelar</Text>
+          <Pressable onPress={onClose} style={modalStyles.cancel}>
+            <Text style={modalStyles.cancelText}>Cancelar</Text>
           </Pressable>
         </View>
       </View>
@@ -482,9 +596,93 @@ function RolePickerModal({
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
+const modalStyles = StyleSheet.create({
+  overlay: {
     flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(3, 9, 18, 0.75)',
+  },
+  sheet: {
+    backgroundColor: Colors.bgCard,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.15)',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0, 212, 255, 0.25)',
+    marginBottom: spacing.lg,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: Colors.accentSoft,
+    borderWidth: 1,
+    borderColor: Colors.accent + '40',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: fontSizes.h3, fontWeight: fontWeights.bold, color: Colors.textOnDark },
+  subtitle: { fontSize: fontSizes.caption, color: Colors.textMuted, marginTop: 2 },
+  list: { maxHeight: 360 },
+  roleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.element,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    padding: spacing.base,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  roleOptionCurrent: { opacity: 0.55 },
+  roleOptionDot: { width: 10, height: 10, borderRadius: 5 },
+  roleOptionText: { flex: 1 },
+  roleOptionName: { fontSize: fontSizes.body, fontWeight: fontWeights.bold },
+  roleOptionDesc: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.caption,
+    marginTop: spacing.xs,
+    lineHeight: 16,
+  },
+  cancel: { alignItems: 'center', paddingVertical: spacing.md },
+  cancelText: { color: Colors.accent, fontSize: fontSizes.body, fontWeight: fontWeights.semiBold },
+});
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: Colors.bgDeep },
+  bgAbsolute: { ...StyleSheet.absoluteFillObject },
+  orbTL: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(0, 212, 255, 0.05)',
+    top: -40,
+    left: -40,
+  },
+  orbBR: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(167, 139, 250, 0.04)',
+    bottom: 100,
+    right: -40,
   },
   content: {
     padding: spacing.base,
@@ -496,272 +694,114 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.base,
     padding: spacing.xxl,
   },
-  centerText: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.body,
-    marginTop: spacing.sm,
-  },
-  errorBox: {
-    backgroundColor: 'rgba(230, 57, 70, 0.08)',
-  },
-  errorText: {
-    color: Colors.danger,
-    fontSize: fontSizes.body,
-    textAlign: 'center',
-  },
+  centerText: { color: Colors.textMuted, fontSize: fontSizes.body },
+  errorText: { color: Colors.danger, fontSize: fontSizes.body, textAlign: 'center' },
   heroCard: {
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: radius.card + 8,
+    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    borderRadius: radius.cardLg,
     borderWidth: 1,
-    borderColor: Colors.border,
-    padding: spacing.lg,
-    shadowColor: '#0B4A6F',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 3,
+    overflow: 'hidden',
   },
-  avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: Colors.primary,
+  heroTop: {
+    alignItems: 'center',
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.base,
+  },
+  avatarRing: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInner: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: Colors.textOnPrimary,
-    fontSize: fontSizes.h2,
-    fontWeight: fontWeights.bold,
+    fontSize: fontSizes.h1,
+    fontWeight: fontWeights.extraBold,
   },
-  name: {
-    color: Colors.textPrimary,
-    fontSize: fontSizes.h3,
-    fontWeight: fontWeights.bold,
-    marginTop: spacing.base,
+  onlineDot: {
+    position: 'absolute',
+    bottom: spacing.base + 2,
+    right: '42%',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: Colors.success,
+    borderWidth: 2,
+    borderColor: 'rgba(7, 22, 36, 0.9)',
+  },
+  heroBody: {
+    alignItems: 'center',
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.base,
+  },
+  heroName: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.h2,
+    fontWeight: fontWeights.extraBold,
+    letterSpacing: -0.5,
     textAlign: 'center',
   },
-  email: {
-    color: Colors.textSecondary,
+  heroEmail: {
+    color: Colors.textMuted,
     fontSize: fontSizes.body,
     marginTop: spacing.xs,
   },
   badgeRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
     marginTop: spacing.sm,
     flexWrap: 'wrap',
     justifyContent: 'center',
   },
-  sectionLabel: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.semiBold,
-    letterSpacing: 1.2,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    marginHorizontal: spacing.xs,
-  },
   infoCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: 'rgba(7, 22, 36, 0.82)',
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(0, 212, 255, 0.14)',
     padding: spacing.base,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  infoLabel: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.medium,
-  },
-  infoValue: {
-    color: Colors.textPrimary,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semiBold,
-    flexShrink: 1,
-    marginLeft: spacing.lg,
-    textAlign: 'right',
   },
   actionsCard: {
-    gap: spacing.sm,
+    gap: 0,
   },
-  actionButton: {
-    minHeight: 52,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: Colors.accent,
-    backgroundColor: 'rgba(22, 163, 224, 0.07)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionContent: {
+  selfNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    marginTop: -spacing.xs,
+    marginBottom: spacing.sm,
   },
-  actionDanger: {
-    borderColor: Colors.danger,
-    backgroundColor: 'rgba(230, 57, 70, 0.06)',
-  },
-  actionSuccess: {
-    borderColor: Colors.success,
-    backgroundColor: 'rgba(76, 168, 102, 0.08)',
-  },
-  actionButtonPressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  actionButtonDisabled: {
-    opacity: 0.45,
-  },
-  actionButtonText: {
-    color: Colors.textPrimary,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.bold,
-    letterSpacing: 0.3,
-  },
-  actionDangerText: {
-    color: Colors.danger,
-  },
-  actionSuccessText: {
-    color: '#2E7D46',
-  },
-  actionHint: {
-    color: Colors.textSecondary,
+  selfNoteText: {
+    color: Colors.textMuted,
     fontSize: fontSizes.caption,
-    textAlign: 'center',
+    flex: 1,
   },
   emptyBox: {
-    backgroundColor: Colors.surface,
-    borderRadius: radius.card,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(7, 22, 36, 0.75)',
+    borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: Colors.border,
-    padding: spacing.lg,
+    borderColor: 'rgba(0, 212, 255, 0.12)',
+    padding: spacing.base,
   },
   emptyText: {
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     fontSize: fontSizes.body,
-    textAlign: 'center',
   },
-  auditCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: spacing.base,
-    marginBottom: spacing.sm,
-  },
-  auditHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  auditDate: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-  },
-  auditSummary: {
-    color: Colors.textPrimary,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.medium,
-    marginTop: spacing.sm,
-  },
-  auditActor: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    marginTop: spacing.xs,
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(3, 18, 32, 0.55)',
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  modalCard: {
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 44,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: Colors.border,
-    marginBottom: spacing.lg,
-  },
-  modalTitle: {
-    fontSize: fontSizes.h3,
-    fontWeight: fontWeights.bold,
-    color: Colors.primary,
-  },
-  modalSubtitle: {
-    fontSize: fontSizes.caption,
-    color: Colors.textSecondary,
-    marginTop: spacing.xs,
-    marginBottom: spacing.base,
-  },
-  modalList: {
-    maxHeight: 360,
-  },
-  roleOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.element,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceSubtle,
-    padding: spacing.base,
-    marginBottom: spacing.sm,
-  },
-  roleOptionCurrent: {
-    opacity: 0.6,
-  },
-  roleOptionInfo: {
-    flex: 1,
-  },
-  roleOptionName: {
-    color: Colors.textPrimary,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.bold,
-  },
-  roleOptionDesc: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    marginTop: spacing.xs,
-    lineHeight: 16,
-  },
-  roleOptionCurrentText: {
-    color: Colors.success,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.bold,
-    marginLeft: spacing.sm,
-  },
-  modalCancel: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  modalCancelText: {
-    color: Colors.accent,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.semiBold,
-  },
+  timeline: { gap: 0 },
 });
 
 export default UserDetailScreen;

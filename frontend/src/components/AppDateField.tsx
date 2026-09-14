@@ -1,8 +1,7 @@
 /**
- * Componente compartido: Campo de fecha (MVC - componentes).
+ * Componente: Campo de fecha (MVC - componentes).
  *
- * Misma estética que AppTextInput pero abre un calendario
- * (CalendarModal) para elegir la fecha.
+ * Misma estética que AppTextInput (dark/light) pero abre un CalendarModal.
  *
  * @format
  */
@@ -10,94 +9,123 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Colors, fontSizes, fontWeights, radius, spacing } from '../theme';
+import {
+  Colors,
+  fontSizes,
+  fontWeights,
+  radius,
+  spacing,
+} from '../theme';
 import Icon from './Icon';
 
 type AppDateFieldProps = {
   label: string;
-  value: string; // formato visible DD/MM/AAAA
+  value: string;
   onPress: () => void;
   error?: string;
+  dark?: boolean;
 };
 
-function AppDateField({ label, value, onPress, error }: AppDateFieldProps) {
+function AppDateField({ label, value, onPress, error, dark = false }: AppDateFieldProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, dark && styles.labelDark]}>{label}</Text>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
-          styles.fieldWrapper,
-          error && styles.fieldWrapperError,
-          pressed && styles.fieldWrapperPressed,
+          styles.wrapper,
+          dark ? styles.wrapperDark : styles.wrapperLight,
+          error && styles.wrapperError,
+          pressed && styles.wrapperPressed,
         ]}
         testID="date-field"
       >
+        <Icon
+          name="calendar"
+          size={18}
+          color={value ? Colors.accent : (dark ? Colors.textMuted : Colors.textSecondary)}
+        />
         <Text
-          style={[styles.value, !value && styles.placeholder]}
+          style={[
+            styles.value,
+            dark && styles.valueDark,
+            !value && (dark ? styles.placeholderDark : styles.placeholder),
+          ]}
           numberOfLines={1}
         >
           {value || 'Elige una fecha'}
         </Text>
-        <View style={styles.chevronBadge}>
-          <Icon name="chevronRight" size={18} color={Colors.accent} />
+        <View style={[styles.calIcon, dark && styles.calIconDark]}>
+          <Icon name="chevronDown" size={16} color={dark ? Colors.accent : Colors.accentDim} />
         </View>
       </Pressable>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <View style={styles.errorRow}>
+          <Icon name="warning" size={12} color={Colors.danger} />
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.base,
-  },
+  container: { marginBottom: spacing.base },
   label: {
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.semiBold,
     color: Colors.textPrimary,
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
     marginBottom: 8,
+    textTransform: 'uppercase',
   },
-  fieldWrapper: {
+  labelDark: { color: 'rgba(232,240,248,0.7)' },
+  wrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surfaceSubtle,
     borderWidth: 1.5,
-    borderColor: Colors.borderSoft,
     borderRadius: radius.element,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.base,
     minHeight: 56,
+    gap: spacing.sm,
   },
-  fieldWrapperError: {
-    borderColor: Colors.danger,
+  wrapperLight: {
+    backgroundColor: Colors.surfaceSubtle,
+    borderColor: Colors.borderSoft,
   },
-  fieldWrapperPressed: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.surface,
+  wrapperDark: {
+    backgroundColor: 'rgba(10, 30, 48, 0.6)',
+    borderColor: Colors.border,
   },
+  wrapperError: { borderColor: Colors.danger },
+  wrapperPressed: { borderColor: Colors.accent },
   value: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontSizes.body,
     color: Colors.textPrimary,
-    paddingVertical: spacing.sm,
   },
-  placeholder: {
-    color: Colors.textSecondary,
-  },
-  chevronBadge: {
+  valueDark: { color: Colors.textOnDark },
+  placeholder: { color: Colors.textSecondary },
+  placeholderDark: { color: 'rgba(232,240,248,0.3)' },
+  calIcon: {
     width: 30,
     height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(22,163,224,0.12)',
+    borderRadius: 8,
+    backgroundColor: Colors.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: spacing.sm,
+  },
+  calIconDark: { backgroundColor: 'rgba(0, 212, 255, 0.1)' },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    gap: 4,
   },
   error: {
     color: Colors.danger,
     fontSize: fontSizes.caption,
-    marginTop: spacing.xs,
+    flexShrink: 1,
   },
 });
 

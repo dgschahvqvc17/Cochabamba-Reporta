@@ -79,4 +79,49 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate };
+/**
+ * Autenticación opcional.
+ *
+ * Intenta autenticar al usuario si el request incluye un token válido,
+ * pero nunca rechaza la solicitud si no lo hay (o si es inválido).
+ * Se usa en endpoints públicos que cambian su respuesta según el rol
+ * (por ejemplo, GET /categories: el administrador ve todas las
+ * categorías y el ciudadano solo las activas).
+ *
+ * @format
+ */
+
+const authenticateOptional = async (req, res, next) => {
+  try {
+    const token = extractToken(req);
+
+    if (!token) {
+      return next();
+    }
+
+    const { data, error } = await supabasePublic.auth.getUser(token);
+
+    if (error || !data.user) {
+      return next();
+    }
+
+    const appUser = await userRepository.findByEmailWithRole(data.user.email);
+
+    if (appUser && appUser.active) {
+      req.user = {
+        id: appUser.id,
+        authId: appUser.auth_id,
+        email: appUser.email,
+        firstName: appUser.first_name,
+        lastName: appUser.last_name,
+        role: appUser.roles.name,
+      };
+    }
+
+    return next();
+  } catch (error) {
+    return next();
+  }
+};
+
+module.exports = { authenticate, authenticateOptional };

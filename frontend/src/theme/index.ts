@@ -1,7 +1,7 @@
 /**
  * Design tokens (src/theme).
  *
- * Punto único de acceso a colores, tipografía y espaciado.
+ * Punto único de acceso a todos los tokens de diseño.
  *
  * @format
  */

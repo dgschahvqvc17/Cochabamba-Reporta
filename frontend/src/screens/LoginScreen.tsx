@@ -1,13 +1,9 @@
 /**
- * Pantalla de inicio de sesión (MVC - View).
+ * Pantalla: Inicio de sesión (MVC - View).
  *
- * HU02 — Como ciudadano, quiero iniciar sesión con mi correo y
- * contraseña para acceder al sistema y reportar incidentes.
- *
- * Diseño moderno sobre la foto de la ciudad con degradado institucional:
- * tarjeta flotante con animación de entrada, encabezado de acceso,
- * campos de 56 px, "Recordarme", validación en vivo y botón secundario
- * de registro.
+ * HU02 — Diseño dark immersive: fondo degradado multicapa con orbes
+ * de color, tarjeta glassmorphic con entrada animada, glow neon en
+ * campos de foco, checkbox rediseñado y botón con pulso.
  *
  * @format
  */
@@ -33,12 +29,17 @@ import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
 import { cityBackground } from '../assets/images';
-import {
-  handleLogin,
-  type FieldErrors,
-} from '../controllers/AuthController';
+import { handleLogin, type FieldErrors } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
-import { Colors, fontSizes, fontWeights, layout, radius, spacing } from '../theme';
+import {
+  Colors,
+  fontSizes,
+  fontWeights,
+  layout,
+  letterSpacings,
+  radius,
+  spacing,
+} from '../theme';
 import { isValidEmail } from '../utils/validators';
 import type { StoredSession } from '../utils/session';
 
@@ -47,82 +48,83 @@ type LoginScreenProps = {
   onLoginSuccess: (session: StoredSession) => void;
 };
 
-function LoginScreen({
-  onGoToRegister,
-  onLoginSuccess,
-}: LoginScreenProps) {
+function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
   const { dialog, info, close } = useDialog();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const entrance = useRef(new Animated.Value(0)).current;
+
+  const cardAnim = useRef(new Animated.Value(0)).current;
+  const orb1Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(entrance, {
+    Animated.timing(cardAnim, {
       toValue: 1,
-      duration: 480,
+      duration: 600,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
-  }, [entrance]);
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(orb1Anim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(orb1Anim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ]),
+    ).start();
+  }, [cardAnim, orb1Anim]);
+
+  const orbScale = orb1Anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
 
   const validateForm = (): FieldErrors => {
-    const fieldErrors: FieldErrors = {};
-
-    if (!email.trim()) {
-      fieldErrors.email = 'El correo electrónico es obligatorio.';
-    } else if (!isValidEmail(email)) {
-      fieldErrors.email = 'El correo no tiene un formato válido.';
-    }
-
-    if (!password) {
-      fieldErrors.password = 'La contraseña es obligatoria.';
-    }
-
-    return fieldErrors;
+    const errs: FieldErrors = {};
+    if (!email.trim()) errs.email = 'El correo electrónico es obligatorio.';
+    else if (!isValidEmail(email)) errs.email = 'El correo no tiene un formato válido.';
+    if (!password) errs.password = 'La contraseña es obligatoria.';
+    return errs;
   };
 
   const handleSubmit = async () => {
-    const fieldErrors = validateForm();
-    setErrors(fieldErrors);
-
-    if (Object.keys(fieldErrors).length > 0) {
-      return;
-    }
+    const errs = validateForm();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
 
     setIsSubmitting(true);
     const result = await handleLogin(email, password, remember);
     setIsSubmitting(false);
 
     if (!result.success) {
-      if (result.fieldErrors) {
-        setErrors(result.fieldErrors);
-      }
+      if (result.fieldErrors) setErrors(result.fieldErrors);
       info({ title: 'No pudimos iniciar sesión', message: result.error });
       return;
     }
-
-    if (result.session) {
-      onLoginSuccess(result.session);
-    }
+    if (result.session) onLoginSuccess(result.session);
   };
+
+  const clearError = (field: keyof FieldErrors) =>
+    setErrors((c) => { const n = { ...c }; delete n[field]; return n; });
 
   return (
     <View style={styles.flex}>
-      <ImageBackground
-        source={cityBackground}
-        style={styles.flex}
-        resizeMode="cover"
-      >
+      <ImageBackground source={cityBackground} style={styles.flex} resizeMode="cover">
+        {/* Multi-layer dark overlay */}
         <GradientOverlay
           colors={[
-            'rgba(6, 48, 67, 0.94)',
-            'rgba(7, 52, 74, 0.88)',
-            'rgba(3, 18, 32, 0.96)',
+            'rgba(4, 9, 18, 0.97)',
+            'rgba(5, 14, 26, 0.93)',
+            'rgba(3, 9, 18, 0.98)',
           ]}
         />
+
+        {/* Animated color orbs */}
+        <Animated.View style={[styles.orbCyan, { transform: [{ scale: orbScale }] }]} />
+        <View style={styles.orbGold} />
+        <View style={styles.orbPurple} />
+
+        {/* Scan line decoration */}
+        <View style={styles.scanLine} />
+        <View style={[styles.scanLine, styles.scanLine2]} />
 
         <KeyboardAvoidingView
           style={styles.flex}
@@ -130,7 +132,7 @@ function LoginScreen({
         >
           <ScrollView
             style={styles.flex}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={styles.scroll}
             keyboardShouldPersistTaps="handled"
           >
             <BrandHeader
@@ -138,88 +140,71 @@ function LoginScreen({
               subtitle="Ingresa para reportar y dar seguimiento a los incidentes de tu ciudad"
             />
 
+            {/* Glass card */}
             <Animated.View
               style={[
                 styles.card,
                 {
-                  opacity: entrance,
+                  opacity: cardAnim,
                   transform: [
                     {
-                      translateY: entrance.interpolate({
+                      translateY: cardAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [28, 0],
+                        outputRange: [40, 0],
                       }),
                     },
                   ],
                 },
               ]}
             >
-              <View style={styles.cardAccentBar}>
-                <GradientOverlay
-                  colors={[Colors.warning, Colors.accent]}
-                  style={styles.cardAccentGradient}
-                />
-              </View>
+              {/* Top accent line */}
+              <View style={styles.cardTopBar} />
+              <View style={styles.cardTopGlow} />
 
-              <Text style={styles.cardEyebrow}>ACCESO CIUDADANO</Text>
+              {/* Card shimmer */}
+              <View style={styles.cardShimmer} />
+
+              <Text style={styles.eyebrow}>⬡ ACCESO CIUDADANO</Text>
               <Text style={styles.cardTitle}>Inicia sesión</Text>
-              <Text style={styles.cardSubtitle}>
-                Escribe tus credenciales para continuar
-              </Text>
+              <Text style={styles.cardSub}>Escribe tus credenciales para continuar</Text>
+
+              <View style={styles.dividerH} />
 
               <View style={styles.fields}>
                 <AppTextInput
-                  label="Correo electrónico *"
+                  label="Correo electrónico"
                   value={email}
-                  onChangeText={(value) => {
-                    setEmail(value);
-                    setErrors((current) => {
-                      const next = { ...current };
-                      delete next.email;
-                      return next;
-                    });
-                  }}
+                  onChangeText={(v) => { setEmail(v); clearError('email'); }}
                   placeholder="tucorreo@example.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   error={errors.email}
+                  icon="person"
+                  dark
                 />
                 <AppTextInput
-                  label="Contraseña *"
+                  label="Contraseña"
                   value={password}
-                  onChangeText={(value) => {
-                    setPassword(value);
-                    setErrors((current) => {
-                      const next = { ...current };
-                      delete next.password;
-                      return next;
-                    });
-                  }}
+                  onChangeText={(v) => { setPassword(v); clearError('password'); }}
                   placeholder="Tu contraseña"
                   secureTextEntry
                   autoCapitalize="none"
                   error={errors.password}
+                  icon="lock"
+                  dark
                 />
               </View>
 
+              {/* Remember me */}
               <Pressable
-                onPress={() => setRemember((value) => !value)}
+                onPress={() => setRemember((v) => !v)}
                 style={styles.rememberRow}
                 hitSlop={8}
               >
-                <View
-                  style={[
-                    styles.checkbox,
-                    remember && styles.checkboxChecked,
-                  ]}
-                >
-                  {remember ? (
-                    <Icon name="check" size={14} color={Colors.textOnPrimary} />
-                  ) : null}
+                <View style={[styles.checkbox, remember && styles.checkboxChecked]}>
+                  {remember && <Icon name="check" size={12} color={Colors.bgDeep} />}
                 </View>
-                <Text style={styles.rememberText}>
-                  Mantener mi sesión iniciada
-                </Text>
+                <Text style={styles.rememberText}>Mantener mi sesión iniciada</Text>
               </Pressable>
 
               <PrimaryButton
@@ -228,23 +213,18 @@ function LoginScreen({
                 loading={isSubmitting}
               />
 
-              <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>¿NUEVO EN COCHABAMBA REPORTA?</Text>
-                <View style={styles.dividerLine} />
+              {/* Divider */}
+              <View style={styles.separatorRow}>
+                <View style={styles.separatorLine} />
+                <Text style={styles.separatorText}>¿NUEVO AQUÍ?</Text>
+                <View style={styles.separatorLine} />
               </View>
 
-              <Pressable
+              <PrimaryButton
+                label="Crear una cuenta"
                 onPress={onGoToRegister}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  pressed && styles.secondaryButtonPressed,
-                ]}
-              >
-                <Text style={styles.secondaryButtonText}>
-                  Crear una cuenta
-                </Text>
-              </Pressable>
+                variant="ghost"
+              />
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -256,74 +236,128 @@ function LoginScreen({
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
+  flex: { flex: 1 },
+  scroll: { paddingBottom: spacing.xxl },
+
+  // Orbs
+  orbCyan: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(0, 212, 255, 0.07)',
+    top: -80,
+    right: -80,
   },
-  content: {
-    paddingBottom: spacing.xxl,
+  orbGold: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255, 184, 0, 0.05)',
+    top: 100,
+    left: -60,
   },
+  orbPurple: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(167, 139, 250, 0.04)',
+    bottom: 200,
+    right: -40,
+  },
+  scanLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(0, 212, 255, 0.06)',
+    top: '30%',
+  },
+  scanLine2: {
+    top: '65%',
+    backgroundColor: 'rgba(255, 184, 0, 0.04)',
+  },
+
+  // Card
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: 30,
+    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    borderRadius: radius.cardLg,
     marginHorizontal: spacing.base,
     marginTop: spacing.lg,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
+    paddingTop: 0,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.65)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.32,
-    shadowRadius: 36,
-    elevation: 18,
+    borderColor: 'rgba(0, 212, 255, 0.18)',
     overflow: 'hidden',
     width: '100%',
     maxWidth: layout.cardMaxWidth,
     alignSelf: 'center',
   },
-  cardAccentBar: {
-    height: 6,
+  cardTopBar: {
+    height: 3,
+    backgroundColor: Colors.accent,
     marginHorizontal: -spacing.lg,
+    marginBottom: 0,
+  },
+  cardTopGlow: {
+    height: 40,
+    marginHorizontal: -spacing.lg,
+    backgroundColor: 'rgba(0, 212, 255, 0.04)',
     marginBottom: spacing.lg,
   },
-  cardAccentGradient: {
-    height: 6,
+  cardShimmer: {
+    position: 'absolute',
+    top: 3,
+    left: 0,
+    right: 0,
+    height: 80,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
-  cardEyebrow: {
-    color: Colors.warning,
-    fontSize: fontSizes.caption,
+  eyebrow: {
+    color: Colors.accent,
+    fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
-    letterSpacing: 2,
+    letterSpacing: letterSpacings.widest,
     textAlign: 'center',
   },
   cardTitle: {
-    color: Colors.textPrimary,
+    color: Colors.textOnDark,
     fontSize: fontSizes.h2,
-    fontWeight: fontWeights.bold,
+    fontWeight: fontWeights.extraBold,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    letterSpacing: -0.5,
+  },
+  cardSub: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.small,
     textAlign: 'center',
     marginTop: spacing.xs,
   },
-  cardSubtitle: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.body,
-    textAlign: 'center',
-    marginTop: spacing.xs,
+  dividerH: {
+    height: 1,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    marginVertical: spacing.base,
+    marginHorizontal: -spacing.lg,
   },
   fields: {
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
   },
   rememberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surfaceSubtle,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 212, 255, 0.4)',
+    backgroundColor: 'rgba(0, 212, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -333,46 +367,27 @@ const styles = StyleSheet.create({
   },
   rememberText: {
     marginLeft: spacing.sm,
-    fontSize: fontSizes.body,
-    color: Colors.textSecondary,
+    fontSize: fontSizes.small,
+    color: Colors.textMuted,
   },
-  dividerRow: {
+  separatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.lg,
-    marginBottom: spacing.base,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  dividerLine: {
+  separatorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.border,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
   },
-  dividerText: {
-    color: Colors.textSecondary,
-    fontSize: 10,
+  separatorText: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.micro,
     fontWeight: fontWeights.semiBold,
-    letterSpacing: 0.8,
+    letterSpacing: letterSpacings.widest,
     marginHorizontal: spacing.sm,
     textAlign: 'center',
-  },
-  secondaryButton: {
-    minHeight: 52,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: Colors.accent,
-    backgroundColor: 'rgba(22, 163, 224, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonPressed: {
-    backgroundColor: 'rgba(22, 163, 224, 0.14)',
-    transform: [{ scale: 0.98 }],
-  },
-  secondaryButtonText: {
-    color: Colors.accent,
-    fontSize: 16,
-    fontWeight: fontWeights.bold,
-    letterSpacing: 0.3,
   },
 });
 
