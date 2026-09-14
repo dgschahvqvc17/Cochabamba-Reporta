@@ -100,7 +100,7 @@ const FIELD_LABELS: Record<string, string> = {
 
 function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
   const insets = useSafeAreaInsets();
-  const { dialog, confirm, info, close } = useDialog();
+  const { dialog, confirm, error, success, close } = useDialog();
   const [user, setUser] = useState<User | null>(null);
   const [audit, setAudit] = useState<UserAuditEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -171,9 +171,9 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
     close();
     const result = await setUserActive(user.id, active);
     setIsUpdating(false);
-    if (!result.success) { info({ title: 'Error', message: result.message }); return; }
+    if (!result.success) { error({ title: 'Error', message: result.message }); return; }
     setUser(result.data ?? null);
-    info({ title: 'Operación exitosa', message: result.message });
+    success({ title: 'Operación exitosa', message: result.message });
   };
 
   const roleOptions: RoleOption[] =
@@ -198,9 +198,9 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
     close();
     const result = await assignUserRole(user.id, role);
     setIsUpdating(false);
-    if (!result.success) { info({ title: 'Error', message: result.message }); return; }
+    if (!result.success) { error({ title: 'Error', message: result.message }); return; }
     setUser(result.data ?? null);
-    info({ title: 'Rol asignado', message: result.message });
+    success({ title: 'Rol asignado', message: result.message });
   };
 
   const roleColor = ROLE_COLORS[user.role];

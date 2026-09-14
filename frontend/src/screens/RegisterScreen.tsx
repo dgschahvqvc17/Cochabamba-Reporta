@@ -143,13 +143,14 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
 
     if (!result.success) {
       if (result.fieldErrors) setErrors(result.fieldErrors);
-      info({ title: 'Error', message: result.message });
+      info({ title: 'No se pudo registrar', message: result.message, tone: 'danger' });
       return;
     }
 
     info({
       title: '¡Cuenta creada!',
       message: 'Tu cuenta se registró correctamente. Ya puedes iniciar sesión.',
+      tone: 'success',
       onAccept: onGoToLogin,
     });
     setForm(EMPTY_FORM);

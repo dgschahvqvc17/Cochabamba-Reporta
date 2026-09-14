@@ -129,7 +129,7 @@ function NavItem({
 
 function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProps) {
   const insets = useSafeAreaInsets();
-  const { dialog, confirm, info, close } = useDialog();
+  const { dialog, confirm, error, close } = useDialog();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const loggingOutRef = useRef(false);
   const { width } = useWindowDimensions();
@@ -145,7 +145,7 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
     loggingOutRef.current = false;
     setIsLoggingOut(false);
     if (!result.success) {
-      info({ title: 'Error', message: result.error });
+      error({ title: 'Error', message: result.error });
       return;
     }
     onLogout();

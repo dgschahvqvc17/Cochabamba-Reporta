@@ -20,6 +20,10 @@ const errorMiddleware = (err, req, res, _next) => {
     body.error = { code: err.code };
   }
 
+  if (err.details && body.error) {
+    body.error.details = err.details;
+  }
+
   console.error(`[ERROR] ${statusCode} ${message}`);
 
   res.status(statusCode).json(body);

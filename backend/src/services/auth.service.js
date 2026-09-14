@@ -22,10 +22,13 @@ const ROLES = require('../utils/roles');
 
 const ROLE_CIUDADANO = ROLES.CIUDADANO;
 
-const buildError = (message, status, code) => {
+const buildError = (message, status, code, field = null) => {
   const error = new Error(message);
   error.status = status;
   error.code = code;
+  if (field) {
+    error.details = [{ field, message }];
+  }
   return error;
 };
 
@@ -40,14 +43,19 @@ const authService = {
 
     const existingByEmail = await userRepository.findByEmail(email);
     if (existingByEmail) {
-      throw buildError(claimDuplicateEmail, 409, 'EMAIL_ALREADY_EXISTS');
+      throw buildError(claimDuplicateEmail, 409, 'EMAIL_ALREADY_EXISTS', 'email');
     }
 
     const existingByIdentity = await userRepository.findByIdentityNumber(
       identityNumber,
     );
     if (existingByIdentity) {
-      throw buildError(claimDuplicateIdentity, 409, 'IDENTITY_ALREADY_EXISTS');
+      throw buildError(
+        claimDuplicateIdentity,
+        409,
+        'IDENTITY_ALREADY_EXISTS',
+        'identityNumber',
+      );
     }
 
     const role = await userRepository.findByRoleName(ROLE_CIUDADANO);

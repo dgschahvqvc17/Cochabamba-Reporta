@@ -29,9 +29,7 @@ const validate = (validations) => [
         }
       });
 
-      return fail(res, 422, 'Algunos datos son inválidos.', 'VALIDATION_ERROR', {
-        fields,
-      });
+      return fail(res, 422, 'Algunos datos son inválidos.', 'VALIDATION_ERROR', fields);
     }
 
     return next();

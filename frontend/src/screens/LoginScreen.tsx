@@ -49,7 +49,7 @@ type LoginScreenProps = {
 };
 
 function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
-  const { dialog, info, close } = useDialog();
+  const { dialog, error, close } = useDialog();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -96,7 +96,13 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
 
     if (!result.success) {
       if (result.fieldErrors) setErrors(result.fieldErrors);
-      info({ title: 'No pudimos iniciar sesión', message: result.error });
+      const tone =
+        result.code === 'USER_INACTIVE' ? 'warning' : 'danger';
+      error({
+        title: 'No pudimos iniciar sesión',
+        message: result.error,
+        tone,
+      });
       return;
     }
     if (result.session) onLoginSuccess(result.session);

@@ -22,10 +22,13 @@ const ROLES = require('../utils/roles');
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 255;
 
-const buildError = (message, status, code) => {
+const buildError = (message, status, code, field = null) => {
   const error = new Error(message);
   error.status = status;
   error.code = code;
+  if (field) {
+    error.details = [{ field, message }];
+  }
   return error;
 };
 
@@ -60,7 +63,7 @@ const categoryService = {
     const name = normalizeText(payload.name);
 
     if (!name) {
-      throw buildError('El nombre de la categoría es obligatorio.', 422, 'VALIDATION_ERROR');
+      throw buildError('El nombre de la categoría es obligatorio.', 422, 'VALIDATION_ERROR', 'name');
     }
 
     if (name.length > MAX_NAME_LENGTH) {
@@ -68,6 +71,7 @@ const categoryService = {
         `El nombre no debe superar los ${MAX_NAME_LENGTH} caracteres.`,
         422,
         'VALIDATION_ERROR',
+        'name',
       );
     }
 
@@ -80,6 +84,7 @@ const categoryService = {
         `La descripción no debe superar los ${MAX_DESCRIPTION_LENGTH} caracteres.`,
         422,
         'VALIDATION_ERROR',
+        'description',
       );
     }
 
@@ -89,6 +94,7 @@ const categoryService = {
         'Ya existe una categoría con ese nombre.',
         409,
         'CATEGORY_ALREADY_EXISTS',
+        'name',
       );
     }
 
@@ -109,11 +115,7 @@ const categoryService = {
       const name = normalizeText(payload.name);
 
       if (!name) {
-        throw buildError(
-          'El nombre de la categoría es obligatorio.',
-          422,
-          'VALIDATION_ERROR',
-        );
+        throw buildError('El nombre de la categoría es obligatorio.', 422, 'VALIDATION_ERROR', 'name');
       }
 
       if (name.length > MAX_NAME_LENGTH) {
@@ -121,6 +123,7 @@ const categoryService = {
           `El nombre no debe superar los ${MAX_NAME_LENGTH} caracteres.`,
           422,
           'VALIDATION_ERROR',
+          'name',
         );
       }
 
@@ -130,6 +133,7 @@ const categoryService = {
           'Ya existe una categoría con ese nombre.',
           409,
           'CATEGORY_ALREADY_EXISTS',
+          'name',
         );
       }
 
@@ -144,6 +148,7 @@ const categoryService = {
           `La descripción no debe superar los ${MAX_DESCRIPTION_LENGTH} caracteres.`,
           422,
           'VALIDATION_ERROR',
+          'description',
         );
       }
 

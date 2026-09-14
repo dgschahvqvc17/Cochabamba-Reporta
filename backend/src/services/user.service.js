@@ -24,10 +24,13 @@ const ROLES = require('../utils/roles');
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
 
-const buildError = (message, status, code) => {
+const buildError = (message, status, code, field = null) => {
   const error = new Error(message);
   error.status = status;
   error.code = code;
+  if (field) {
+    error.details = [{ field, message }];
+  }
   return error;
 };
 
@@ -130,6 +133,7 @@ const userService = {
         'Ya existe un usuario con este correo electrónico.',
         409,
         'EMAIL_ALREADY_EXISTS',
+        'email',
       );
     }
 
@@ -142,6 +146,7 @@ const userService = {
           'Ya existe un usuario con este documento de identidad.',
           409,
           'IDENTITY_ALREADY_EXISTS',
+          'identityNumber',
         );
       }
     }
@@ -244,6 +249,7 @@ const userService = {
           'Ya existe un usuario con este documento de identidad.',
           409,
           'IDENTITY_ALREADY_EXISTS',
+          'identityNumber',
         );
       }
     }
