@@ -1,0 +1,62 @@
+@startuml HU03 - Flujo: Gestionar usuarios y roles
+title Flujo HU03 — Gestionar usuarios y roles
+skinparam shadowing false
+
+start
+
+:Administrador accede al módulo de usuarios;
+
+if (¿No tiene sesión válida o no es administrador?) then (Sí)
+  :Mostrar alerta "Acceso denegado";
+  stop
+endif
+
+:Mostrar listado de usuarios registrados;
+
+while (¿Desea realizar otra operación?) is (Sí)
+  if (¿Qué operación realiza?) then (Registrar o editar usuario)
+    :Mostrar formulario del usuario;
+    :Ingresar datos y seleccionar rol;
+    if (¿Campos obligatorios incompletos o duplicados?) then (Sí)
+      :Mostrar alerta de error junto a los campos incorrectos;
+    else (No)
+      :Guardar el usuario en la base de datos;
+      if (¿Se guardó correctamente?) then (Sí)
+        :Mostrar alerta de operación exitosa;
+      else (No)
+        :Mostrar alerta de error;
+      endif
+    endif
+  elseif (Activar o desactivar usuario) then
+    :Mostrar alerta de confirmación;
+    if (¿Confirma el cambio de estado?) then (Sí)
+      :Cambiar el estado del usuario;
+      :Registrar el cambio en el historial;
+      :Mostrar alerta de éxito;
+    else (No)
+      :Cancelar operación;
+    endif
+  elseif (Asignar rol) then
+    :Mostrar lista de roles disponibles;
+    :Seleccionar rol y confirmar;
+    :Aplicar los permisos correspondientes al rol;
+    note right
+      Roles: Ciudadano, Recepción,
+      Verificación, Encargado/P. de
+      solución y Administrador.
+    end note
+    :Mostrar alerta de éxito;
+  else (Consultar detalle)
+    :Mostrar detalle completo del usuario;
+  endif
+endwhile (No)
+
+note right
+  Toda operación realizada queda
+  registrada en el historial del
+  sistema.
+end note
+
+stop
+
+@enduml

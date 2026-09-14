@@ -1,30 +1,71 @@
 /**
- * Componente compartido: Encabezado de marca (MVC - componentes).
+ * Componente: Encabezado de marca (MVC - componentes).
  *
- * Hero sobre el fondo institucional (foto + gradiente oscuro):
- *   - Logo institucional de la Alcaldía (img/cbbaLogo.png)
- *   - Eslogan dorado, línea de acento y título
+ * Hero glassmorphic sobre fondo oscuro: logo en cápsula de cristal,
+ * línea de acento neon, eslogan y título animados.
+ *
+ * Fixes: useNativeDriver:false, boxShadow instead of shadow* props,
+ * textShadow via style string instead of textShadow* props.
  *
  * @format
  */
 
-import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 
 import { brandLogo } from '../assets/images';
-import { Colors, fontSizes, fontWeights, layout, spacing } from '../theme';
+import {
+  Colors,
+  fontSizes,
+  fontWeights,
+  layout,
+  letterSpacings,
+  radius,
+  spacing,
+} from '../theme';
 
 type BrandHeaderProps = {
   title: string;
   subtitle: string;
 };
 
-const LOGO_ASPECT_RATIO = 4246 / 1026; // cbbaLogo.png
+const LOGO_ASPECT_RATIO = 4246 / 1026;
 
 function BrandHeader({ title, subtitle }: BrandHeaderProps) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(-20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false, // false — web compat
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        easing: Easing.out(Easing.back(1.5)),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.logoWrap}>
+    <Animated.View
+      style={[
+        styles.container,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+      ]}
+    >
+      {/* Decorative orbs */}
+      <View style={[styles.orb, styles.orbTopLeft]} />
+      <View style={[styles.orb, styles.orbTopRight]} />
+
+      {/* Logo in glassy capsule */}
+      <View style={styles.logoCapsule}>
+        <View style={styles.logoShimmer} />
         <Image
           source={brandLogo}
           style={styles.logo}
@@ -33,12 +74,23 @@ function BrandHeader({ title, subtitle }: BrandHeaderProps) {
         />
       </View>
 
-      <Text style={styles.slogan}>COCHABAMBA · CIUDAD DE TODOS</Text>
-      <View style={styles.accentLine} />
+      {/* Slogan with neon accent lines */}
+      <View style={styles.sloganRow}>
+        <View style={styles.accentLineLeft} />
+        <Text style={styles.slogan}>COCHABAMBA · CIUDAD DE TODOS</Text>
+        <View style={styles.accentLineRight} />
+      </View>
+
+      {/* Dot indicator */}
+      <View style={styles.dotRow}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={[styles.dot, i === 1 && styles.dotActive]} />
+        ))}
+      </View>
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -46,54 +98,123 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     width: '100%',
     maxWidth: layout.cardMaxWidth,
     alignSelf: 'center',
+    overflow: 'hidden',
   },
-  logoWrap: {
-    width: '94%',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    borderRadius: 20,
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.15,
+  },
+  orbTopLeft: {
+    width: 120,
+    height: 120,
+    backgroundColor: Colors.accent,
+    top: -30,
+    left: -30,
+  },
+  orbTopRight: {
+    width: 80,
+    height: 80,
+    backgroundColor: Colors.warning,
+    top: 0,
+    right: 10,
+    opacity: 0.1,
+  },
+  logoCapsule: {
+    width: '88%',
+    backgroundColor: 'rgba(5, 18, 32, 0.75)',
+    borderRadius: radius.cardLg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.base,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 212, 255, 0.28)',
+    overflow: 'hidden',
+    alignItems: 'center',
+    // @ts-ignore
+    boxShadow: `0 0 24px 0 ${Colors.accent}28`,
+  },
+  logoShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderTopLeftRadius: radius.cardLg,
+    borderTopRightRadius: radius.cardLg,
   },
   logo: {
-    width: '100%',
+    width: '90%',
     aspectRatio: LOGO_ASPECT_RATIO,
+    // Tint to make it pop on very dark backgrounds (web only)
+  },
+  sloganRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  accentLineLeft: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.warning,
+    opacity: 0.5,
+    marginRight: spacing.sm,
+  },
+  accentLineRight: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.warning,
+    opacity: 0.5,
+    marginLeft: spacing.sm,
   },
   slogan: {
     color: Colors.warning,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.semiBold,
-    letterSpacing: 3,
-    marginTop: spacing.lg,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.widest,
+    textAlign: 'center',
   },
-  accentLine: {
-    width: 46,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.warning,
+  dotRow: {
+    flexDirection: 'row',
+    gap: 6,
     marginTop: spacing.sm,
-    marginBottom: spacing.base,
+    marginBottom: spacing.md,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  dotActive: {
+    width: 18,
+    backgroundColor: Colors.accent,
+    // @ts-ignore
+    boxShadow: `0 0 6px 0 ${Colors.accent}CC`,
   },
   title: {
     color: Colors.textOnPrimary,
-    fontSize: 28,
-    fontWeight: fontWeights.bold,
-    letterSpacing: 0.3,
+    fontSize: fontSizes.h1,
+    fontWeight: fontWeights.extraBold,
+    letterSpacing: letterSpacings.tight,
     textAlign: 'center',
+    // textShadow replaces deprecated textShadow* props
+    // @ts-ignore
+    textShadow: `0 0 12px ${Colors.accent}4D`,
   },
   subtitle: {
-    color: Colors.textOnPrimary,
-    fontSize: fontSizes.body,
-    marginTop: spacing.xs,
-    opacity: 0.85,
+    color: 'rgba(232,240,248,0.72)',
+    fontSize: fontSizes.small,
+    marginTop: spacing.sm,
     textAlign: 'center',
     maxWidth: 340,
-    lineHeight: 22,
+    lineHeight: 20,
   },
 });
 

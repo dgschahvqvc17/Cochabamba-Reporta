@@ -1,10 +1,9 @@
 /**
- * Pantalla de gestión de usuarios (MVC - View).
+ * Pantalla: Gestión de usuarios (MVC - View).
  *
- * HU03 — Lista los usuarios registrados con búsqueda, filtros por rol
- * y estado, y paginación. Desde aquí se consulta el detalle y se crea
- * un nuevo usuario interno. Todas las operaciones requieren rol
- * ADMINISTRADOR (restringido también en el backend).
+ * HU03 — Lista usuarios con diseño de tabla moderna: avatares con
+ * anillo de color por rol, dot de estado con glow, búsqueda y filtros
+ * en glassmorphic chips, paginación rediseñada.
  *
  * @format
  */
@@ -22,14 +21,22 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import AdminHeader from '../components/AdminHeader';
+import AdminImageHeader from '../components/AdminImageHeader';
 import Icon from '../components/Icon';
 import PillBadge, { type PillTone } from '../components/PillBadge';
 import PrimaryButton from '../components/PrimaryButton';
+import { fondo3 } from '../assets/images';
 import { loadUsers } from '../controllers/userController';
-import type { User } from '../models/User';
-import type { Role } from '../models/User';
-import { Colors, fontSizes, fontWeights, layout, radius, spacing } from '../theme';
+import type { Role, User } from '../models/User';
+import {
+  Colors,
+  fontSizes,
+  fontWeights,
+  layout,
+  letterSpacings,
+  radius,
+  spacing,
+} from '../theme';
 import { ROLE_LABELS, ROLES } from '../utils/roles';
 
 type UsersScreenProps = {
@@ -45,10 +52,19 @@ const PAGE_SIZE = 10;
 const ROLE_TONES: Record<Role, PillTone> = {
   CIUDADANO: 'accent',
   RECEPCION: 'neutral',
-  VERIFICADOR: 'neutral',
-  ENCARGADO_SOLUCION: 'neutral',
-  PERSONAL_SOLUCION: 'neutral',
+  VERIFICADOR: 'warning',
+  ENCARGADO_SOLUCION: 'info',
+  PERSONAL_SOLUCION: 'success',
   ADMINISTRADOR: 'primary',
+};
+
+const ROLE_COLORS: Record<Role, string> = {
+  CIUDADANO: Colors.accent,
+  RECEPCION: Colors.textSecondary,
+  VERIFICADOR: Colors.warning,
+  ENCARGADO_SOLUCION: Colors.info,
+  PERSONAL_SOLUCION: Colors.success,
+  ADMINISTRADOR: Colors.danger,
 };
 
 function UsersScreen({ onBack, onCreate, onOpenDetail }: UsersScreenProps) {
@@ -57,24 +73,17 @@ function UsersScreen({ onBack, onCreate, onOpenDetail }: UsersScreenProps) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
-
   const [searchInput, setSearchInput] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | ''>('');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('');
-
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const load = useCallback(
     async (targetPage: number, refreshing = false) => {
-      if (refreshing) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
+      refreshing ? setIsRefreshing(true) : setIsLoading(true);
       setErrorMessage(null);
-
       const result = await loadUsers({
         page: targetPage,
         limit: PAGE_SIZE,
@@ -82,58 +91,29 @@ function UsersScreen({ onBack, onCreate, onOpenDetail }: UsersScreenProps) {
         role: roleFilter || undefined,
         active: activeFilter === '' ? undefined : activeFilter === 'true',
       });
-
-      if (refreshing) {
-        setIsRefreshing(false);
-      } else {
-        setIsLoading(false);
-      }
-
-      if (!result.success) {
-        setErrorMessage(result.message);
-        return;
-      }
-
-      const data = result.data;
-      setUsers(data?.users ?? []);
-      setTotal(data?.total ?? 0);
-      setPage(data?.page ?? targetPage);
-      setPages(data?.pages ?? 1);
+      refreshing ? setIsRefreshing(false) : setIsLoading(false);
+      if (!result.success) { setErrorMessage(result.message); return; }
+      const d = result.data;
+      setUsers(d?.users ?? []);
+      setTotal(d?.total ?? 0);
+      setPage(d?.page ?? targetPage);
+      setPages(d?.pages ?? 1);
     },
     [searchInput, roleFilter, activeFilter],
   );
 
-  useEffect(() => {
-    load(1);
-  }, [load]);
+  useEffect(() => { load(1); }, [load]);
 
-  const applySearch = () => {
-    load(1);
-  };
-
-  const selectRole = (role?: Role) => {
-    setRoleFilter(role ?? '');
-  };
-
-  const selectActive = (value: ActiveFilter) => {
-    setActiveFilter(value);
-  };
-
-  const goToPage = (targetPage: number) => {
-    if (targetPage < 1 || targetPage > pages) {
-      return;
-    }
-    load(targetPage);
-  };
-
-  const initialsOf = (user: User): string =>
-    `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase().slice(0, 2);
+  const initialsOf = (u: User) =>
+    `${u.firstName.charAt(0)}${u.lastName.charAt(0)}`.toUpperCase().slice(0, 2);
 
   return (
     <View style={styles.flex}>
-      <AdminHeader
-        title="Usuarios"
+      <AdminImageHeader
+        background={fondo3}
+        title="Usuarios y roles"
         subtitle={`${total} usuarios registrados`}
+        badge="GESTIÓN"
         onBack={onBack}
       />
 
@@ -155,142 +135,150 @@ function UsersScreen({ onBack, onCreate, onOpenDetail }: UsersScreenProps) {
       >
         <PrimaryButton label="+ Nuevo usuario" onPress={onCreate} />
 
+        {/* Search */}
         <View style={styles.searchRow}>
-          <TextInput
-            style={styles.searchInput}
-            value={searchInput}
-            onChangeText={setSearchInput}
-            placeholder="Buscar por nombre, correo o CI"
-            placeholderTextColor={Colors.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-            onSubmitEditing={applySearch}
-            returnKeyType="search"
-          />
+          <View style={styles.searchInputWrap}>
+            <Icon name="search" size={18} color={Colors.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              value={searchInput}
+              onChangeText={setSearchInput}
+              placeholder="Nombre, correo o CI..."
+              placeholderTextColor={Colors.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              onSubmitEditing={() => load(1)}
+              returnKeyType="search"
+            />
+          </View>
           <Pressable
-            onPress={applySearch}
-            style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
+            onPress={() => load(1)}
+            style={({ pressed }) => [styles.searchBtn, pressed && styles.searchBtnPressed]}
           >
-            <Text style={styles.searchButtonText}>Buscar</Text>
+            <Text style={styles.searchBtnText}>Buscar</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.filterLabel}>ROL</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-        >
-          <FilterChip label="Todos" selected={roleFilter === ''} onPress={() => selectRole()} />
+        {/* Filters */}
+        <FilterLabel label="ROL" />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          <Chip label="Todos" selected={roleFilter === ''} onPress={() => setRoleFilter('')} />
           {ROLES.map((role) => (
-            <FilterChip
+            <Chip
               key={role}
               label={ROLE_LABELS[role]}
               selected={roleFilter === role}
-              onPress={() => selectRole(roleFilter === role ? undefined : role)}
+              color={ROLE_COLORS[role]}
+              onPress={() => setRoleFilter(roleFilter === role ? '' : role)}
             />
           ))}
         </ScrollView>
 
-        <Text style={styles.filterLabel}>ESTADO</Text>
+        <FilterLabel label="ESTADO" />
         <View style={styles.chipRow}>
-          <FilterChip
-            label="Todos"
-            selected={activeFilter === ''}
-            onPress={() => selectActive('')}
-          />
-          <FilterChip
-            label="Activos"
-            selected={activeFilter === 'true'}
-            onPress={() => selectActive(activeFilter === 'true' ? '' : 'true')}
-          />
-          <FilterChip
-            label="Inactivos"
-            selected={activeFilter === 'false'}
-            onPress={() => selectActive(activeFilter === 'false' ? '' : 'false')}
-          />
+          <Chip label="Todos" selected={activeFilter === ''} onPress={() => setActiveFilter('')} />
+          <Chip label="Activos" selected={activeFilter === 'true'} color={Colors.success} onPress={() => setActiveFilter(activeFilter === 'true' ? '' : 'true')} />
+          <Chip label="Inactivos" selected={activeFilter === 'false'} color={Colors.danger} onPress={() => setActiveFilter(activeFilter === 'false' ? '' : 'false')} />
         </View>
+
+        {/* Count */}
+        {!isLoading && !errorMessage && (
+          <Text style={styles.resultCount}>
+            {total} usuario{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
+          </Text>
+        )}
 
         {errorMessage ? (
           <View style={styles.errorBox}>
+            <Icon name="warning" size={18} color={Colors.danger} />
             <Text style={styles.errorText}>{errorMessage}</Text>
             <Pressable onPress={() => load(page)} hitSlop={8}>
               <Text style={styles.retryText}>Reintentar</Text>
             </Pressable>
           </View>
-        ) : null}
-
-        {isLoading ? (
+        ) : isLoading ? (
           <View style={styles.centerBox}>
             <ActivityIndicator color={Colors.accent} size="large" />
             <Text style={styles.centerText}>Cargando usuarios…</Text>
           </View>
         ) : users.length === 0 ? (
-          <View style={styles.centerBox}>
-            <Icon name="folder" size={44} color={Colors.border} />
-            <Text style={styles.emptyTitle}>No se encontraron usuarios</Text>
-            <Text style={styles.emptyText}>
-              Ajusta los filtros o registra un nuevo usuario interno.
-            </Text>
+          <View style={styles.emptyBox}>
+            <View style={styles.emptyIcon}>
+              <Icon name="users" size={36} color={Colors.textSecondary} />
+            </View>
+            <Text style={styles.emptyTitle}>Sin resultados</Text>
+            <Text style={styles.emptyText}>Ajusta los filtros o registra un nuevo usuario.</Text>
           </View>
         ) : (
           <>
-            {users.map((user) => (
-              <Pressable
-                key={user.id}
-                onPress={() => onOpenDetail(user.id)}
-                style={({ pressed }) => [styles.userCard, pressed && styles.userCardPressed]}
-              >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{initialsOf(user)}</Text>
-                </View>
+            {users.map((user) => {
+              const roleColor = ROLE_COLORS[user.role];
+              return (
+                <Pressable
+                  key={user.id}
+                  onPress={() => onOpenDetail(user.id)}
+                  style={({ pressed }) => [
+                    styles.userCard,
+                    { borderColor: roleColor + '25' },
+                    pressed && styles.userCardPressed,
+                  ]}
+                >
+                  {/* Left accent */}
+                  <View style={[styles.userAccent, { backgroundColor: roleColor }]} />
 
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName} numberOfLines={1}>
-                    {user.firstName} {user.lastName}
-                  </Text>
-                  <Text style={styles.userEmail} numberOfLines={1}>
-                    {user.email}
-                  </Text>
-                  <View style={styles.badgeRow}>
-                    <PillBadge
-                      label={ROLE_LABELS[user.role]}
-                      tone={ROLE_TONES[user.role]}
-                    />
-                    <PillBadge
-                      label={user.active ? 'Activo' : 'Inactivo'}
-                      tone={user.active ? 'success' : 'danger'}
-                    />
+                  {/* Avatar */}
+                  <View style={[styles.avatarRing, { borderColor: roleColor + '60' }]}>
+                    <View style={[styles.avatarInner, { backgroundColor: roleColor + '22' }]}>
+                      <Text style={[styles.avatarText, { color: roleColor }]}>{initialsOf(user)}</Text>
+                    </View>
                   </View>
-                </View>
 
-                <Icon name="chevronRight" size={22} color={Colors.accent} />
-              </Pressable>
-            ))}
+                  {/* Info */}
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName} numberOfLines={1}>
+                      {user.firstName} {user.lastName}
+                    </Text>
+                    <Text style={styles.userEmail} numberOfLines={1}>{user.email}</Text>
+                    <View style={styles.badgeRow}>
+                      <PillBadge label={ROLE_LABELS[user.role]} tone={ROLE_TONES[user.role]} />
+                      <PillBadge
+                        label={user.active ? 'Activo' : 'Inactivo'}
+                        tone={user.active ? 'success' : 'danger'}
+                        dot
+                      />
+                    </View>
+                  </View>
 
+                  {/* Arrow */}
+                  <View style={styles.chevronWrap}>
+                    <Icon name="chevronRight" size={18} color={Colors.textSecondary} />
+                  </View>
+                </Pressable>
+              );
+            })}
+
+            {/* Pagination */}
             <View style={styles.pagination}>
               <Pressable
-                onPress={() => goToPage(page - 1)}
+                onPress={() => page > 1 && load(page - 1)}
                 disabled={page <= 1}
-                style={[styles.pageButton, page <= 1 && styles.pageButtonDisabled]}
+                style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
               >
-                <View style={styles.pageButtonContent}>
-                  <Icon name="chevronLeft" size={14} color={Colors.accent} />
-                  <Text style={styles.pageButtonText}>Anterior</Text>
-                </View>
+                <Icon name="chevronLeft" size={16} color={page <= 1 ? Colors.textSecondary : Colors.accent} />
+                <Text style={[styles.pageBtnText, page <= 1 && styles.pageBtnTextDisabled]}>Anterior</Text>
               </Pressable>
-              <Text style={styles.pageInfo}>
-                Página {page} de {pages}
-              </Text>
+              <View style={styles.pageInfo}>
+                <Text style={styles.pageText}>{page}</Text>
+                <Text style={styles.pageSep}>/</Text>
+                <Text style={styles.pageTotalText}>{pages}</Text>
+              </View>
               <Pressable
-                onPress={() => goToPage(page + 1)}
+                onPress={() => page < pages && load(page + 1)}
                 disabled={page >= pages}
-                style={[styles.pageButton, page >= pages && styles.pageButtonDisabled]}
+                style={[styles.pageBtn, page >= pages && styles.pageBtnDisabled]}
               >
-                <View style={styles.pageButtonContent}>
-                  <Text style={styles.pageButtonText}>Siguiente</Text>
-                  <Icon name="chevronRight" size={14} color={Colors.accent} />
-                </View>
+                <Text style={[styles.pageBtnText, page >= pages && styles.pageBtnTextDisabled]}>Siguiente</Text>
+                <Icon name="chevronRight" size={16} color={page >= pages ? Colors.textSecondary : Colors.accent} />
               </Pressable>
             </View>
           </>
@@ -300,19 +288,24 @@ function UsersScreen({ onBack, onCreate, onOpenDetail }: UsersScreenProps) {
   );
 }
 
-type FilterChipProps = {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-};
+function FilterLabel({ label }: { label: string }) {
+  return (
+    <Text style={styles.filterLabel}>{label}</Text>
+  );
+}
 
-function FilterChip({ label, selected, onPress }: FilterChipProps) {
+function Chip({ label, selected, onPress, color }: { label: string; selected: boolean; onPress: () => void; color?: string }) {
+  const activeColor = color ?? Colors.accent;
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, selected && styles.chipSelected]}
+      style={[
+        styles.chip,
+        selected && { borderColor: activeColor, backgroundColor: activeColor + '18' },
+      ]}
     >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+      {selected && <View style={[styles.chipDot, { backgroundColor: activeColor }]} />}
+      <Text style={[styles.chipText, selected && { color: activeColor, fontWeight: fontWeights.bold }]}>
         {label}
       </Text>
     </Pressable>
@@ -320,9 +313,7 @@ function FilterChip({ label, selected, onPress }: FilterChipProps) {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1, backgroundColor: Colors.background },
   content: {
     paddingHorizontal: spacing.base,
     paddingTop: spacing.base,
@@ -332,22 +323,29 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.base,
+  },
+  searchInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.borderLight,
+    borderRadius: radius.element,
+    paddingHorizontal: spacing.base,
+    minHeight: 52,
+    gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    minHeight: 52,
-    borderRadius: radius.element,
-    backgroundColor: Colors.surface,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    paddingHorizontal: spacing.base,
-    fontSize: 15,
+    fontSize: fontSizes.body,
     color: Colors.textPrimary,
+    // @ts-ignore
+    outlineWidth: 0,
   },
-  searchButton: {
-    marginLeft: spacing.sm,
+  searchBtn: {
     minHeight: 52,
     paddingHorizontal: spacing.base,
     borderRadius: radius.element,
@@ -355,19 +353,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchButtonPressed: {
-    backgroundColor: Colors.navy,
-  },
-  searchButtonText: {
+  searchBtnPressed: { opacity: 0.82 },
+  searchBtnText: {
     color: Colors.textOnPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
   },
   filterLabel: {
     color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.semiBold,
-    letterSpacing: 1,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.widest,
     marginTop: spacing.base,
     marginBottom: spacing.sm,
   },
@@ -377,51 +373,59 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: Colors.borderLight,
     backgroundColor: Colors.surface,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm - 1,
+    gap: 5,
   },
-  chipSelected: {
-    borderColor: Colors.accent,
-    backgroundColor: Colors.accent,
+  chipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   chipText: {
     color: Colors.textPrimary,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.medium,
   },
-  chipTextSelected: {
-    color: Colors.textOnPrimary,
-    fontWeight: fontWeights.bold,
+  resultCount: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.caption,
+    marginTop: spacing.base,
+    marginBottom: spacing.sm,
+    fontWeight: fontWeights.medium,
   },
   errorBox: {
-    marginTop: spacing.base,
-    padding: spacing.base,
-    borderRadius: radius.element,
-    backgroundColor: 'rgba(230, 57, 70, 0.08)',
-    borderWidth: 1,
-    borderColor: Colors.danger,
-  },
-  errorText: {
-    color: Colors.danger,
-    fontSize: fontSizes.body,
-  },
-  retryText: {
-    color: Colors.accent,
-    fontWeight: fontWeights.bold,
-    marginTop: spacing.xs,
-  },
-  centerBox: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xxl * 1.4,
+    backgroundColor: Colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: Colors.danger + '50',
+    borderRadius: radius.element,
+    padding: spacing.base,
+    marginTop: spacing.base,
+    gap: spacing.sm,
+    flexWrap: 'wrap',
   },
-  centerText: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.body,
-    marginTop: spacing.sm,
+  errorText: { color: Colors.dangerDim, fontSize: fontSizes.body, flex: 1 },
+  retryText: { color: Colors.accent, fontWeight: fontWeights.bold, fontSize: fontSizes.caption },
+  centerBox: { alignItems: 'center', paddingVertical: 60 },
+  centerText: { color: Colors.textSecondary, fontSize: fontSizes.body, marginTop: spacing.sm },
+  emptyBox: { alignItems: 'center', paddingVertical: 60 },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
     color: Colors.textPrimary,
@@ -441,36 +445,44 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: Colors.border,
     padding: spacing.base,
     marginTop: spacing.base,
-    shadowColor: '#0B4A6F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
+    overflow: 'hidden',
   },
   userCardPressed: {
     backgroundColor: Colors.surfaceSubtle,
     transform: [{ scale: 0.99 }],
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
+  userAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: radius.card,
+    borderBottomLeftRadius: radius.card,
+  },
+  avatarRing: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.sm,
+  },
+  avatarInner: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: Colors.textOnPrimary,
-    fontSize: fontSizes.body,
-    fontWeight: fontWeights.bold,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.extraBold,
   },
-  userInfo: {
-    flex: 1,
-    marginLeft: spacing.base,
-  },
+  userInfo: { flex: 1, marginLeft: spacing.base },
   userName: {
     color: Colors.textPrimary,
     fontSize: fontSizes.body,
@@ -483,43 +495,58 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    flexWrap: 'wrap',
+  },
+  chevronWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: Colors.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pagination: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
   },
-  pageButton: {
-    minHeight: 44,
+  pageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: Colors.surface,
     borderWidth: 1.5,
-    borderColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pageButtonDisabled: {
-    opacity: 0.35,
-  },
-  pageButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderColor: Colors.accent + '50',
     gap: spacing.xs,
   },
-  pageButtonText: {
+  pageBtnDisabled: {
+    borderColor: Colors.borderLight,
+    opacity: 0.5,
+  },
+  pageBtnText: {
     color: Colors.accent,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.bold,
   },
+  pageBtnTextDisabled: { color: Colors.textSecondary },
   pageInfo: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.medium,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
+  pageText: {
+    color: Colors.primary,
+    fontSize: fontSizes.body,
+    fontWeight: fontWeights.extraBold,
+  },
+  pageSep: { color: Colors.textSecondary, fontSize: fontSizes.body },
+  pageTotalText: { color: Colors.textSecondary, fontSize: fontSizes.body, fontWeight: fontWeights.medium },
 });
 
 export default UsersScreen;

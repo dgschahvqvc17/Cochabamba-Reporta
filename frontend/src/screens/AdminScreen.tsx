@@ -1,14 +1,16 @@
 /**
- * Pantalla de inicio del administrador (MVC - View).
+ * Pantalla: Panel de administración (MVC - View).
  *
- * HU03 — El administrador ingresa al panel y accede a la gestión
- * de usuarios y roles del sistema.
+ * HU03 — Command center: fondo dark con foto, tarjeta de perfil
+ * premium, cards de módulos con iconos neon y animaciones de entrada.
  *
  * @format
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
+  Easing,
   ImageBackground,
   Pressable,
   ScrollView,
@@ -19,203 +21,452 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import GradientOverlay from '../components/GradientOverlay';
-import Icon from '../components/Icon';
+import Icon, { type IconName } from '../components/Icon';
 import PillBadge from '../components/PillBadge';
 import { cityBackground } from '../assets/images';
 import type { User } from '../models/User';
-import { Colors, fontSizes, fontWeights, layout, radius, spacing } from '../theme';
+import {
+  Colors,
+  fontSizes,
+  fontWeights,
+  layout,
+  letterSpacings,
+  radius,
+  spacing,
+} from '../theme';
 
 type AdminScreenProps = {
   user: User;
   onGoToUsers: () => void;
+  onGoToCategories: () => void;
 };
 
-function AdminScreen({ user, onGoToUsers }: AdminScreenProps) {
+type ModuleCard = {
+  icon: IconName;
+  label: string;
+  description: string;
+  color: string;
+  onPress: () => void;
+};
+
+function AdminScreen({ user, onGoToUsers, onGoToCategories }: AdminScreenProps) {
   const insets = useSafeAreaInsets();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
     .toUpperCase()
     .slice(0, 2);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 550, easing: Easing.out(Easing.back(1.1)), useNativeDriver: false }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.06, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      ]),
+    ).start();
+  }, [fadeAnim, slideAnim, pulseAnim]);
+
+  const modules: ModuleCard[] = [
+    {
+      icon: 'users',
+      label: 'Usuarios y roles',
+      description: 'Registrar, consultar, editar, activar o desactivar cuentas y asignar roles.',
+      color: Colors.accent,
+      onPress: onGoToUsers,
+    },
+    {
+      icon: 'category',
+      label: 'Categorías',
+      description: 'Registrar, consultar, editar y activar o desactivar categorías de incidentes.',
+      color: Colors.success,
+      onPress: onGoToCategories,
+    },
+  ];
 
   return (
     <View style={styles.flex}>
       <ImageBackground source={cityBackground} style={styles.flex} resizeMode="cover">
         <GradientOverlay
           colors={[
-            'rgba(6, 48, 67, 0.94)',
-            'rgba(7, 52, 74, 0.88)',
-            'rgba(3, 18, 32, 0.96)',
+            'rgba(4, 9, 18, 0.96)',
+            'rgba(5, 14, 26, 0.9)',
+            'rgba(4, 9, 18, 0.97)',
           ]}
         />
+        <View style={styles.orbTL} />
+        <View style={styles.orbBR} />
 
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={[
-            styles.content,
-            { paddingTop: insets.top + spacing.lg },
-          ]}
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.lg }]}
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.eyebrow}>PANEL ADMINISTRATIVO</Text>
-          <Text style={styles.title}>Administración del sistema</Text>
-          <Text style={styles.subtitle}>
-            Gestiona los usuarios, roles y permisos de Cochabamba Reporta.
-          </Text>
-
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
-            <Text style={styles.greeting}>
-              Hola, {user.firstName} {user.lastName}
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+            <Text style={styles.eyebrow}>⬡ PANEL ADMINISTRATIVO</Text>
+            <Text style={styles.heroTitle}>Centro de{'\n'}administración</Text>
+            <Text style={styles.heroSub}>
+              Gestiona los usuarios, roles y configuración del sistema.
             </Text>
-            <View style={styles.badgeRow}>
-              <PillBadge label={user.role} tone="primary" />
-              <PillBadge label={user.active ? 'Activo' : 'Inactivo'} tone="success" />
-            </View>
-            <Text style={styles.email}>{user.email}</Text>
-          </View>
+          </Animated.View>
 
-          <Pressable
-            onPress={onGoToUsers}
-            style={({ pressed }) => [styles.optionCard, pressed && styles.optionCardPressed]}
+          {/* Profile card */}
+          <Animated.View
+            style={[
+              styles.profileCard,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
           >
-            <View style={styles.optionIcon}>
-              <Icon name="users" size={26} color={Colors.primary} />
+            <View style={styles.cardBar} />
+            <View style={styles.cardShimmer} />
+
+            <View style={styles.profileContent}>
+              {/* Avatar */}
+              <View style={styles.avatarOuter}>
+                <Animated.View style={[styles.avatarRing, { transform: [{ scale: pulseAnim }] }]} />
+                <View style={styles.avatarInner}>
+                  <Text style={styles.avatarText}>{initials}</Text>
+                </View>
+                <View style={styles.statusDot} />
+              </View>
+
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileRole}>ADMINISTRADOR</Text>
+                <Text style={styles.profileName}>{user.firstName} {user.lastName}</Text>
+                <Text style={styles.profileEmail} numberOfLines={1}>{user.email}</Text>
+                <View style={styles.badgeRow}>
+                  <PillBadge label="Admin" tone="primary" dot />
+                  <PillBadge label={user.active ? 'Activo' : 'Inactivo'} tone={user.active ? 'success' : 'neutral'} dot />
+                </View>
+              </View>
             </View>
-            <View style={styles.optionInfo}>
-              <Text style={styles.optionTitle}>Gestionar usuarios y roles</Text>
-              <Text style={styles.optionDescription}>
-                Registrar, consultar, editar, activar o desactivar cuentas y asignar roles.
-              </Text>
+
+            {/* Stats row */}
+            <View style={styles.statsRow}>
+              <StatCell label="Módulos" value="2" color={Colors.accent} />
+              <View style={styles.statDivider} />
+              <StatCell label="Acceso total" value="Sí" color={Colors.success} />
+              <View style={styles.statDivider} />
+              <StatCell label="Rol" value="Admin" color={Colors.warning} />
             </View>
-            <Icon name="chevronRight" size={20} color={Colors.accent} />
-          </Pressable>
+          </Animated.View>
+
+          {/* Section label */}
+          <Text style={styles.sectionLabel}>MÓDULOS DEL SISTEMA</Text>
+
+          {/* Module cards */}
+          {modules.map((mod, i) => (
+            <ModuleCardView key={i} module={mod} delay={i * 100} />
+          ))}
+
+          {/* System info */}
+          <View style={styles.sysInfoCard}>
+            <Icon name="shieldCheck" size={18} color={Colors.success} />
+            <Text style={styles.sysInfoText}>
+              Sistema seguro · Cochabamba Reporta v1.0
+            </Text>
+          </View>
         </ScrollView>
       </ImageBackground>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
+function StatCell({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <View style={statStyles.cell}>
+      <Text style={[statStyles.value, { color }]}>{value}</Text>
+      <Text style={statStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const statStyles = StyleSheet.create({
+  cell: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm },
+  value: { fontSize: fontSizes.h3, fontWeight: fontWeights.extraBold },
+  label: { color: Colors.textMuted, fontSize: fontSizes.micro, marginTop: 2, letterSpacing: 0.5 },
+});
+
+function ModuleCardView({ module: mod, delay }: { module: ModuleCard; delay: number }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(16)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, delay, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 400, delay, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+    ]).start();
+  }, [fadeAnim, slideAnim, delay]);
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: false, speed: 40, bounciness: 4 }).start();
+  };
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: false, speed: 30, bounciness: 8 }).start();
+  };
+
+  return (
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
+      <Pressable
+        onPress={mod.onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[modStyles.card, { borderColor: mod.color + '30' }]}
+      >
+        {/* Left accent bar */}
+        <View style={[modStyles.accentBar, { backgroundColor: mod.color }]} />
+
+        {/* Icon */}
+        <View style={[modStyles.iconWrap, { backgroundColor: mod.color + '14', borderColor: mod.color + '35' }]}>
+          <Icon name={mod.icon} size={26} color={mod.color} />
+        </View>
+
+        {/* Text */}
+        <View style={modStyles.textWrap}>
+          <Text style={modStyles.label}>{mod.label}</Text>
+          <Text style={modStyles.description} numberOfLines={2}>{mod.description}</Text>
+        </View>
+
+        {/* Arrow */}
+        <View style={[modStyles.arrowWrap, { borderColor: mod.color + '40', backgroundColor: mod.color + '0C' }]}>
+          <Icon name="arrowRight" size={18} color={mod.color} />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const modStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.base,
-    paddingBottom: spacing.xxl,
-  },
-  eyebrow: {
-    color: Colors.warning,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.bold,
-    letterSpacing: 2,
-    textAlign: 'center',
-  },
-  title: {
-    color: Colors.textOnPrimary,
-    fontSize: fontSizes.h2,
-    fontWeight: fontWeights.bold,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  subtitle: {
-    color: Colors.textOnPrimary,
-    fontSize: fontSizes.body,
-    textAlign: 'center',
-    opacity: 0.85,
-    marginTop: spacing.xs,
-    lineHeight: 22,
-  },
-  profileCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: radius.card + 14,
-    marginTop: spacing.xl,
-    padding: spacing.lg,
+    backgroundColor: 'rgba(7, 22, 36, 0.85)',
+    borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.65)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.28,
-    shadowRadius: 32,
-    elevation: 16,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: layout.cardMaxWidth,
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: Colors.textOnPrimary,
-    fontSize: fontSizes.h2,
-    fontWeight: fontWeights.bold,
-  },
-  greeting: {
-    color: Colors.textPrimary,
-    fontSize: fontSizes.h3,
-    fontWeight: fontWeights.bold,
-    marginTop: spacing.base,
-    textAlign: 'center',
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  email: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.body,
-    marginTop: spacing.sm,
-  },
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: radius.card + 8,
-    marginTop: spacing.lg,
     padding: spacing.base,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.65)',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 12,
-    width: '100%',
-    maxWidth: layout.cardMaxWidth,
+    marginBottom: spacing.base,
+    overflow: 'hidden',
   },
-  optionCardPressed: {
-    transform: [{ scale: 0.985 }],
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+  accentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
   },
-  optionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.element + 4,
-    backgroundColor: 'rgba(22, 163, 224, 0.12)',
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.element,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: spacing.sm,
   },
-  optionInfo: {
+  textWrap: {
     flex: 1,
-    marginLeft: spacing.base,
+    marginHorizontal: spacing.base,
   },
-  optionTitle: {
-    color: Colors.textPrimary,
+  label: {
+    color: Colors.textOnDark,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
+    letterSpacing: -0.2,
   },
-  optionDescription: {
-    color: Colors.textSecondary,
+  description: {
+    color: Colors.textMuted,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
     lineHeight: 17,
+  },
+  arrowWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  orbTL: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(0, 212, 255, 0.06)',
+    top: -80,
+    left: -80,
+  },
+  orbBR: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(167, 139, 250, 0.05)',
+    bottom: 150,
+    right: -50,
+  },
+  content: {
+    paddingHorizontal: spacing.base,
+    // Extra bottom padding so last content clears the navbar (~72px) + safe area buffer
+    paddingBottom: spacing.huge,
+    width: '100%',
+    maxWidth: layout.contentMaxWidth,
+    alignSelf: 'center',
+  },
+  eyebrow: {
+    color: Colors.accent,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.widest,
+    marginBottom: spacing.xs,
+  },
+  heroTitle: {
+    color: Colors.textOnPrimary,
+    fontSize: fontSizes.display,
+    fontWeight: fontWeights.extraBold,
+    letterSpacing: -1,
+    lineHeight: 40,
+  },
+  heroSub: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.small,
+    marginTop: spacing.sm,
+    lineHeight: 20,
+  },
+  profileCard: {
+    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    borderRadius: radius.cardLg,
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.2)',
+    overflow: 'hidden',
+  },
+  cardBar: {
+    height: 3,
+    backgroundColor: Colors.accent,
+  },
+  cardShimmer: {
+    height: 40,
+    backgroundColor: 'rgba(0, 212, 255, 0.03)',
+  },
+  profileContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.base,
+    paddingBottom: spacing.base,
+    gap: spacing.base,
+  },
+  avatarOuter: {
+    position: 'relative',
+    width: 72,
+    height: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarRing: {
+    position: 'absolute',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: Colors.accent,
+    opacity: 0.35,
+  },
+  avatarInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.accentDim,
+  },
+  avatarText: {
+    color: Colors.textOnPrimary,
+    fontSize: fontSizes.h3,
+    fontWeight: fontWeights.extraBold,
+  },
+  statusDot: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.success,
+    borderWidth: 2,
+    borderColor: Colors.bgMid,
+  },
+  profileInfo: { flex: 1 },
+  profileRole: {
+    color: Colors.accent,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.widest,
+  },
+  profileName: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.h3,
+    fontWeight: fontWeights.bold,
+    letterSpacing: -0.3,
+    marginTop: 2,
+  },
+  profileEmail: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.caption,
+    marginTop: 2,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 212, 255, 0.1)',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+  },
+  sectionLabel: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.widest,
+    marginTop: spacing.xl,
+    marginBottom: spacing.base,
+  },
+  sysInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.successSoft,
+    borderRadius: radius.element,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 232, 150, 0.2)',
+    padding: spacing.base,
+    marginTop: spacing.lg,
+    gap: spacing.sm,
+  },
+  sysInfoText: {
+    color: Colors.success,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.medium,
   },
 });
 

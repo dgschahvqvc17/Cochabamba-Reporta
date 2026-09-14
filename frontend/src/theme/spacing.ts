@@ -1,7 +1,7 @@
 /**
- * Design tokens — Espaciado (src/theme).
+ * Design tokens — Espaciado + Radio (src/theme).
  *
- * Sistema de espaciado base de 8 pt (ver rules/Frontend.md).
+ * Sistema de 8pt con valores extra para diseño moderno generoso.
  *
  * @format
  */
@@ -15,10 +15,14 @@ export const spacing = {
   xl: 32,
   xxl: 48,
   xxxl: 64,
+  huge: 80,
 } as const;
 
 export const radius = {
-  element: 12,
-  card: 16,
-  pill: 28,
+  xs: 6,
+  sm: 8,
+  element: 14,
+  card: 20,
+  cardLg: 28,
+  pill: 999,
 } as const;
