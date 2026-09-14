@@ -36,6 +36,7 @@ export interface LoginResult {
   session?: StoredSession;
   fieldErrors?: FieldErrors;
   error?: string;
+  code?: string;
 }
 
 export interface LogoutResult {
@@ -86,6 +87,7 @@ export async function handleLogin(
     return {
       success: false,
       error: result.message,
+      code: result.error?.code,
       ...(Object.keys(fieldErrors).length > 0 ? { fieldErrors } : {}),
     };
   }

@@ -12,7 +12,6 @@
 import { useCallback, useState } from 'react';
 
 export type DialogTone = 'accent' | 'danger' | 'success' | 'warning' | 'info';
-
 export type ConfirmOptions = {
   title: string;
   message?: string;
@@ -25,6 +24,7 @@ export type ConfirmOptions = {
 export type InfoOptions = {
   title: string;
   message?: string;
+  tone?: Exclude<DialogTone, 'accent'>;
   onAccept?: () => void;
 };
 
@@ -67,7 +67,7 @@ export function useDialog() {
       visible: true,
       title: opts.title,
       message: opts.message,
-      tone: 'info',
+      tone: opts.tone ?? 'info',
       confirmLabel: 'Aceptar',
       onConfirm: opts.onAccept,
       isInfo: true,
@@ -80,5 +80,18 @@ export function useDialog() {
     );
   }, []);
 
-  return { dialog, confirm, info, close };
+  const error = useCallback(
+    (opts: InfoOptions) => info({ ...opts, tone: 'danger' }),
+    [info],
+  );
+  const warn = useCallback(
+    (opts: InfoOptions) => info({ ...opts, tone: 'warning' }),
+    [info],
+  );
+  const success = useCallback(
+    (opts: InfoOptions) => info({ ...opts, tone: 'success' }),
+    [info],
+  );
+
+  return { dialog, confirm, info, error, warn, success, close };
 }

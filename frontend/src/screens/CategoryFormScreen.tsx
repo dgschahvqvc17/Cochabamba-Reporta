@@ -62,7 +62,7 @@ function CategoryFormScreen({
   onSaved,
 }: CategoryFormScreenProps) {
   const insets = useSafeAreaInsets();
-  const { dialog, info, close } = useDialog();
+  const { dialog, error, success, close } = useDialog();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -119,14 +119,14 @@ function CategoryFormScreen({
 
     if (!result.success) {
       if (result.fieldErrors) setErrors(result.fieldErrors);
-      info({
+      error({
         title: isEdit ? 'No se pudo actualizar' : 'No se pudo registrar',
         message: result.message,
       });
       return;
     }
 
-    info({
+    success({
       title: isEdit ? 'Categoría actualizada' : 'Categoría registrada',
       message: isEdit
         ? 'La categoría se actualizó correctamente.'

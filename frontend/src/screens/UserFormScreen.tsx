@@ -100,7 +100,7 @@ const ROLE_COLORS: Record<Role, string> = {
 
 function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) {
   const insets = useSafeAreaInsets();
-  const { dialog, info, close } = useDialog();
+  const { dialog, error, success, close } = useDialog();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -181,10 +181,10 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
       setIsSubmitting(false);
       if (!result.success) {
         if (result.fieldErrors) setErrors(result.fieldErrors);
-        info({ title: 'No se pudo actualizar', message: result.message });
+        error({ title: 'No se pudo actualizar', message: result.message });
         return;
       }
-      info({ title: 'Usuario actualizado', message: 'Datos actualizados correctamente.', onAccept: onSaved });
+      success({ title: 'Usuario actualizado', message: 'Datos actualizados correctamente.', onAccept: onSaved });
       return;
     }
 
@@ -204,10 +204,10 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
     setIsSubmitting(false);
     if (!result.success) {
       if (result.fieldErrors) setErrors(result.fieldErrors);
-      info({ title: 'No se pudo registrar', message: result.message });
+      error({ title: 'No se pudo registrar', message: result.message });
       return;
     }
-    info({ title: 'Usuario registrado', message: 'El usuario se registró correctamente.', onAccept: onSaved });
+    success({ title: 'Usuario registrado', message: 'El usuario se registró correctamente.', onAccept: onSaved });
   };
 
   // ── Loading / Error states ────────────────────────────────────────

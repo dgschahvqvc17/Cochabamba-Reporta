@@ -59,7 +59,7 @@ const CATEGORY_COLORS = [
 
 function CategoriesScreen({ onBack, onCreate, onOpenEdit }: CategoriesScreenProps) {
   const insets = useSafeAreaInsets();
-  const { dialog, confirm, info, close } = useDialog();
+  const { dialog, confirm, error, success, close } = useDialog();
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
@@ -109,9 +109,9 @@ function CategoriesScreen({ onBack, onCreate, onOpenEdit }: CategoriesScreenProp
     close();
     const result = await setCategoryActive(cat.id, active);
     setIsUpdatingId(null);
-    if (!result.success) { info({ title: 'Error', message: result.message }); return; }
+    if (!result.success) { error({ title: 'Error', message: result.message }); return; }
     setCategories((prev) => prev.map((c) => c.id === cat.id ? (result.data ?? c) : c));
-    info({ title: active ? 'Categoría activada' : 'Categoría desactivada', message: result.message });
+    success({ title: active ? 'Categoría activada' : 'Categoría desactivada', message: result.message });
   };
 
   return (
