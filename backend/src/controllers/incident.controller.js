@@ -3,6 +3,7 @@
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
+ * HU08 — Registrar ubicación del incidente.
  *
  * Es la capa de presentación HTTP. Recibe la solicitud, extrae el ciudadano
  * autenticado (req.user) y el payload, delega en el service y devuelve la
@@ -47,6 +48,21 @@ const incidentController = {
     }
   },
 
+  async listIncidents(req, res, next) {
+    try {
+      const incidents = await incidentService.listMyIncidents(
+        req.user,
+        req.query,
+      );
+
+      return ok(res, 200, 'Reportes consultados correctamente.', {
+        incidents,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
   async addEvidence(req, res, next) {
     try {
       const evidence = await incidentService.addEvidence(
@@ -58,6 +74,49 @@ const incidentController = {
       return ok(res, 201, 'Evidencia adjuntada correctamente.', {
         evidence,
       });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async addLocation(req, res, next) {
+    try {
+      const location = await incidentService.addLocation(
+        req.user,
+        req.params.id,
+        req.body,
+      );
+
+      return ok(res, 201, 'Ubicación registrada correctamente.', {
+        location,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async updateIncident(req, res, next) {
+    try {
+      const incident = await incidentService.updateIncident(
+        req.user,
+        req.params.id,
+        req.body,
+      );
+
+      return ok(res, 200, 'Reporte editado correctamente.', { incident });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async deleteIncident(req, res, next) {
+    try {
+      const deleted = await incidentService.deleteIncident(
+        req.user,
+        req.params.id,
+      );
+
+      return ok(res, 200, 'Reporte eliminado correctamente.', deleted);
     } catch (error) {
       return next(error);
     }

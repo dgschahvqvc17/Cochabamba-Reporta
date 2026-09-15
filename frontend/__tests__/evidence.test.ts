@@ -84,6 +84,7 @@ describe('evidence utils (HU07)', () => {
   test('infiere el MIME desde el nombre de archivo', () => {
     expect(mimeFromFileName('evidencia.png')).toBe('image/png');
     expect(mimeFromFileName('foto.jpeg')).toBe('image/jpeg');
+    expect(mimeFromFileName('foto.jfif')).toBe('image/jpeg');
     expect(mimeFromFileName('sin extension')).toBeNull();
   });
 

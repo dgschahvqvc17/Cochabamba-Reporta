@@ -23,7 +23,7 @@ export const MAX_EVIDENCE_COUNT = 5;
 
 export const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-export const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+export const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.jfif', '.png', '.webp'];
 
 export interface PickedEvidence {
   /** Nativo: file://… | Web: data URL. */
@@ -54,6 +54,7 @@ const MIME_TO_EXTENSION: Record<string, string> = {
 const EXTENSION_TO_MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
+  '.jfif': 'image/jpeg',
   '.png': 'image/png',
   '.webp': 'image/webp',
 };
@@ -169,7 +170,7 @@ export function validateEvidence(
     return {
       ok: false,
       message:
-        'El formato de la imagen no es válido. Solo se permiten JPG, PNG y WebP.',
+        'El formato de la imagen no es válido. Solo se permiten JPG, JFIF, PNG y WebP.',
     };
   }
 

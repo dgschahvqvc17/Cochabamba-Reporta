@@ -3,6 +3,7 @@
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
+ * HU08 — Registrar ubicación del incidente.
  *
  * Contiene la lógica de negocio del módulo de incidentes:
  *   - Requiere ciudadano autenticado (asocia `user_id`).
@@ -31,6 +32,7 @@ const crypto = require('crypto');
 const incidentRepository = require('../repositories/incident.repository');
 const categoryRepository = require('../repositories/category.repository');
 const evidenceRepository = require('../repositories/evidence.repository');
+const locationRepository = require('../repositories/location.repository');
 const { supabaseAdmin } = require('../config/supabase');
 const {
   ALLOWED_MIME_TYPES,
@@ -40,13 +42,25 @@ const {
   extensionFromMime,
 } = require('../utils/evidence');
 const {
+  toNumber,
+  isValidLatitude,
+  isValidLongitude,
+  MAX_ADDRESS_LENGTH,
+  normalizeAddress,
+  toPublicLocation,
+} = require('../utils/location');
+const {
   MIN_TITLE_LENGTH,
   MAX_TITLE_LENGTH,
   MIN_DESCRIPTION_LENGTH,
   MAX_DESCRIPTION_LENGTH,
+  INCIDENT_STATUSES,
 } = require('../validators/incident.validator');
 
 const MIN_CATEGORY_ID = 1;
+
+/** Único estado en el que el ciudadano puede editar o eliminar su reporte. */
+const EDITABLE_STATUS = 'REPORTADO';
 
 const buildError = (message, status, code, field = null) => {
   const error = new Error(message);
@@ -70,6 +84,89 @@ const buildIncidentCode = (sequence) => {
   return `INC-${year}${month}${day}-${String(sequence).padStart(3, '0')}`;
 };
 
+/**
+ * Valida el payload de creación/edición (categoría + título + descripción)
+ * y devuelve los valores ya normalizados. Usado por createIncident y
+ * updateIncident para no duplicar reglas (principio DRY).
+ */
+const validateIncidentPayload = (userId, payload) => {
+  if (!userId) {
+    throw buildError(
+      'Debe iniciar sesión para registrar un incidente.',
+      401,
+      'AUTHENTICATION_REQUIRED',
+    );
+  }
+
+  const categoryId = Number(payload && payload.categoryId);
+  const title = normalizeText(payload && payload.title);
+  const description = normalizeText(payload && payload.description);
+
+  if (!categoryId || categoryId < MIN_CATEGORY_ID) {
+    throw buildError(
+      'Debe seleccionar una categoría.',
+      422,
+      'VALIDATION_ERROR',
+      'categoryId',
+    );
+  }
+
+  if (!title) {
+    throw buildError(
+      'El título es obligatorio.',
+      422,
+      'VALIDATION_ERROR',
+      'title',
+    );
+  }
+
+  if (
+    title.length < MIN_TITLE_LENGTH ||
+    title.length > MAX_TITLE_LENGTH
+  ) {
+    throw buildError(
+      `El título debe tener entre ${MIN_TITLE_LENGTH} y ${MAX_TITLE_LENGTH} caracteres.`,
+      422,
+      'VALIDATION_ERROR',
+      'title',
+    );
+  }
+
+  if (!description) {
+    throw buildError(
+      'La descripción es obligatoria.',
+      422,
+      'VALIDATION_ERROR',
+      'description',
+    );
+  }
+
+  if (
+    description.length < MIN_DESCRIPTION_LENGTH ||
+    description.length > MAX_DESCRIPTION_LENGTH
+  ) {
+    throw buildError(
+      `La descripción debe tener entre ${MIN_DESCRIPTION_LENGTH} y ${MAX_DESCRIPTION_LENGTH} caracteres.`,
+      422,
+      'VALIDATION_ERROR',
+      'description',
+    );
+  }
+
+  return { categoryId, title, description };
+};
+
+/**
+ * Un reporte es editable si está REPORTADO y nunca fue editado
+ * (updated_at === created_at: la única edición permitida es del ciudadano).
+ */
+const isEditable = (incident) =>
+  Boolean(
+    incident &&
+      incident.status === EDITABLE_STATUS &&
+      String(incident.updated_at) === String(incident.created_at),
+  );
+
 const toPublicIncident = (incident) => ({
   id: incident.id,
   code: incident.code,
@@ -80,6 +177,21 @@ const toPublicIncident = (incident) => ({
   status: incident.status,
   createdAt: incident.created_at,
   updatedAt: incident.updated_at,
+  canEdit: isEditable(incident),
+  canDelete: incident.status === EDITABLE_STATUS,
+});
+
+const toPublicIncidentListItem = (incident) => ({
+  id: incident.id,
+  code: incident.code,
+  categoryId: incident.category_id,
+  category: incident.category ? { id: incident.category.id, name: incident.category.name } : null,
+  title: incident.title,
+  status: incident.status,
+  createdAt: incident.created_at,
+  updatedAt: incident.updated_at,
+  canEdit: isEditable(incident),
+  canDelete: incident.status === EDITABLE_STATUS,
 });
 
 const toPublicEvidence = (evidence) => ({
@@ -96,26 +208,10 @@ const randomToken = (bytes) => crypto.randomBytes(bytes).toString('hex');
 const incidentService = {
   async createIncident(user, payload) {
     const userId = user && user.id;
-    const categoryId = Number(payload && payload.categoryId);
-    const title = normalizeText(payload && payload.title);
-    const description = normalizeText(payload && payload.description);
-
-    if (!userId) {
-      throw buildError(
-        'Debe iniciar sesión para registrar un incidente.',
-        401,
-        'AUTHENTICATION_REQUIRED',
-      );
-    }
-
-    if (!categoryId || categoryId < MIN_CATEGORY_ID) {
-      throw buildError(
-        'Debe seleccionar una categoría.',
-        422,
-        'VALIDATION_ERROR',
-        'categoryId',
-      );
-    }
+    const { categoryId, title, description } = validateIncidentPayload(
+      userId,
+      payload,
+    );
 
     const category = await categoryRepository.findById(categoryId);
 
@@ -134,48 +230,6 @@ const incidentService = {
         422,
         'VALIDATION_ERROR',
         'categoryId',
-      );
-    }
-
-    if (!title) {
-      throw buildError(
-        'El título es obligatorio.',
-        422,
-        'VALIDATION_ERROR',
-        'title',
-      );
-    }
-
-    if (
-      title.length < MIN_TITLE_LENGTH ||
-      title.length > MAX_TITLE_LENGTH
-    ) {
-      throw buildError(
-        `El título debe tener entre ${MIN_TITLE_LENGTH} y ${MAX_TITLE_LENGTH} caracteres.`,
-        422,
-        'VALIDATION_ERROR',
-        'title',
-      );
-    }
-
-    if (!description) {
-      throw buildError(
-        'La descripción es obligatoria.',
-        422,
-        'VALIDATION_ERROR',
-        'description',
-      );
-    }
-
-    if (
-      description.length < MIN_DESCRIPTION_LENGTH ||
-      description.length > MAX_DESCRIPTION_LENGTH
-    ) {
-      throw buildError(
-        `La descripción debe tener entre ${MIN_DESCRIPTION_LENGTH} y ${MAX_DESCRIPTION_LENGTH} caracteres.`,
-        422,
-        'VALIDATION_ERROR',
-        'description',
       );
     }
 
@@ -201,11 +255,42 @@ const incidentService = {
     }
 
     const evidence = await evidenceRepository.findByIncident(incident.id);
+    const location = await locationRepository.findLatestByIncidentId(
+      incident.id,
+    );
 
     return {
       ...toPublicIncident(incident),
+      location: location ? toPublicLocation(location) : null,
       evidence: evidence.map(toPublicEvidence),
     };
+  },
+
+  async listMyIncidents(user, query) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para consultar sus reportes.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const status = query && query.status ? String(query.status) : null;
+
+    if (status && !INCIDENT_STATUSES.includes(status)) {
+      throw buildError(
+        'El estado indicado no es válido.',
+        422,
+        'VALIDATION_ERROR',
+        'status',
+      );
+    }
+
+    const incidents = await incidentRepository.findByUserId({ userId, status });
+
+    return incidents.map(toPublicIncidentListItem);
   },
 
   async addEvidence(user, incidentId, file) {
@@ -244,7 +329,7 @@ const incidentService = {
 
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw buildError(
-        'El formato de la imagen no es válido. Solo se permiten JPG, PNG y WebP.',
+        'El formato de la imagen no es válido. Solo se permiten JPG, JFIF, PNG y WebP.',
         422,
         'VALIDATION_ERROR',
         'image',
@@ -307,6 +392,198 @@ const incidentService = {
     });
 
     return toPublicEvidence(created);
+  },
+
+  async addLocation(user, incidentId, payload) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para registrar la ubicación.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.user_id !== userId) {
+      throw buildError(
+        'Solo puedes registrar la ubicación de tus propios incidentes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const latitude = toNumber(payload && payload.latitude);
+    const longitude = toNumber(payload && payload.longitude);
+    const address = normalizeAddress(payload && payload.address);
+
+    if (latitude === null || !isValidLatitude(latitude)) {
+      throw buildError(
+        `La latitud debe estar entre -90 y 90.`,
+        422,
+        'VALIDATION_ERROR',
+        'latitude',
+      );
+    }
+
+    if (longitude === null || !isValidLongitude(longitude)) {
+      throw buildError(
+        `La longitud debe estar entre -180 y 180.`,
+        422,
+        'VALIDATION_ERROR',
+        'longitude',
+      );
+    }
+
+    if (address && address.length > MAX_ADDRESS_LENGTH) {
+      throw buildError(
+        `La dirección no debe superar los ${MAX_ADDRESS_LENGTH} caracteres.`,
+        422,
+        'VALIDATION_ERROR',
+        'address',
+      );
+    }
+
+    const capturedAt = payload.capturedAt || undefined;
+
+    const created = await locationRepository.create({
+      incidentId: incident.id,
+      latitude,
+      longitude,
+      address,
+      capturedAt,
+    });
+
+    return toPublicLocation(created);
+  },
+
+  async updateIncident(user, incidentId, payload) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para editar un reporte.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.user_id !== userId) {
+      throw buildError(
+        'Solo puedes editar tus propios reportes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    if (incident.status !== EDITABLE_STATUS) {
+      throw buildError(
+        'Solo puedes editar un reporte en estado REPORTADO.',
+        409,
+        'INCIDENT_NOT_EDITABLE',
+      );
+    }
+
+    if (String(incident.updated_at) !== String(incident.created_at)) {
+      throw buildError(
+        'Este reporte ya fue editado anteriormente. Solo se permite una edición.',
+        409,
+        'INCIDENT_ALREADY_EDITED',
+      );
+    }
+
+    const { categoryId, title, description } = validateIncidentPayload(
+      userId,
+      payload,
+    );
+
+    const category = await categoryRepository.findById(categoryId);
+
+    if (!category || !category.active) {
+      throw buildError(
+        'La categoría seleccionada no está disponible.',
+        422,
+        'VALIDATION_ERROR',
+        'categoryId',
+      );
+    }
+
+    const updated = await incidentRepository.update({
+      id: incident.id,
+      userId,
+      categoryId,
+      title,
+      description,
+    });
+
+    return toPublicIncident(updated);
+  },
+
+  async deleteIncident(user, incidentId) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para eliminar un reporte.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.user_id !== userId) {
+      throw buildError(
+        'Solo puedes eliminar tus propios reportes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    if (incident.status !== EDITABLE_STATUS) {
+      throw buildError(
+        'Solo puedes eliminar un reporte en estado REPORTADO.',
+        409,
+        'INCIDENT_NOT_EDITABLE',
+      );
+    }
+
+    const evidence = await evidenceRepository.findByIncident(incident.id);
+
+    if (evidence.length > 0) {
+      await evidenceRepository.deleteByIncident(incident.id);
+
+      const storagePaths = evidence
+        .map((item) => item.storage_path)
+        .filter(Boolean);
+
+      if (storagePaths.length > 0) {
+        await supabaseAdmin.storage
+          .from(EVIDENCE_BUCKET)
+          .remove(storagePaths);
+      }
+    }
+
+    await locationRepository.deleteByIncident(incident.id);
+    await incidentRepository.remove(incident.id);
+
+    return { id: incident.id, code: incident.code };
   },
 };
 

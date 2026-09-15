@@ -46,6 +46,26 @@ const findById = async (id) => {
   return data;
 };
 
+const findByUserId = async ({ userId, status = null } = {}) => {
+  let query = supabaseAdmin
+    .from('incidents')
+    .select('*, category:categories(id, name)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 const countToday = async () => {
   const startOfDay = new Date().toISOString().slice(0, 10);
 
@@ -61,8 +81,47 @@ const countToday = async () => {
   return count ?? 0;
 };
 
+const update = async ({ id, userId, categoryId, title, description }) => {
+  const { data, error } = await supabaseAdmin
+    .from('incidents')
+    .update({
+      category_id: categoryId,
+      title,
+      description,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const remove = async (id) => {
+  const { data, error } = await supabaseAdmin
+    .from('incidents')
+    .delete()
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 module.exports = {
   create,
   findById,
+  findByUserId,
   countToday,
+  update,
+  remove,
 };
