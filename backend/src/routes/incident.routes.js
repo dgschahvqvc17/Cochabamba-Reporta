@@ -1,0 +1,38 @@
+/**
+ * Rutas de incidentes (MVC - Routes).
+ *
+ * HU06 — Registro de incidentes por parte del ciudadano:
+ *   - POST /api/v1/incidents                     → crear (ciudadano).
+ *   - GET  /api/v1/incidents/:id                 → consultar por id.
+ * Sigue el patrón de category.routes.js (router + authenticate +
+ * requireRole + validate). Solo enrutan, sin lógica de negocio.
+ *
+ * @format
+ */
+
+'use strict';
+
+const express = require('express');
+
+const incidentController = require('../controllers/incident.controller');
+const { authenticate } = require('../middlewares/auth.middleware');
+const { requireRole } = require('../middlewares/role.middleware');
+const { validate } = require('../middlewares/validation.middleware');
+const {
+  createIncidentValidation,
+} = require('../validators/incident.validator');
+const ROLES = require('../utils/roles');
+
+const router = express.Router();
+
+router.post(
+  '/',
+  authenticate,
+  requireRole(ROLES.CIUDADANO),
+  validate(createIncidentValidation),
+  incidentController.createIncident,
+);
+
+router.get('/:id', authenticate, incidentController.getIncidentById);
+
+module.exports = router;

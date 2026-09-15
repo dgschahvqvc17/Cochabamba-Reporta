@@ -38,6 +38,7 @@ import {
 
 type HomeScreenProps = {
   user: User;
+  onNewIncident?: () => void;
 };
 
 type QuickAction = {
@@ -55,7 +56,7 @@ const ACTIONS: QuickAction[] = [
   { icon: 'settings', label: 'Perfil', sub: 'Mis datos', color: Colors.info, bg: 'rgba(167,139,250,0.12)' },
 ];
 
-function HomeScreen({ user }: HomeScreenProps) {
+function HomeScreen({ user, onNewIncident }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -159,7 +160,12 @@ function HomeScreen({ user }: HomeScreenProps) {
           <Text style={styles.sectionTitle}>Acciones rápidas</Text>
           <View style={styles.actionsGrid}>
             {ACTIONS.map((action, i) => (
-              <ActionCard key={i} action={action} delay={i * 80} />
+              <ActionCard
+                key={i}
+                action={action}
+                delay={i * 80}
+                onPress={i === 0 ? onNewIncident : undefined}
+              />
             ))}
           </View>
 
@@ -221,7 +227,15 @@ const chipStyles = StyleSheet.create({
   },
 });
 
-function ActionCard({ action, delay }: { action: QuickAction; delay: number }) {
+function ActionCard({
+  action,
+  delay,
+  onPress,
+}: {
+  action: QuickAction;
+  delay: number;
+  onPress?: () => void;
+}) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(15)).current;
 
@@ -235,6 +249,7 @@ function ActionCard({ action, delay }: { action: QuickAction; delay: number }) {
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], flex: 1 }}>
       <Pressable
+        onPress={onPress}
         style={({ pressed }) => [
           actionStyles.card,
           { borderColor: action.color + '30' },
