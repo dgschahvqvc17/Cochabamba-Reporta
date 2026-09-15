@@ -10,10 +10,9 @@
  * @format
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   Animated,
-  Easing,
   ActivityIndicator,
   Pressable,
   StyleSheet,

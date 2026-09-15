@@ -2,6 +2,7 @@
  * Controlador de incidentes (MVC - Controller).
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
+ * HU07 — Adjuntar evidencia fotográfica.
  *
  * Es la capa de presentación HTTP. Recibe la solicitud, extrae el ciudadano
  * autenticado (req.user) y el payload, delega en el service y devuelve la
@@ -40,6 +41,22 @@ const incidentController = {
 
       return ok(res, 200, 'Incidente consultado correctamente.', {
         incident,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async addEvidence(req, res, next) {
+    try {
+      const evidence = await incidentService.addEvidence(
+        req.user,
+        req.params.id,
+        req.file,
+      );
+
+      return ok(res, 201, 'Evidencia adjuntada correctamente.', {
+        evidence,
       });
     } catch (error) {
       return next(error);

@@ -2,14 +2,17 @@
  * Modelo de Incidente (MVC - Model).
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
+ * HU07 — Adjuntar evidencia fotográfica.
  *
  * Define la estructura del incidente en el frontend, incluyendo:
  *   - El tipo `IncidentStatus` con todos los estados del ciclo de vida
  *     (coincide con el enum `incident_status` de Supabase).
- *   - La interfaz `Incident` (respuesta del backend, formato público).
+ *   - La interfaz `Incident` (respuesta del backend, formato público),
+ *     que ahora incluye las evidencias fotográficas (`evidence`).
  *   - La interfaz `IncidentPayload` (lo que envía el ciudadano al crear:
  *     categoryId obligatorio, título y descripción con longitudes).
  *   - Interface de respuesta de creación (`IncidentCreateResponse`).
+ *   - La interfaz `Evidence` (HU07): referencia de una imagen adjunta.
  * Las longitudes se comparten con los validators (utils/validators.ts).
  *
  * @format
@@ -36,6 +39,15 @@ export type IncidentStatus =
   | 'CERRADO'
   | 'RECHAZADO';
 
+export interface Evidence {
+  id: number;
+  incidentId: number;
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export interface Incident {
   id: number;
   code: string;
@@ -49,4 +61,5 @@ export interface Incident {
   status: IncidentStatus;
   createdAt: string;
   updatedAt: string;
+  evidence?: Evidence[];
 }

@@ -665,7 +665,13 @@ const modalStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: Colors.bgDeep },
-  bgAbsolute: { ...StyleSheet.absoluteFillObject },
+  bgAbsolute: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   orbTL: {
     position: 'absolute',
     width: 200,
