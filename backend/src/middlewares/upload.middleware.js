@@ -50,7 +50,7 @@ const uploadImage = multer({
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       return cb(
         buildUploadError(
-          'El formato de la imagen no es válido. Solo se permiten JPG, PNG y WebP.',
+          'El formato de la imagen no es válido. Solo se permiten JPG, JFIF, PNG y WebP.',
           422,
           'INVALID_IMAGE_FORMAT',
           'image',
@@ -61,7 +61,7 @@ const uploadImage = multer({
     if (!hasAllowedExtension(file)) {
       return cb(
         buildUploadError(
-          'La extensión de la imagen no es válida. Usa .jpg, .png o .webp.',
+          'La extensión de la imagen no es válida. Usa .jpg, .jpeg, .jfif, .png o .webp.',
           422,
           'INVALID_IMAGE_FORMAT',
           'image',

@@ -16,17 +16,37 @@
 
 'use strict';
 
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 
 const MIN_TITLE_LENGTH = 8;
 const MAX_TITLE_LENGTH = 120;
 const MIN_DESCRIPTION_LENGTH = 15;
 const MAX_DESCRIPTION_LENGTH = 2000;
 
+/** Estados del ciclo de vida (coincide con el enum incident_status de Supabase). */
+const INCIDENT_STATUSES = [
+  'REPORTADO',
+  'RECIBIDO',
+  'EN_VERIFICACION',
+  'VERIFICADO',
+  'ASIGNADO_PARA_SOLUCION',
+  'EN_ATENCION',
+  'ATENDIDO',
+  'CERRADO',
+  'RECHAZADO',
+];
+
 const validateCategoryId = body('categoryId')
   .isInt({ min: 1 })
   .withMessage('Debe seleccionar una categoría.')
   .toInt();
+
+const validateListStatus = query('status')
+  .optional({ values: 'falsy' })
+  .isIn(INCIDENT_STATUSES)
+  .withMessage('El estado indicado no es válido.');
+
+const listIncidentsValidation = [validateListStatus];
 
 const validateTitle = body('title')
   .trim()
@@ -54,6 +74,8 @@ const createIncidentValidation = [
 
 module.exports = {
   createIncidentValidation,
+  listIncidentsValidation,
+  INCIDENT_STATUSES,
   MIN_TITLE_LENGTH,
   MAX_TITLE_LENGTH,
   MIN_DESCRIPTION_LENGTH,

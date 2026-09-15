@@ -13,7 +13,7 @@
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
-const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.jfif', '.png', '.webp'];
 
 /** Tamaño máximo de una imagen en bytes (5 MB). */
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -33,6 +33,7 @@ const MIME_TO_EXTENSION = {
 const EXTENSION_TO_MIME = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
+  '.jfif': 'image/jpeg',
   '.png': 'image/png',
   '.webp': 'image/webp',
 };

@@ -67,8 +67,23 @@ const findByIncident = async (incidentId) => {
   return data ?? [];
 };
 
+const deleteByIncident = async (incidentId) => {
+  const { data, error } = await supabaseAdmin
+    .from('evidence')
+    .delete()
+    .eq('incident_id', incidentId)
+    .select('storage_path');
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 module.exports = {
   countByIncident,
   create,
   findByIncident,
+  deleteByIncident,
 };

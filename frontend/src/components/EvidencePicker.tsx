@@ -49,7 +49,7 @@ export default function EvidencePicker({
         <View style={styles.headerText}>
           <Text style={styles.label}>Evidencia fotográfica</Text>
           <Text style={styles.hint}>
-            JPG, PNG o WebP · máx. 5 MB por imagen
+            JPG, JFIF, PNG o WebP · máx. 5 MB por imagen
           </Text>
         </View>
         <View style={styles.counter}>
@@ -195,9 +195,9 @@ const styles = StyleSheet.create({
     color: Colors.textOnDark,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.semiBold,
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowRadius: 4,
-    textShadowOffset: { width: 0, height: 1 },
+    // textShadow reemplaza a las props textShadow* (deprecadas en RN 0.87)
+    // @ts-ignore — type aún no incluye textShadow (RN 0.87)
+    textShadow: '0 1px 4px rgba(0,0,0,0.8)',
   },
   removeBtn: {
     position: 'absolute',

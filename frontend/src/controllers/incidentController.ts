@@ -3,6 +3,7 @@
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
+ * HU08 — Registrar ubicación del incidente.
  * Traduce el resultado de la API (incidentService) en un `ActionResult`
  * con `fieldErrors` tipados por campo, igual que categoryController.
  * No contiene lógica de negocio ni llamadas directas a fetch.
@@ -12,9 +13,20 @@
 
 import {
   attachEvidence as attachEvidenceRequest,
+  attachLocation as attachLocationRequest,
   createIncident as createIncidentRequest,
+  deleteIncident as deleteIncidentRequest,
+  getIncidentById as getIncidentByIdRequest,
+  getMyIncidents as getMyIncidentsRequest,
+  updateIncident as updateIncidentRequest,
 } from '../services/incidentService';
-import type { Evidence, Incident, IncidentPayload } from '../models/Incident';
+import type {
+  Evidence,
+  Incident,
+  IncidentLocation,
+  IncidentPayload,
+  LocationPayload,
+} from '../models/Incident';
 import { getAccessToken } from '../utils/session';
 import { pickEvidence as pickEvidenceRequest, type PickerSource } from '../utils/imagePicker';
 import {
@@ -22,6 +34,10 @@ import {
   toUploadImage,
   type PickedEvidence,
 } from '../utils/evidence';
+import {
+  getCurrentPosition as getCurrentPositionRequest,
+  type LocationResult,
+} from '../utils/location';
 
 export type FieldErrors = Record<string, string>;
 
@@ -60,6 +76,48 @@ export async function registerIncident(
       ...(toFieldErrors(result.error?.details) && {
         fieldErrors: toFieldErrors(result.error?.details),
       }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incident,
+  };
+}
+
+/** Lista los reportes del ciudadano autenticado (Mis reportes). */
+export async function loadMyIncidents(
+  status?: string,
+): Promise<ActionResult<Incident[]>> {
+  const accessToken = getAccessToken();
+  const result = await getMyIncidentsRequest(accessToken, status);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incidents,
+  };
+}
+
+/** Detalle de un incidente (evidencia + ubicación) para ver seguimiento. */
+export async function loadIncidentById(
+  incidentId: number,
+): Promise<ActionResult<Incident>> {
+  const accessToken = getAccessToken();
+  const result = await getIncidentByIdRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
     };
   }
 
@@ -124,5 +182,81 @@ export async function attachEvidenceToIncident(
     success: true,
     message: result.message,
     data: result.data?.evidence,
+  };
+}
+
+/** HU08: pide permiso y obtiene la ubicación actual del dispositivo. */
+export async function captureCurrentLocation(): Promise<LocationResult> {
+  return getCurrentPositionRequest();
+}
+
+/** HU08: envía la ubicación ya capturada y confirmada al incidente. */
+export async function attachLocationToIncident(
+  incidentId: number,
+  payload: LocationPayload,
+): Promise<ActionResult<IncidentLocation>> {
+  const accessToken = getAccessToken();
+  const result = await attachLocationRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.location,
+  };
+}
+
+/** Edita un reporte propio en estado REPORTADO (una sola edición permitida). */
+export async function editIncident(
+  incidentId: number,
+  payload: IncidentPayload,
+): Promise<ActionResult<Incident>> {
+  const accessToken = getAccessToken();
+  const result = await updateIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incident,
+  };
+}
+
+/** Elimina un reporte propio en estado REPORTADO. */
+export async function deleteIncidentById(
+  incidentId: number,
+): Promise<ActionResult<{ id: number; code: string }>> {
+  const accessToken = getAccessToken();
+  const result = await deleteIncidentRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
   };
 }

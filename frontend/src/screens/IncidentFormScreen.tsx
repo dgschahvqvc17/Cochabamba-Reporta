@@ -3,18 +3,21 @@
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
+ * HU08 — Registrar ubicación del incidente.
  * Replica el patrón visual de CategoryFormScreen (dark immersive,
  * glassmorphic form card, conceptos y animaciones), añadiendo un
- * selector de categoría (obligatoria) alimentado por categoryController
- * y el selector de evidencia fotográfica (opcional, hasta 5 imágenes).
- * Al enviar: primero registra el incidente y luego sube cada imagen
- * adjunta a /incidents/:id/evidence.
+ * selector de categoría (obligatoria) alimentado por categoryController,
+ * el selector de evidencia fotográfica (opcional, hasta 5 imágenes) y
+ * el selector de ubicación (obligatoria, HU08).
+ * Al enviar: primero registra el incidente, luego adjunta la ubicación
+ * y por último sube cada imagen adjunta a /incidents/:id/evidence.
  *
  * @format
  */
 
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   ImageBackground,
   KeyboardAvoidingView,
@@ -34,10 +37,15 @@ import AppTextInput from '../components/AppTextInput';
 import EvidencePicker from '../components/EvidencePicker';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
+import LocationPicker from '../components/LocationPicker';
 import PrimaryButton from '../components/PrimaryButton';
 import { cityBackground } from '../assets/images';
 import {
   attachEvidenceToIncident,
+  attachLocationToIncident,
+  captureCurrentLocation,
+  editIncident,
+  loadIncidentById,
   pickEvidence as pickEvidenceFromSource,
   registerIncident,
 } from '../controllers/incidentController';
@@ -53,10 +61,13 @@ import {
   spacing,
 } from '../theme';
 import type { PickedEvidence } from '../utils/evidence';
+import type { CurrentPosition } from '../utils/location';
 
 type IncidentFormScreenProps = {
   onBack: () => void;
   onSaved: () => void;
+  mode?: 'create' | 'edit';
+  incidentId?: number;
 };
 
 const MIN_TITLE_LENGTH = 8;
@@ -69,9 +80,12 @@ type FieldErrors = Record<string, string>;
 export default function IncidentFormScreen({
   onBack,
   onSaved,
+  mode = 'create',
+  incidentId,
 }: IncidentFormScreenProps) {
   const insets = useSafeAreaInsets();
   const { dialog, error, success, close } = useDialog();
+  const isEdit = mode === 'edit';
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categories, setCategories] = useState<
     { id: number; name: string }[]
@@ -83,6 +97,10 @@ export default function IncidentFormScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [evidence, setEvidence] = useState<PickedEvidence[]>([]);
   const [isPicking, setIsPicking] = useState(false);
+  const [position, setPosition] = useState<CurrentPosition | null>(null);
+  const [address, setAddress] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(isEdit);
 
   useEffect(() => {
     (async () => {
@@ -96,6 +114,31 @@ export default function IncidentFormScreen({
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!isEdit || !incidentId) {
+      return;
+    }
+
+    (async () => {
+      const result = await loadIncidentById(incidentId);
+      setIsLoadingEdit(false);
+
+      if (!result.success || !result.data) {
+        error({
+          title: 'No se pudo cargar el reporte',
+          message: result.message,
+          onAccept: onBack,
+        });
+        return;
+      }
+
+      const incident = result.data;
+      setCategoryId(incident.categoryId);
+      setTitle(incident.title);
+      setDescription(incident.description);
+    })();
+  }, [isEdit, incidentId, error, onBack]);
 
   const validateForm = (): FieldErrors => {
     const errs: FieldErrors = {};
@@ -114,7 +157,38 @@ export default function IncidentFormScreen({
       errs.description = `Mínimo ${MIN_DESCRIPTION_LENGTH} caracteres.`;
     else if (d.length > MAX_DESCRIPTION_LENGTH)
       errs.description = `Máximo ${MAX_DESCRIPTION_LENGTH} caracteres.`;
+    if (!isEdit && !position) {
+      errs.location = 'Debes registrar la ubicación del incidente.';
+    }
     return errs;
+  };
+
+  const handleCaptureLocation = async () => {
+    if (isLocating) return;
+
+    setIsLocating(true);
+    const result = await captureCurrentLocation();
+    setIsLocating(false);
+
+    if (!result.ok || !result.position) {
+      error({
+        title: 'Ubicación no disponible',
+        message: result.message ?? 'No se pudo obtener tu ubicación.',
+      });
+      return;
+    }
+
+    setPosition(result.position);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.location;
+      return next;
+    });
+  };
+
+  const handleClearLocation = () => {
+    setPosition(null);
+    setAddress('');
   };
 
   const handleAddEvidence = async (source: 'camera' | 'gallery') => {
@@ -150,50 +224,117 @@ export default function IncidentFormScreen({
     if (categoryId === null) return;
 
     setIsSubmitting(true);
-    const result = await registerIncident({
-      categoryId,
-      title: title.trim(),
-      description: description.trim(),
-    });
 
-    if (!result.success || !result.data) {
-      setIsSubmitting(false);
-      if (result.fieldErrors) setErrors(result.fieldErrors);
-      error({
-        title: 'No se pudo registrar el reporte',
-        message: result.message,
-      });
-      return;
-    }
+    try {
+      const payload = {
+        categoryId,
+        title: title.trim(),
+        description: description.trim(),
+      };
 
-    const incident = result.data;
-    let failedCount = 0;
+      if (isEdit) {
+        if (!incidentId) {
+          error({
+            title: 'No se pudo editar el reporte',
+            message: 'Falta el identificador del reporte a editar.',
+          });
+          return;
+        }
 
-    for (const image of evidence) {
-      const attachResult = await attachEvidenceToIncident(incident.id, image);
-      if (!attachResult.success) {
-        failedCount += 1;
+        const result = await editIncident(incidentId, payload);
+
+        if (!result.success) {
+          if (result.fieldErrors) setErrors(result.fieldErrors);
+          error({
+            title: 'No se pudo editar el reporte',
+            message: result.message,
+          });
+          return;
+        }
+
+        success({
+          title: 'Reporte editado',
+          message:
+            'Tu reporte se actualizó correctamente. Recuerda que solo se permite una edición.',
+          onAccept: onSaved,
+        });
+        return;
       }
-    }
 
-    setIsSubmitting(false);
+      const result = await registerIncident(payload);
 
-    if (evidence.length > 0 && failedCount === evidence.length) {
-      error({
-        title: 'No se pudo adjuntar la evidencia',
-        message: 'El reporte se registró, pero ninguna imagen pudo subirse. Intenta adjuntarlas después.',
+      if (!result.success || !result.data) {
+        if (result.fieldErrors) setErrors(result.fieldErrors);
+        error({
+          title: 'No se pudo registrar el reporte',
+          message: result.message,
+        });
+        return;
+      }
+
+      const incident = result.data;
+      let locationFailed = false;
+
+      if (position) {
+        const locationResult = await attachLocationToIncident(incident.id, {
+          latitude: position.latitude,
+          longitude: position.longitude,
+          address: address.trim() || undefined,
+          capturedAt: position.capturedAt,
+        });
+        locationFailed = !locationResult.success;
+      }
+
+      let failedCount = 0;
+
+      for (const image of evidence) {
+        const attachResult = await attachEvidenceToIncident(incident.id, image);
+        if (!attachResult.success) {
+          failedCount += 1;
+        }
+      }
+
+      if (locationFailed) {
+        const evidencePart =
+          evidence.length > 0 && failedCount === evidence.length
+            ? 'Tampoco pudieron subirse las imágenes adjuntadas.'
+            : evidence.length > 0
+            ? 'Las imágenes se adjuntaron correctamente.'
+            : '';
+        error({
+          title: 'No se pudo registrar la ubicación',
+          message: `El reporte se registró correctamente, pero no se pudo guardar la ubicación del incidente. ${evidencePart} Puedes intentar actualizarla después.`,
+        });
+        return;
+      }
+
+      if (evidence.length > 0 && failedCount === evidence.length) {
+        error({
+          title: 'No se pudo adjuntar la evidencia',
+          message: 'El reporte se registró, pero ninguna imagen pudo subirse. Intenta adjuntarlas después.',
+        });
+        return;
+      }
+
+      success({
+        title: 'Reporte registrado',
+        message:
+          failedCount > 0
+            ? `${evidence.length - failedCount} de ${evidence.length} imágenes se adjuntaron correctamente; ${failedCount} no pudieron subirse.`
+            : 'Tu incidente se registró correctamente y está en revisión.',
+        onAccept: onSaved,
       });
-      return;
+    } catch (caught) {
+      error({
+        title: 'Error inesperado',
+        message:
+          caught instanceof Error && caught.message
+            ? caught.message
+            : 'Ocurrió un error al enviar el reporte. Inténtalo de nuevo.',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    success({
-      title: 'Reporte registrado',
-      message:
-        failedCount > 0
-          ? `${evidence.length - failedCount} de ${evidence.length} imágenes se adjuntaron correctamente; ${failedCount} no pudieron subirse.`
-          : 'Tu incidente se registró correctamente y está en revisión.',
-      onAccept: onSaved,
-    });
   };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
@@ -223,20 +364,35 @@ export default function IncidentFormScreen({
             }}
           >
             <View style={styles.content}>
-              <AdminHeader title="Nuevo reporte" onBack={onBack} />
+              <AdminHeader
+                title={isEdit ? 'Editar reporte' : 'Nuevo reporte'}
+                onBack={onBack}
+              />
 
               <View style={styles.pageHeader}>
                 <View style={styles.pageIconWrap}>
                   <Icon name="report" size={28} color={Colors.accent} />
                 </View>
                 <View style={styles.pageHeaderText}>
-                  <Text style={styles.pageTitle}>Registrar incidente</Text>
+                  <Text style={styles.pageTitle}>
+                    {isEdit ? 'Editar incidente' : 'Registrar incidente'}
+                  </Text>
                   <Text style={styles.pageSubtitle}>
-                    Describe el problema y presiona enviar.
+                    {isEdit
+                      ? 'Actualiza los datos de tu reporte. Solo puedes editarlo una vez.'
+                      : 'Describe el problema y presiona enviar.'}
                   </Text>
                 </View>
               </View>
 
+              {isLoadingEdit ? (
+                <View style={styles.loadingEditBox}>
+                  <ActivityIndicator color={Colors.accent} size="large" />
+                  <Text style={styles.loadingEditText}>
+                    Cargando reporte…
+                  </Text>
+                </View>
+              ) : (
               <View style={styles.formCard}>
                 <View style={styles.cardTopBar} />
                 <View style={styles.cardBody}>
@@ -286,21 +442,52 @@ export default function IncidentFormScreen({
                     style={{ minHeight: 120 }}
                   />
 
-                  {/* Evidencia fotográfica (HU07, opcional) */}
-                  <EvidencePicker
-                    evidence={evidence}
-                    onAdd={handleAddEvidence}
-                    onRemove={handleRemoveEvidence}
-                    picking={isPicking}
-                  />
+                  {/* Evidencia fotográfica y ubicación solo al crear */}
+                  {isEdit ? (
+                    <View style={styles.editNoteBox}>
+                      <Icon name="info" size={18} color={Colors.accent} />
+                      <Text style={styles.editNoteText}>
+                        La evidencia fotográfica y la ubicación de este reporte
+                        se conservan tal como las registraste.
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <EvidencePicker
+                        evidence={evidence}
+                        onAdd={handleAddEvidence}
+                        onRemove={handleRemoveEvidence}
+                        picking={isPicking}
+                      />
+
+                      <LocationPicker
+                        position={position}
+                        address={address}
+                        onCapture={handleCaptureLocation}
+                        onClear={handleClearLocation}
+                        onChangeAddress={setAddress}
+                        locating={isLocating}
+                        error={errors.location}
+                      />
+                    </>
+                  )}
 
                   <PrimaryButton
-                    label={isSubmitting ? 'Registrando…' : 'Enviar reporte'}
+                    label={
+                      isSubmitting
+                        ? isEdit
+                          ? 'Guardando…'
+                          : 'Registrando…'
+                        : isEdit
+                        ? 'Guardar cambios'
+                        : 'Enviar reporte'
+                    }
                     onPress={handleSubmit}
                     loading={isSubmitting}
                   />
                 </View>
               </View>
+              )}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -477,6 +664,32 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
+  },
+  loadingEditBox: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+    gap: spacing.sm,
+  },
+  loadingEditText: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.body,
+  },
+  editNoteBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(0, 212, 255, 0.08)',
+    borderColor: 'rgba(0, 212, 255, 0.25)',
+    borderWidth: 1,
+    borderRadius: radius.card,
+    padding: spacing.base,
+    marginTop: spacing.base,
+  },
+  editNoteText: {
+    flex: 1,
+    color: Colors.textSecondary,
+    fontSize: fontSizes.caption,
+    lineHeight: 18,
   },
   modalBackdrop: {
     flex: 1,

@@ -17,12 +17,20 @@
         margin: 0;
         padding: 0;
         height: 100%;
+        /* Un solo scrollbar: el documento no debe desplazarse,
+           solo los ScrollView internos de la app (web). */
+        overflow: hidden;
         background-color: #063043;
         color-scheme: light;
       }
 
       #root {
         height: 100%;
+        /* Flex container para que el View raíz (flex:1) llene la pantalla
+           y la barra de navegación quede fija abajo sin scroll propio. */
+        display: flex;
+        min-width: 0;
+        min-height: 0;
       }
 
       /* Campos de texto: cursor en celeste institucional y sin borde de foco del navegador */

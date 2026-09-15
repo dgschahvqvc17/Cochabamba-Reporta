@@ -24,6 +24,7 @@ import UserDetailScreen from '../screens/UserDetailScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import CategoryFormScreen from '../screens/CategoryFormScreen';
 import IncidentFormScreen from '../screens/IncidentFormScreen';
+import ReportsScreen from '../screens/ReportsScreen';
 import AppNavBar from '../components/AppNavBar';
 import {
   clearSession,
@@ -48,7 +49,11 @@ type AdminRoute =
   | { name: 'category-create' }
   | { name: 'category-edit'; categoryId: number };
 
-type CitizenRoute = { name: 'home' } | { name: 'incident-create' };
+type CitizenRoute =
+  | { name: 'home' }
+  | { name: 'incident-create' }
+  | { name: 'incident-edit'; incidentId: number }
+  | { name: 'my-reports' };
 
 const SESSION_CHECK_INTERVAL_MS = 10000;
 
@@ -221,18 +226,37 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
 
     // Citizen home — navbar always visible
     const isCitizenSubRoute = citizenRoute.name !== 'home';
+    const citizenNavActiveKey =
+      citizenRoute.name === 'my-reports' ? 'reports' : 'home';
     return (
       <View style={styles.container}>
         <View style={styles.screenSlot}>
           {citizenRoute.name === 'incident-create' ? (
             <IncidentFormScreen
+              mode="create"
               onBack={() => setCitizenRoute({ name: 'home' })}
               onSaved={() => setCitizenRoute({ name: 'home' })}
+            />
+          ) : citizenRoute.name === 'incident-edit' ? (
+            <IncidentFormScreen
+              mode="edit"
+              incidentId={citizenRoute.incidentId}
+              onBack={() => setCitizenRoute({ name: 'my-reports' })}
+              onSaved={() => setCitizenRoute({ name: 'my-reports' })}
+            />
+          ) : citizenRoute.name === 'my-reports' ? (
+            <ReportsScreen
+              onBack={() => setCitizenRoute({ name: 'home' })}
+              onNewReport={() => setCitizenRoute({ name: 'incident-create' })}
+              onEdit={(incidentId) =>
+                setCitizenRoute({ name: 'incident-edit', incidentId })
+              }
             />
           ) : (
             <HomeScreen
               user={session.user}
               onNewIncident={() => setCitizenRoute({ name: 'incident-create' })}
+              onViewReports={() => setCitizenRoute({ name: 'my-reports' })}
             />
           )}
         </View>
@@ -244,8 +268,14 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
               icon: 'home',
               onPress: () => !isCitizenSubRoute && setCitizenRoute({ name: 'home' }),
             },
+            {
+              key: 'reports',
+              label: 'Reportes',
+              icon: 'report',
+              onPress: () => setCitizenRoute({ name: 'my-reports' }),
+            },
           ]}
-          activeKey="home"
+          activeKey={citizenNavActiveKey}
           dimmed={isCitizenSubRoute}
           onLogout={handleLogout}
         />
