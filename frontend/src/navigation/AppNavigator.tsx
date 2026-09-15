@@ -23,6 +23,7 @@ import UserFormScreen from '../screens/UserFormScreen';
 import UserDetailScreen from '../screens/UserDetailScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import CategoryFormScreen from '../screens/CategoryFormScreen';
+import IncidentFormScreen from '../screens/IncidentFormScreen';
 import AppNavBar from '../components/AppNavBar';
 import {
   clearSession,
@@ -47,6 +48,8 @@ type AdminRoute =
   | { name: 'category-create' }
   | { name: 'category-edit'; categoryId: number };
 
+type CitizenRoute = { name: 'home' } | { name: 'incident-create' };
+
 const SESSION_CHECK_INTERVAL_MS = 10000;
 
 function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
@@ -55,6 +58,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
   );
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
   const [adminRoute, setAdminRoute] = useState<AdminRoute>({ name: 'dashboard' });
+  const [citizenRoute, setCitizenRoute] = useState<CitizenRoute>({ name: 'home' });
 
   useEffect(() => {
     if (!session) {
@@ -216,10 +220,21 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
     }
 
     // Citizen home — navbar always visible
+    const isCitizenSubRoute = citizenRoute.name !== 'home';
     return (
       <View style={styles.container}>
         <View style={styles.screenSlot}>
-          <HomeScreen user={session.user} />
+          {citizenRoute.name === 'incident-create' ? (
+            <IncidentFormScreen
+              onBack={() => setCitizenRoute({ name: 'home' })}
+              onSaved={() => setCitizenRoute({ name: 'home' })}
+            />
+          ) : (
+            <HomeScreen
+              user={session.user}
+              onNewIncident={() => setCitizenRoute({ name: 'incident-create' })}
+            />
+          )}
         </View>
         <AppNavBar
           items={[
@@ -227,10 +242,11 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
               key: 'home',
               label: 'Inicio',
               icon: 'home',
-              onPress: () => {},
+              onPress: () => !isCitizenSubRoute && setCitizenRoute({ name: 'home' }),
             },
           ]}
           activeKey="home"
+          dimmed={isCitizenSubRoute}
           onLogout={handleLogout}
         />
       </View>
