@@ -2,9 +2,12 @@
  * Servicio de incidentes (MVC - Service).
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
+ * HU07 — Adjuntar evidencia fotográfica.
  * Contiene únicamente la comunicación HTTP con la API REST:
  *   - `createIncident(accessToken, payload)` → POST /incidents
  *   - `getIncidentById(accessToken, id)`      → GET /incidents/:id
+ *   - `attachEvidence(accessToken, id, file)` → POST /incidents/:id/evidence
+ *     (multipart/form-data — HU07).
  * Replica el patrón de categoryService.ts: helper `api` con manejo
  * de 401 (clearSession), ApiResponse genérico y BASE_URL compartido.
  *
@@ -12,6 +15,7 @@
  */
 
 import type {
+  Evidence,
   Incident,
   IncidentCreateResponse,
   IncidentPayload,
@@ -36,9 +40,14 @@ const api = async <T>(
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> => {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),
   };
+
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`;
@@ -71,4 +80,23 @@ export async function getIncidentById(
   incidentId: number,
 ): Promise<ApiResponse<{ incident: Incident }>> {
   return api<{ incident: Incident }>(`/incidents/${incidentId}`, accessToken);
+}
+
+export async function attachEvidence(
+  accessToken: string,
+  incidentId: number,
+  file: Blob | { uri: string; name: string; type: string },
+  fileName: string,
+): Promise<ApiResponse<{ evidence: Evidence }>> {
+  const body = new FormData();
+  body.append('image', file as unknown as Blob, fileName);
+
+  return api<{ evidence: Evidence }>(
+    `/incidents/${incidentId}/evidence`,
+    accessToken,
+    {
+      method: 'POST',
+      body,
+    },
+  );
 }

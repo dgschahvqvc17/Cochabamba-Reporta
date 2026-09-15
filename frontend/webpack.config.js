@@ -25,7 +25,9 @@ module.exports = {
     rules: [
       {
         test: /\.(js|jsx|ts|tsx)$/,
-        exclude: /node_modules[/\\](?!react-native-web)/,
+        // HU07: react-native-image-picker se distribuye como TS (src/) y debe
+        // compilarse con babel. Se excluye node_modules salvo esos paquetes.
+        exclude: /node_modules[/\\](?!react-native-web|react-native-image-picker)/,
         use: {
           loader: 'babel-loader',
           options: {

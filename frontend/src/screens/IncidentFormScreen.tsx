@@ -2,16 +2,19 @@
  * Pantalla: Formulario de incidente (MVC - View).
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
+ * HU07 — Adjuntar evidencia fotográfica.
  * Replica el patrón visual de CategoryFormScreen (dark immersive,
  * glassmorphic form card, conceptos y animaciones), añadiendo un
- * selector de categoría (obligatoria) alimentado por categoryController.
+ * selector de categoría (obligatoria) alimentado por categoryController
+ * y el selector de evidencia fotográfica (opcional, hasta 5 imágenes).
+ * Al enviar: primero registra el incidente y luego sube cada imagen
+ * adjunta a /incidents/:id/evidence.
  *
  * @format
  */
 
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   ImageBackground,
   KeyboardAvoidingView,
@@ -28,11 +31,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AdminHeader from '../components/AdminHeader';
 import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
+import EvidencePicker from '../components/EvidencePicker';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
 import { cityBackground } from '../assets/images';
-import { registerIncident } from '../controllers/incidentController';
+import {
+  attachEvidenceToIncident,
+  pickEvidence as pickEvidenceFromSource,
+  registerIncident,
+} from '../controllers/incidentController';
 import { loadCategories } from '../controllers/categoryController';
 import { useDialog } from '../hooks/useDialog';
 import {
@@ -44,6 +52,7 @@ import {
   radius,
   spacing,
 } from '../theme';
+import type { PickedEvidence } from '../utils/evidence';
 
 type IncidentFormScreenProps = {
   onBack: () => void;
@@ -72,6 +81,8 @@ export default function IncidentFormScreen({
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [evidence, setEvidence] = useState<PickedEvidence[]>([]);
+  const [isPicking, setIsPicking] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -106,6 +117,32 @@ export default function IncidentFormScreen({
     return errs;
   };
 
+  const handleAddEvidence = async (source: 'camera' | 'gallery') => {
+    if (isPicking) return;
+
+    setIsPicking(true);
+    const result = await pickEvidenceFromSource(source);
+    setIsPicking(false);
+
+    if (result.cancelled) {
+      return;
+    }
+
+    if (!result.ok || !result.evidence) {
+      error({
+        title: 'Imagen no disponible',
+        message: result.message ?? 'No se pudo obtener la imagen.',
+      });
+      return;
+    }
+
+    setEvidence((current) => [...current, result.evidence as PickedEvidence]);
+  };
+
+  const handleRemoveEvidence = (index: number) => {
+    setEvidence((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
   const handleSubmit = async () => {
     const errs = validateForm();
     setErrors(errs);
@@ -118,9 +155,9 @@ export default function IncidentFormScreen({
       title: title.trim(),
       description: description.trim(),
     });
-    setIsSubmitting(false);
 
-    if (!result.success) {
+    if (!result.success || !result.data) {
+      setIsSubmitting(false);
       if (result.fieldErrors) setErrors(result.fieldErrors);
       error({
         title: 'No se pudo registrar el reporte',
@@ -129,9 +166,32 @@ export default function IncidentFormScreen({
       return;
     }
 
+    const incident = result.data;
+    let failedCount = 0;
+
+    for (const image of evidence) {
+      const attachResult = await attachEvidenceToIncident(incident.id, image);
+      if (!attachResult.success) {
+        failedCount += 1;
+      }
+    }
+
+    setIsSubmitting(false);
+
+    if (evidence.length > 0 && failedCount === evidence.length) {
+      error({
+        title: 'No se pudo adjuntar la evidencia',
+        message: 'El reporte se registró, pero ninguna imagen pudo subirse. Intenta adjuntarlas después.',
+      });
+      return;
+    }
+
     success({
       title: 'Reporte registrado',
-      message: 'Tu incidente se registró correctamente y está en revisión.',
+      message:
+        failedCount > 0
+          ? `${evidence.length - failedCount} de ${evidence.length} imágenes se adjuntaron correctamente; ${failedCount} no pudieron subirse.`
+          : 'Tu incidente se registró correctamente y está en revisión.',
       onAccept: onSaved,
     });
   };
@@ -224,6 +284,14 @@ export default function IncidentFormScreen({
                     maxLength={MAX_DESCRIPTION_LENGTH}
                     error={errors.description}
                     style={{ minHeight: 120 }}
+                  />
+
+                  {/* Evidencia fotográfica (HU07, opcional) */}
+                  <EvidencePicker
+                    evidence={evidence}
+                    onAdd={handleAddEvidence}
+                    onRemove={handleRemoveEvidence}
+                    picking={isPicking}
                   />
 
                   <PrimaryButton

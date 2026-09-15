@@ -11,6 +11,13 @@
 -- ---------- Extensiones ----------
 create extension if not exists pgcrypto;
 
+-- ---------- Storage ----------
+-- Bucket para las evidencias fotográficas (HU07).
+-- URL pública: {SUPABASE_URL}/storage/v1/object/public/evidence/...
+insert into storage.buckets (id, name, public)
+values ('evidence', 'evidence', true)
+on conflict (id) do nothing;
+
 -- ---------- Tipos enumerados ----------
 create type incident_status as enum (
   'REPORTADO',

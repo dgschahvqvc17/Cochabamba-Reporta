@@ -2,6 +2,7 @@
  * Servicio de incidentes (MVC - Service).
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
+ * HU07 — Adjuntar evidencia fotográfica.
  *
  * Contiene la lógica de negocio del módulo de incidentes:
  *   - Requiere ciudadano autenticado (asocia `user_id`).
@@ -13,6 +14,10 @@
  *     conteo de incidentes del día (countToday) + 1.
  *   - Crea el incidente con estado inicial REPORTADO (definido en el
  *     repository.release_create).
+ *   - Adjunta evidencia fotográfica (HU07): valida autenticación, existencia
+ *     y propiedad del incidente, formato/tamaño de la imagen, límite de
+ *     imágenes por incidente, sube el archivo a Supabase Storage y registra
+ *     la referencia en la tabla `evidence`.
  * Replica el patrón exacto de category.service.js (buildError + normalizeText
  * + toPublicIncident), solo con la capa de datos hacia incidentRepository.
  *
@@ -21,8 +26,19 @@
 
 'use strict';
 
+const crypto = require('crypto');
+
 const incidentRepository = require('../repositories/incident.repository');
 const categoryRepository = require('../repositories/category.repository');
+const evidenceRepository = require('../repositories/evidence.repository');
+const { supabaseAdmin } = require('../config/supabase');
+const {
+  ALLOWED_MIME_TYPES,
+  MAX_IMAGE_SIZE,
+  MAX_EVIDENCE_COUNT,
+  EVIDENCE_BUCKET,
+  extensionFromMime,
+} = require('../utils/evidence');
 const {
   MIN_TITLE_LENGTH,
   MAX_TITLE_LENGTH,
@@ -65,6 +81,17 @@ const toPublicIncident = (incident) => ({
   createdAt: incident.created_at,
   updatedAt: incident.updated_at,
 });
+
+const toPublicEvidence = (evidence) => ({
+  id: evidence.id,
+  incidentId: evidence.incident_id,
+  url: evidence.url,
+  mimeType: evidence.mime_type,
+  sizeBytes: evidence.size_bytes,
+  createdAt: evidence.created_at,
+});
+
+const randomToken = (bytes) => crypto.randomBytes(bytes).toString('hex');
 
 const incidentService = {
   async createIncident(user, payload) {
@@ -173,7 +200,113 @@ const incidentService = {
       throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
     }
 
-    return toPublicIncident(incident);
+    const evidence = await evidenceRepository.findByIncident(incident.id);
+
+    return {
+      ...toPublicIncident(incident),
+      evidence: evidence.map(toPublicEvidence),
+    };
+  },
+
+  async addEvidence(user, incidentId, file) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para adjuntar evidencia.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.user_id !== userId) {
+      throw buildError(
+        'Solo puedes adjuntar evidencia a tus propios incidentes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    if (!file || !file.buffer) {
+      throw buildError(
+        'Debe adjuntar una imagen como evidencia.',
+        422,
+        'VALIDATION_ERROR',
+        'image',
+      );
+    }
+
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      throw buildError(
+        'El formato de la imagen no es válido. Solo se permiten JPG, PNG y WebP.',
+        422,
+        'VALIDATION_ERROR',
+        'image',
+      );
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      throw buildError(
+        'La imagen supera el tamaño máximo permitido (5 MB).',
+        422,
+        'VALIDATION_ERROR',
+        'image',
+      );
+    }
+
+    const currentCount = await evidenceRepository.countByIncident(
+      Number(incidentId),
+    );
+
+    if (currentCount >= MAX_EVIDENCE_COUNT) {
+      throw buildError(
+        `Solo puedes adjuntar hasta ${MAX_EVIDENCE_COUNT} imágenes por incidente.`,
+        422,
+        'EVIDENCE_LIMIT_REACHED',
+        'image',
+      );
+    }
+
+    const extension = extensionFromMime(file.mimetype);
+    const storagePath = `incidents/${incident.id}/${Date.now()}-${randomToken(6)}${extension}`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(EVIDENCE_BUCKET)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw buildError(
+        'No se pudo almacenar la imagen.',
+        500,
+        'EVIDENCE_UPLOAD_ERROR',
+      );
+    }
+
+    const { data: publicUrlData } = supabaseAdmin.storage
+      .from(EVIDENCE_BUCKET)
+      .getPublicUrl(storagePath);
+
+    const publicUrl = publicUrlData && publicUrlData.publicUrl;
+
+    const created = await evidenceRepository.create({
+      incidentId: incident.id,
+      url: publicUrl,
+      storagePath,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+      uploadedBy: userId,
+    });
+
+    return toPublicEvidence(created);
   },
 };
 
