@@ -18,6 +18,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AdminScreen from '../screens/AdminScreen';
+import StaffHomeScreen from '../screens/StaffHomeScreen';
 import UsersScreen from '../screens/UsersScreen';
 import UserFormScreen from '../screens/UserFormScreen';
 import UserDetailScreen from '../screens/UserDetailScreen';
@@ -25,6 +26,8 @@ import CategoriesScreen from '../screens/CategoriesScreen';
 import CategoryFormScreen from '../screens/CategoryFormScreen';
 import IncidentFormScreen from '../screens/IncidentFormScreen';
 import ReportsScreen from '../screens/ReportsScreen';
+import IncidentsScreen from '../screens/IncidentsScreen';
+import IncidentDetailScreen from '../screens/IncidentDetailScreen';
 import AppNavBar from '../components/AppNavBar';
 import {
   clearSession,
@@ -55,6 +58,19 @@ type CitizenRoute =
   | { name: 'incident-edit'; incidentId: number }
   | { name: 'my-reports' };
 
+/** Roles municipales que usan el módulo de recepción/consulta (HU09). */
+type StaffRoute =
+  | { name: 'home' }
+  | { name: 'incidents' }
+  | { name: 'incident-detail'; incidentId: number };
+
+const STAFF_ROLES: string[] = [
+  'RECEPCION',
+  'VERIFICADOR',
+  'ENCARGADO_SOLUCION',
+  'PERSONAL_SOLUCION',
+];
+
 const SESSION_CHECK_INTERVAL_MS = 10000;
 
 function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
@@ -64,6 +80,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
   const [adminRoute, setAdminRoute] = useState<AdminRoute>({ name: 'dashboard' });
   const [citizenRoute, setCitizenRoute] = useState<CitizenRoute>({ name: 'home' });
+  const [staffRoute, setStaffRoute] = useState<StaffRoute>({ name: 'home' });
 
   useEffect(() => {
     if (!session) {
@@ -74,6 +91,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
       if (!getStoredSession()) {
         clearSession();
         setAdminRoute({ name: 'dashboard' });
+        setStaffRoute({ name: 'home' });
         setSession(null);
         setAuthScreen('login');
       }
@@ -87,12 +105,15 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
 
   const handleLoginSuccess = (newSession: StoredSession) => {
     setAdminRoute({ name: 'dashboard' });
+    setStaffRoute({ name: 'home' });
+    setCitizenRoute({ name: 'home' });
     setSession(newSession);
   };
 
   const handleLogout = () => {
     setSession(null);
     setAdminRoute({ name: 'dashboard' });
+    setStaffRoute({ name: 'home' });
     setAuthScreen('login');
   };
 
@@ -218,6 +239,62 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
             ]}
             activeKey={navActiveKey}
             dimmed={isSubRoute}
+            onLogout={handleLogout}
+          />
+        </View>
+      );
+    }
+
+    const isStaff = STAFF_ROLES.includes(session.user.role);
+
+    if (isStaff) {
+      const isStaffSubRoute = staffRoute.name === 'incident-detail';
+
+      const staffNavActiveKey =
+        staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
+          ? 'incidents'
+          : 'home';
+
+      return (
+        <View style={styles.container}>
+          <View style={styles.screenSlot}>
+            {staffRoute.name === 'incidents' ? (
+              <IncidentsScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenDetail={(incidentId) =>
+                  setStaffRoute({ name: 'incident-detail', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'incident-detail' ? (
+              <IncidentDetailScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'incidents' })}
+              />
+            ) : (
+              <StaffHomeScreen
+                user={session.user}
+                onGoToIncidents={() => setStaffRoute({ name: 'incidents' })}
+              />
+            )}
+          </View>
+
+          <AppNavBar
+            items={[
+              {
+                key: 'home',
+                label: 'Inicio',
+                icon: 'home',
+                onPress: () => !isStaffSubRoute && setStaffRoute({ name: 'home' }),
+              },
+              {
+                key: 'incidents',
+                label: 'Incidentes',
+                icon: 'report',
+                onPress: () => setStaffRoute({ name: 'incidents' }),
+              },
+            ]}
+            activeKey={staffNavActiveKey}
+            dimmed={isStaffSubRoute}
             onLogout={handleLogout}
           />
         </View>

@@ -4,6 +4,9 @@
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
  * HU08 — Registrar ubicación del incidente.
+ * HU09 — Consultar y gestionar incidentes (personal municipal): agrega el
+ *   tipo `IncidentReporter` (ciudadano que reportó), el campo opcional
+ *   `reporter` y la interfaz `IncidentListData` (paginación del listado).
  *
  * Define la estructura del incidente en el frontend, incluyendo:
  *   - El tipo `IncidentStatus` con todos los estados del ciclo de vida
@@ -68,6 +71,28 @@ export interface IncidentLocation {
   capturedAt: string;
 }
 
+/**
+ * Ciudadano que reportó el incidente (HU09). Solo viaja en las respuestas
+ * destinadas al personal municipal (Encargado de recepción).
+ */
+export interface IncidentReporter {
+  id: number;
+  firstName: string;
+  lastName: string;
+  identityNumber: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+/** Respuesta paginada del listado de incidentes para el personal (HU09). */
+export interface IncidentListData {
+  incidents: Incident[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
 export interface Incident {
   id: number;
   code: string;
@@ -85,6 +110,8 @@ export interface Incident {
   canEdit?: boolean;
   /** true si está REPORTADO (permite eliminar). */
   canDelete?: boolean;
+  /** Ciudadano que reportó (solo disponible para el personal municipal, HU09). */
+  reporter?: IncidentReporter | null;
   location?: IncidentLocation | null;
   evidence?: Evidence[];
 }

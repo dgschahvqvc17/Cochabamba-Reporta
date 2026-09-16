@@ -21,6 +21,7 @@ import type {
   Evidence,
   Incident,
   IncidentCreateResponse,
+  IncidentListData,
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
@@ -147,6 +148,50 @@ export async function getMyIncidents(
     : '/incidents';
 
   return api<{ incidents: Incident[] }>(path, accessToken);
+}
+
+/**
+ * Parámetros del listado de incidentes para el personal municipal (HU09):
+ * búsqueda por código/título/descripción, filtros por estado, categoría y
+ * fecha (AAAA-MM-DD), y paginación.
+ */
+export interface IncidentListParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  categoryId?: number;
+  from?: string;
+  to?: string;
+  search?: string;
+}
+
+/**
+ * Lista de incidentes con paginación para el personal municipal (HU09).
+ * El rol del usuario autenticado determina el alcance: el ciudadano sigue
+ * viendo solo sus reportes (getMyIncidents).
+ */
+export async function getIncidents(
+  accessToken: string,
+  params: IncidentListParams = {},
+): Promise<ApiResponse<IncidentListData>> {
+  const query = new URLSearchParams();
+
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.status) query.set('status', params.status);
+  if (params.categoryId !== undefined) {
+    query.set('categoryId', String(params.categoryId));
+  }
+  if (params.from) query.set('from', params.from);
+  if (params.to) query.set('to', params.to);
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<IncidentListData>(
+    `/incidents${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
 }
 
 export async function attachEvidence(

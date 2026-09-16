@@ -4,6 +4,7 @@
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
  * HU08 — Registrar ubicación del incidente.
+ * HU09 — Consultar y gestionar incidentes (personal municipal).
  *
  * Contiene la lógica de negocio del módulo de incidentes:
  *   - Requiere ciudadano autenticado (asocia `user_id`).
@@ -55,12 +56,27 @@ const {
   MIN_DESCRIPTION_LENGTH,
   MAX_DESCRIPTION_LENGTH,
   INCIDENT_STATUSES,
+  DEFAULT_LIST_PAGE_SIZE,
+  MAX_LIST_PAGE_SIZE,
 } = require('../validators/incident.validator');
+const ROLES = require('../utils/roles');
 
 const MIN_CATEGORY_ID = 1;
 
 /** Único estado en el que el ciudadano puede editar o eliminar su reporte. */
 const EDITABLE_STATUS = 'REPORTADO';
+
+/**
+ * Roles municipales que consultan todos los incidentes (HU09).
+ * El ciudadano solo consulta sus propios reportes.
+ */
+const MANAGED_ROLES = [
+  ROLES.RECEPCION,
+  ROLES.VERIFICADOR,
+  ROLES.ENCARGADO_SOLUCION,
+  ROLES.PERSONAL_SOLUCION,
+  ROLES.ADMINISTRADOR,
+];
 
 const buildError = (message, status, code, field = null) => {
   const error = new Error(message);
@@ -73,6 +89,30 @@ const buildError = (message, status, code, field = null) => {
 };
 
 const normalizeText = (value) => (value ? String(value).trim() : '');
+
+const parsePositiveInt = (value, fallback, max) => {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 1) {
+    return fallback;
+  }
+  return Math.min(parsed, max);
+};
+
+/**
+ * Ciudadano que realizó el reporte (HU09). Campos mínimos necesarios
+ * para que el encargado de recepción identifique al reportante.
+ */
+const toPublicReporter = (citizen) =>
+  citizen
+    ? {
+        id: citizen.id,
+        firstName: citizen.first_name,
+        lastName: citizen.last_name,
+        identityNumber: citizen.identity_number,
+        phone: citizen.phone,
+        email: citizen.email,
+      }
+    : null;
 
 const buildIncidentCode = (sequence) => {
   const now = new Date();
@@ -179,6 +219,7 @@ const toPublicIncident = (incident) => ({
   updatedAt: incident.updated_at,
   canEdit: isEditable(incident),
   canDelete: incident.status === EDITABLE_STATUS,
+  reporter: toPublicReporter(incident.citizen),
 });
 
 const toPublicIncidentListItem = (incident) => ({
@@ -187,11 +228,13 @@ const toPublicIncidentListItem = (incident) => ({
   categoryId: incident.category_id,
   category: incident.category ? { id: incident.category.id, name: incident.category.name } : null,
   title: incident.title,
+  description: incident.description,
   status: incident.status,
   createdAt: incident.created_at,
   updatedAt: incident.updated_at,
   canEdit: isEditable(incident),
   canDelete: incident.status === EDITABLE_STATUS,
+  reporter: toPublicReporter(incident.citizen),
 });
 
 const toPublicEvidence = (evidence) => ({
@@ -247,11 +290,23 @@ const incidentService = {
     return toPublicIncident(created);
   },
 
-  async getIncidentById(id) {
+  async getIncidentById(id, user) {
     const incident = await incidentRepository.findById(id);
 
     if (!incident) {
       throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    const userId = user && user.id;
+
+    if (userId && user.role === ROLES.CIUDADANO) {
+      if (Number(incident.user_id) !== Number(userId)) {
+        throw buildError(
+          'Solo puedes consultar el detalle de tus propios reportes.',
+          403,
+          'FORBIDDEN',
+        );
+      }
     }
 
     const evidence = await evidenceRepository.findByIncident(incident.id);
@@ -291,6 +346,93 @@ const incidentService = {
     const incidents = await incidentRepository.findByUserId({ userId, status });
 
     return incidents.map(toPublicIncidentListItem);
+  },
+
+  /**
+   * Lista de incidentes según el rol (HU09).
+   * - Ciudadano: solo sus reportes.
+   * - Personal municipal (RECEPCION y demás): todos los incidentes con
+   *   búsqueda, filtros y paginación.
+   */
+  async listIncidents(user, query = {}) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para consultar incidentes.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    if (user.role === ROLES.CIUDADANO) {
+      const incidents = await this.listMyIncidents(user, query);
+      return { incidents };
+    }
+
+    return this.listManagedIncidents(user, query);
+  },
+
+  /**
+   * Consulta y gestión de incidentes para el personal municipal
+   * (HU09, actor Encargado de recepción). Filtros por estado, categoría,
+   * fecha (desde/hasta) y búsqueda por código, título o descripción.
+   */
+  async listManagedIncidents(user, query = {}) {
+    const page = parsePositiveInt(query.page, 1, Number.MAX_SAFE_INTEGER);
+    const limit = parsePositiveInt(
+      query.limit,
+      DEFAULT_LIST_PAGE_SIZE,
+      MAX_LIST_PAGE_SIZE,
+    );
+    const status =
+      query && query.status ? String(query.status).trim() : null;
+    const categoryId = query.categoryId ? Number(query.categoryId) : null;
+    const from = query && query.from ? String(query.from).trim() : null;
+    const to = query && query.to ? String(query.to).trim() : null;
+    const search = query && query.search ? String(query.search).trim() : '';
+
+    if (status && !INCIDENT_STATUSES.includes(status)) {
+      throw buildError(
+        'El estado indicado no es válido.',
+        422,
+        'VALIDATION_ERROR',
+        'status',
+      );
+    }
+
+    if (
+      from &&
+      to &&
+      /^\d{4}-\d{2}-\d{2}$/.test(from) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(to) &&
+      from > to
+    ) {
+      throw buildError(
+        'La fecha "desde" no puede ser posterior a la fecha "hasta".',
+        422,
+        'VALIDATION_ERROR',
+        'from',
+      );
+    }
+
+    const { incidents, total } = await incidentRepository.findAllManaged({
+      page,
+      limit,
+      status,
+      categoryId,
+      from: from ? `${from}T00:00:00.000` : null,
+      to: to ? `${to}T23:59:59.999` : null,
+      search,
+    });
+
+    return {
+      incidents: incidents.map(toPublicIncidentListItem),
+      total,
+      page,
+      limit,
+      pages: Math.max(1, Math.ceil(total / limit)),
+    };
   },
 
   async addEvidence(user, incidentId, file) {

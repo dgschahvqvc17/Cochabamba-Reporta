@@ -4,6 +4,7 @@
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
  * HU08 — Registrar ubicación del incidente.
+ * HU09 — Consultar y gestionar incidentes (personal municipal).
  *
  * Es la capa de presentación HTTP. Recibe la solicitud, extrae el ciudadano
  * autenticado (req.user) y el payload, delega en el service y devuelve la
@@ -38,7 +39,10 @@ const incidentController = {
 
   async getIncidentById(req, res, next) {
     try {
-      const incident = await incidentService.getIncidentById(req.params.id);
+      const incident = await incidentService.getIncidentById(
+        req.params.id,
+        req.user,
+      );
 
       return ok(res, 200, 'Incidente consultado correctamente.', {
         incident,
@@ -50,14 +54,9 @@ const incidentController = {
 
   async listIncidents(req, res, next) {
     try {
-      const incidents = await incidentService.listMyIncidents(
-        req.user,
-        req.query,
-      );
+      const data = await incidentService.listIncidents(req.user, req.query);
 
-      return ok(res, 200, 'Reportes consultados correctamente.', {
-        incidents,
-      });
+      return ok(res, 200, 'Incidentes consultados correctamente.', data);
     } catch (error) {
       return next(error);
     }
