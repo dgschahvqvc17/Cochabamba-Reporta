@@ -8,6 +8,12 @@
  *   - POST /api/v1/incidents/:id/evidence        → adjuntar imagen (ciudadano).
  * HU08 — Registrar ubicación del incidente:
  *   - POST /api/v1/incidents/:id/location        → registrar ubicación (ciudadano).
+ * HU09 — Consultar y gestionar incidentes (personal municipal):
+ *   - GET  /api/v1/incidents                     → listar con búsqueda, filtros
+ *                                                 (estado, categoría, fecha) y
+ *                                                 paginación (rol-aware).
+ *   - GET  /api/v1/incidents/:id                 → consultar detalle (incluye
+ *                                                 ciudadano, ubicación y evidencia).
  * Editar / eliminar reporte (solo estado REPORTADO y edición única):
  *   - PATCH /api/v1/incidents/:id                → editar (ciudadano).
  *   - DELETE /api/v1/incidents/:id               → eliminar (ciudadano).

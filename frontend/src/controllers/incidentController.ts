@@ -4,6 +4,7 @@
  * HU06 — Registro de incidentes por parte del ciudadano.
  * HU07 — Adjuntar evidencia fotográfica.
  * HU08 — Registrar ubicación del incidente.
+ * HU09 — Consultar y gestionar incidentes (personal municipal).
  * Traduce el resultado de la API (incidentService) en un `ActionResult`
  * con `fieldErrors` tipados por campo, igual que categoryController.
  * No contiene lógica de negocio ni llamadas directas a fetch.
@@ -17,12 +18,15 @@ import {
   createIncident as createIncidentRequest,
   deleteIncident as deleteIncidentRequest,
   getIncidentById as getIncidentByIdRequest,
+  getIncidents as getIncidentsRequest,
   getMyIncidents as getMyIncidentsRequest,
   updateIncident as updateIncidentRequest,
+  type IncidentListParams,
 } from '../services/incidentService';
 import type {
   Evidence,
   Incident,
+  IncidentListData,
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
@@ -125,6 +129,27 @@ export async function loadIncidentById(
     success: true,
     message: result.message,
     data: result.data?.incident,
+  };
+}
+
+/** HU09: listado paginado de incidentes para el personal municipal. */
+export async function loadManagedIncidents(
+  params: IncidentListParams = {},
+): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
   };
 }
 

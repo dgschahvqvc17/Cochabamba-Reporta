@@ -35,7 +35,7 @@ const create = async ({ code, userId, categoryId, title, description }) => {
 const findById = async (id) => {
   const { data, error } = await supabaseAdmin
     .from('incidents')
-    .select('*')
+    .select('*, citizen:users(id, first_name, last_name, identity_number, phone, email)')
     .eq('id', id)
     .maybeSingle();
 
@@ -64,6 +64,71 @@ const findByUserId = async ({ userId, status = null } = {}) => {
   }
 
   return data ?? [];
+};
+
+const sanitizeSearchTerm = (value) =>
+  value
+    .replace(/[%,]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * Lista todos los incidentes (HU09). Uso exclusivo del personal
+ * municipal: encargado de recepción y demás roles internos.
+ * Filtros: estado, categoría, fecha desde/hasta y búsqueda por
+ * código, título o descripción. Con paginación y conteo exacto.
+ */
+const findAllManaged = async ({
+  page = 1,
+  limit = 10,
+  status = null,
+  categoryId = null,
+  from = null,
+  to = null,
+  search = '',
+} = {}) => {
+  let query = supabaseAdmin
+    .from('incidents')
+    .select(
+      '*, category:categories(id, name), citizen:users(id, first_name, last_name, identity_number, phone, email)',
+      { count: 'exact' },
+    );
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
+  }
+
+  if (from) {
+    query = query.gte('created_at', from);
+  }
+
+  if (to) {
+    query = query.lte('created_at', to);
+  }
+
+  const term = sanitizeSearchTerm(search);
+  if (term) {
+    query = query.or(
+      `code.ilike.%${term}%,title.ilike.%${term}%,description.ilike.%${term}%`,
+    );
+  }
+
+  const fromIndex = (page - 1) * limit;
+  const toIndex = fromIndex + limit - 1;
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(fromIndex, toIndex);
+
+  if (error) {
+    throw error;
+  }
+
+  return { incidents: data ?? [], total: count ?? data?.length ?? 0 };
 };
 
 const countToday = async () => {
@@ -121,6 +186,7 @@ module.exports = {
   create,
   findById,
   findByUserId,
+  findAllManaged,
   countToday,
   update,
   remove,

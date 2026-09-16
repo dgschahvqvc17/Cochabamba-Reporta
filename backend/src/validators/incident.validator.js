@@ -36,6 +36,10 @@ const INCIDENT_STATUSES = [
   'RECHAZADO',
 ];
 
+/** Tamaño de página por defecto y máximo para listar incidentes (HU09). */
+const DEFAULT_LIST_PAGE_SIZE = 10;
+const MAX_LIST_PAGE_SIZE = 50;
+
 const validateCategoryId = body('categoryId')
   .isInt({ min: 1 })
   .withMessage('Debe seleccionar una categoría.')
@@ -46,7 +50,47 @@ const validateListStatus = query('status')
   .isIn(INCIDENT_STATUSES)
   .withMessage('El estado indicado no es válido.');
 
-const listIncidentsValidation = [validateListStatus];
+const validateListCategoryId = query('categoryId')
+  .optional({ values: 'falsy' })
+  .isInt({ min: 1 })
+  .withMessage('La categoría indicada no es válida.')
+  .toInt();
+
+const validateListDate = (field, label) =>
+  query(field)
+    .optional({ values: 'falsy' })
+    .matches(/^\d{4}-\d{2}-\d{2}$/)
+    .withMessage(`${label} debe tener el formato AAAA-MM-DD.`);
+
+const validateListSearch = query('search')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: 100 })
+  .withMessage('La búsqueda no debe superar los 100 caracteres.');
+
+const validateListPage = query('page')
+  .optional({ values: 'falsy' })
+  .isInt({ min: 1 })
+  .withMessage('La página indicada no es válida.')
+  .toInt();
+
+const validateListLimit = query('limit')
+  .optional({ values: 'falsy' })
+  .isInt({ min: 1, max: MAX_LIST_PAGE_SIZE })
+  .withMessage(
+    `El límite por página no debe superar ${MAX_LIST_PAGE_SIZE} registros.`,
+  )
+  .toInt();
+
+const listIncidentsValidation = [
+  validateListStatus,
+  validateListCategoryId,
+  validateListDate('from', 'La fecha desde'),
+  validateListDate('to', 'La fecha hasta'),
+  validateListSearch,
+  validateListPage,
+  validateListLimit,
+];
 
 const validateTitle = body('title')
   .trim()
@@ -76,6 +120,8 @@ module.exports = {
   createIncidentValidation,
   listIncidentsValidation,
   INCIDENT_STATUSES,
+  DEFAULT_LIST_PAGE_SIZE,
+  MAX_LIST_PAGE_SIZE,
   MIN_TITLE_LENGTH,
   MAX_TITLE_LENGTH,
   MIN_DESCRIPTION_LENGTH,
