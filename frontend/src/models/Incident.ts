@@ -93,6 +93,57 @@ export interface IncidentListData {
   pages: number;
 }
 
+/**
+ * Funcionario municipal de verificación disponible para asignar
+ * un incidente (HU10).
+ */
+export interface VerifierUser {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+/** Payload para asignar un incidente para verificación (HU10). */
+export interface AssignVerificationPayload {
+  assignedToId: number;
+  note?: string;
+}
+
+/**
+ * Asignación de un incidente a un funcionario (HU10). `assignmentType`
+ * puede ser 'VERIFICACION' (HU10) o 'SOLUCION' (HU12).
+ */
+export interface IncidentAssignment {
+  id: number;
+  incidentId: number;
+  assignmentType: 'VERIFICACION' | 'SOLUCION';
+  assignedBy: number;
+  assignedTo: number;
+  note: string | null;
+  active: boolean;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+/**
+ * Entrada del historial de cambios de estado de un incidente
+ * (transiciones validadas, con usuario responsable y fecha/hora).
+ */
+export interface IncidentHistoryEntry {
+  id: number;
+  incidentId: number;
+  fromStatus: IncidentStatus | null;
+  toStatus: IncidentStatus;
+  changedBy: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
+  comment: string | null;
+  createdAt: string;
+}
+
 export interface Incident {
   id: number;
   code: string;

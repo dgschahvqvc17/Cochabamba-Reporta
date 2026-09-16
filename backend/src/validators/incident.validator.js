@@ -17,24 +17,12 @@
 'use strict';
 
 const { body, query } = require('express-validator');
+const { INCIDENT_STATUSES } = require('../utils/incidentStatus');
 
 const MIN_TITLE_LENGTH = 8;
 const MAX_TITLE_LENGTH = 120;
 const MIN_DESCRIPTION_LENGTH = 15;
 const MAX_DESCRIPTION_LENGTH = 2000;
-
-/** Estados del ciclo de vida (coincide con el enum incident_status de Supabase). */
-const INCIDENT_STATUSES = [
-  'REPORTADO',
-  'RECIBIDO',
-  'EN_VERIFICACION',
-  'VERIFICADO',
-  'ASIGNADO_PARA_SOLUCION',
-  'EN_ATENCION',
-  'ATENDIDO',
-  'CERRADO',
-  'RECHAZADO',
-];
 
 /** Tamaño de página por defecto y máximo para listar incidentes (HU09). */
 const DEFAULT_LIST_PAGE_SIZE = 10;
@@ -116,9 +104,41 @@ const createIncidentValidation = [
   validateDescription,
 ];
 
+/** HU10: asignar incidente a un funcionario de verificación. */
+const validateAssignedToId = body('assignedToId')
+  .isInt({ min: 1 })
+  .withMessage('Debe seleccionar un funcionario de verificación.')
+  .toInt();
+
+const validateAssignNote = body('note')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: 255 })
+  .withMessage('La nota no debe superar los 255 caracteres.');
+
+const assignVerificationValidation = [
+  validateAssignedToId,
+  validateAssignNote,
+];
+
+/** Transición genérica de estado (PATCH /:id/status). */
+const validateStatus = body('status')
+  .isIn(INCIDENT_STATUSES)
+  .withMessage('El estado indicado no es válido.');
+
+const validateChangeComment = body('comment')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: 500 })
+  .withMessage('El comentario no debe superar los 500 caracteres.');
+
+const changeStatusValidation = [validateStatus, validateChangeComment];
+
 module.exports = {
   createIncidentValidation,
   listIncidentsValidation,
+  assignVerificationValidation,
+  changeStatusValidation,
   INCIDENT_STATUSES,
   DEFAULT_LIST_PAGE_SIZE,
   MAX_LIST_PAGE_SIZE,

@@ -5,6 +5,15 @@
  * HU07 — Adjuntar evidencia fotográfica.
  * HU08 — Registrar ubicación del incidente.
  * HU09 — Consultar y gestionar incidentes (personal municipal).
+ * HU10 — Asignar incidente para verificación (encargado de recepción):
+ *   - Lista los incidentes pendientes de verificación.
+ *   - Lista los funcionarios de verificación disponibles.
+ *   - Asigna el incidente a un verificador, cambia el estado a
+ *     EN_VERIFICACION y registra asignación, historial y
+ *     notificaciones (funcionario + ciudadano).
+ * Transiciones de estado: toda transición pasa por changeStatus
+ * (validar transición permitida, actualizar estado, registrar historial
+ * con usuario/fecha y generar notificación al ciudadano).
  *
  * Contiene la lógica de negocio del módulo de incidentes:
  *   - Requiere ciudadano autenticado (asocia `user_id`).
@@ -34,6 +43,10 @@ const incidentRepository = require('../repositories/incident.repository');
 const categoryRepository = require('../repositories/category.repository');
 const evidenceRepository = require('../repositories/evidence.repository');
 const locationRepository = require('../repositories/location.repository');
+const historyRepository = require('../repositories/history.repository');
+const assignmentRepository = require('../repositories/assignment.repository');
+const notificationRepository = require('../repositories/notification.repository');
+const userRepository = require('../repositories/user.repository');
 const { supabaseAdmin } = require('../config/supabase');
 const {
   ALLOWED_MIME_TYPES,
@@ -60,6 +73,13 @@ const {
   MAX_LIST_PAGE_SIZE,
 } = require('../validators/incident.validator');
 const ROLES = require('../utils/roles');
+const {
+  INCIDENT_STATUS,
+  INCIDENT_STATUS_LABELS,
+  ASSIGNABLE_TO_VERIFICATION,
+  PENDING_VERIFICATION_STATUSES,
+  ROLE_STATUS_TRANSITIONS,
+} = require('../utils/incidentStatus');
 
 const MIN_CATEGORY_ID = 1;
 
@@ -244,6 +264,41 @@ const toPublicEvidence = (evidence) => ({
   mimeType: evidence.mime_type,
   sizeBytes: evidence.size_bytes,
   createdAt: evidence.created_at,
+});
+
+const toPublicVerifier = (verifier) => ({
+  id: verifier.id,
+  firstName: verifier.first_name,
+  lastName: verifier.last_name,
+  email: verifier.email,
+});
+
+const toPublicAssignment = (assignment) => ({
+  id: assignment.id,
+  incidentId: assignment.incident_id,
+  assignmentType: assignment.assignment_type,
+  assignedBy: assignment.assigned_by,
+  assignedTo: assignment.assigned_to,
+  note: assignment.note,
+  active: assignment.active,
+  createdAt: assignment.created_at,
+  completedAt: assignment.completed_at,
+});
+
+const toPublicHistoryEntry = (entry) => ({
+  id: entry.id,
+  incidentId: entry.incident_id,
+  fromStatus: entry.from_status,
+  toStatus: entry.to_status,
+  changedBy: entry.changed_by
+    ? {
+        id: entry.changed_by.id,
+        firstName: entry.changed_by.first_name,
+        lastName: entry.changed_by.last_name,
+      }
+    : null,
+  comment: entry.comment,
+  createdAt: entry.created_at,
 });
 
 const randomToken = (bytes) => crypto.randomBytes(bytes).toString('hex');
@@ -433,6 +488,263 @@ const incidentService = {
       limit,
       pages: Math.max(1, Math.ceil(total / limit)),
     };
+  },
+
+  /**
+   * Roles que pueden asignar incidentes a verificación (HU10) y
+   * consultar los pendientes de verificación y los funcionarios.
+   */
+  isRecepcionStaff(user) {
+    return Boolean(
+      user &&
+        [ROLES.RECEPCION, ROLES.ADMINISTRADOR].includes(user.role),
+    );
+  },
+
+  /**
+   * Núcleo de toda transición de estado (reglas de Backend.md):
+   * 1. Aplica el nuevo estado al incidente.
+   * 2. Registra el cambio en el historial (estado anterior/nuevo,
+   *    usuario responsable, fecha y hora).
+   * 3. Genera una notificación informando al ciudadano.
+   * Las validaciones de transición se hacen en el método llamador.
+   */
+  async applyStatusChange(incident, toStatus, changedBy, comment = null) {
+    const updated = await incidentRepository.updateStatus(
+      incident.id,
+      toStatus,
+    );
+
+    const normalizedComment = normalizeText(comment) || null;
+
+    await historyRepository.create({
+      incidentId: incident.id,
+      fromStatus: incident.status,
+      toStatus,
+      changedBy,
+      comment: normalizedComment,
+    });
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId: incident.user_id,
+      message: `Su reporte ${incident.code} cambió de estado a ${
+        INCIDENT_STATUS_LABELS[toStatus] ?? toStatus
+      }.`,
+    });
+
+    return updated;
+  },
+
+  /**
+   * HU10 — Funcionarios de verificación disponibles para asignar.
+   */
+  async listVerifiers(user) {
+    if (!this.isRecepcionStaff(user)) {
+      throw buildError(
+        'No tienes permisos para consultar los funcionarios.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const verifiers = await userRepository.findVerifiers();
+
+    return { verifiers: verifiers.map(toPublicVerifier) };
+  },
+
+  /**
+   * HU10 — Incidentes pendientes de verificación (REPORTADO/RECIBIDO).
+   */
+  async listPendingVerification(user, query = {}) {
+    if (!this.isRecepcionStaff(user)) {
+      throw buildError(
+        'No tienes permisos para consultar los incidentes pendientes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const page = parsePositiveInt(query.page, 1, Number.MAX_SAFE_INTEGER);
+    const limit = parsePositiveInt(
+      query.limit,
+      DEFAULT_LIST_PAGE_SIZE,
+      MAX_LIST_PAGE_SIZE,
+    );
+    const search = query && query.search ? String(query.search).trim() : '';
+
+    const { incidents, total } = await incidentRepository.findAllManaged({
+      page,
+      limit,
+      statuses: PENDING_VERIFICATION_STATUSES,
+      search,
+    });
+
+    return {
+      incidents: incidents.map(toPublicIncidentListItem),
+      total,
+      page,
+      limit,
+      pages: Math.max(1, Math.ceil(total / limit)),
+    };
+  },
+
+  /**
+   * HU10 — Asignar un incidente a verificación (encargado de recepción).
+   * Cambia el estado a EN_VERIFICACION, crea la asignación (con quién,
+   * a quién, fecha/hora y nota), registra el historial y notifica al
+   * funcionario asignado y al ciudadano.
+   */
+  async assignForVerification(user, incidentId, payload) {
+    if (!this.isRecepcionStaff(user)) {
+      throw buildError(
+        'No tienes permisos para asignar incidentes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (!ASSIGNABLE_TO_VERIFICATION.includes(incident.status)) {
+      throw buildError(
+        'El incidente no está pendiente de verificación.',
+        409,
+        'INVALID_TRANSITION',
+      );
+    }
+
+    const existingAssignment = await assignmentRepository.findActiveByIncident(
+      incident.id,
+      'VERIFICACION',
+    );
+
+    if (existingAssignment) {
+      throw buildError(
+        'El incidente ya está asignado para verificación.',
+        409,
+        'ALREADY_ASSIGNED',
+      );
+    }
+
+    const assignedToId = Number(payload && payload.assignedToId);
+    const verifier = await userRepository.findByIdWithRole(assignedToId);
+
+    if (
+      !verifier ||
+      String(verifier.roles && verifier.roles.name) !== ROLES.VERIFICADOR ||
+      !verifier.active
+    ) {
+      throw buildError(
+        'El funcionario seleccionado no es un verificador activo.',
+        422,
+        'INVALID_ASSIGNEE',
+        'assignedToId',
+      );
+    }
+
+    const note = payload && payload.note ? normalizeText(payload.note) : '';
+
+    const assignment = await assignmentRepository.create({
+      incidentId: incident.id,
+      type: 'VERIFICACION',
+      assignedBy: user.id,
+      assignedTo: assignedToId,
+      note: note || null,
+    });
+
+    const updated = await this.applyStatusChange(
+      incident,
+      INCIDENT_STATUS.EN_VERIFICACION,
+      user.id,
+      note || 'Asignado para verificación.',
+    );
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId: assignedToId,
+      message: `Se le asignó el incidente ${incident.code} para su verificación.`,
+    });
+
+    return {
+      assignment: toPublicAssignment(assignment),
+      incident: toPublicIncident(updated),
+    };
+  },
+
+  /**
+   * Transición genérica de estado (PATCH /incidents/:id/status).
+   * Solo permite las transiciones definidas para el rol del usuario;
+   * el resto de las historias usan sus endpoints específicos, que
+   * validan aquí mismo antes de cambiar el estado.
+   */
+  async changeIncidentStatus(user, incidentId, payload) {
+    const allowedFrom = ROLE_STATUS_TRANSITIONS[user.role];
+
+    if (!allowedFrom) {
+      throw buildError(
+        'No tienes permisos para cambiar el estado.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    const toStatus = payload && payload.status;
+    const comment =
+      payload && payload.comment ? normalizeText(payload.comment) : '';
+
+    if (toStatus === incident.status) {
+      throw buildError(
+        'El incidente ya se encuentra en ese estado.',
+        409,
+        'INVALID_TRANSITION',
+      );
+    }
+
+    const nextStatuses = allowedFrom[incident.status];
+
+    if (!nextStatuses || !nextStatuses.includes(toStatus)) {
+      throw buildError(
+        `La transición de ${incident.status} a ${toStatus} no está permitida.`,
+        409,
+        'INVALID_TRANSITION',
+      );
+    }
+
+    const updated = await this.applyStatusChange(
+      incident,
+      toStatus,
+      user.id,
+      comment || null,
+    );
+
+    return toPublicIncident(updated);
+  },
+
+  /**
+   * Historial completo de cambios de estado de un incidente.
+   * Muestra la trazabilidad registrada por cada transición (HU10+).
+   */
+  async getIncidentHistory(user, incidentId) {
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    const history = await historyRepository.findByIncident(incident.id);
+
+    return { history: history.map(toPublicHistoryEntry) };
   },
 
   async addEvidence(user, incidentId, file) {

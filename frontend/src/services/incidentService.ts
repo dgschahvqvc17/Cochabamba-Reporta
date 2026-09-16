@@ -18,13 +18,17 @@
  */
 
 import type {
+  AssignVerificationPayload,
   Evidence,
   Incident,
+  IncidentAssignment,
   IncidentCreateResponse,
+  IncidentHistoryEntry,
   IncidentListData,
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
+  VerifierUser,
 } from '../models/Incident';
 import { clearSession } from '../utils/session';
 
@@ -225,6 +229,68 @@ export async function attachLocation(
       method: 'POST',
       body: JSON.stringify(payload),
     },
+  );
+}
+
+/** HU10: lista los funcionarios de verificación disponibles. */
+export async function getVerifiers(
+  accessToken: string,
+): Promise<ApiResponse<{ verifiers: VerifierUser[] }>> {
+  return api<{ verifiers: VerifierUser[] }>(
+    '/incidents/verifiers',
+    accessToken,
+  );
+}
+
+/** HU10: lista los incidentes pendientes de verificación (REPORTADO/RECIBIDO). */
+export async function getPendingVerificationIncidents(
+  accessToken: string,
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<ApiResponse<IncidentListData>> {
+  const query = new URLSearchParams();
+
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<IncidentListData>(
+    `/incidents/pending-verification${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
+}
+
+/**
+ * HU10: asigna un incidente a un funcionario de verificación.
+ * Cambia el estado a EN_VERIFICACION, registra la asignación y las
+ * notificaciones en el backend.
+ */
+export async function assignVerification(
+  accessToken: string,
+  incidentId: number,
+  payload: AssignVerificationPayload,
+): Promise<
+  ApiResponse<{ assignment: IncidentAssignment; incident: Incident }>
+> {
+  return api<{ assignment: IncidentAssignment; incident: Incident }>(
+    `/incidents/${incidentId}/assign-verification`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/** Historial de cambios de estado de un incidente (trazabilidad). */
+export async function getIncidentHistory(
+  accessToken: string,
+  incidentId: number,
+): Promise<ApiResponse<{ history: IncidentHistoryEntry[] }>> {
+  return api<{ history: IncidentHistoryEntry[] }>(
+    `/incidents/${incidentId}/history`,
+    accessToken,
   );
 }
 

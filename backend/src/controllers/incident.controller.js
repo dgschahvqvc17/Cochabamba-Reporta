@@ -5,6 +5,7 @@
  * HU07 — Adjuntar evidencia fotográfica.
  * HU08 — Registrar ubicación del incidente.
  * HU09 — Consultar y gestionar incidentes (personal municipal).
+ * HU10 — Asignar incidente para verificación (encargado de recepción).
  *
  * Es la capa de presentación HTTP. Recibe la solicitud, extrae el ciudadano
  * autenticado (req.user) y el payload, delega en el service y devuelve la
@@ -116,6 +117,92 @@ const incidentController = {
       );
 
       return ok(res, 200, 'Reporte eliminado correctamente.', deleted);
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async listVerifiers(req, res, next) {
+    try {
+      const data = await incidentService.listVerifiers(req.user);
+
+      return ok(
+        res,
+        200,
+        'Funcionarios de verificación consultados correctamente.',
+        data,
+      );
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async listPendingVerification(req, res, next) {
+    try {
+      const data = await incidentService.listPendingVerification(
+        req.user,
+        req.query,
+      );
+
+      return ok(
+        res,
+        200,
+        'Incidentes pendientes de verificación consultados correctamente.',
+        data,
+      );
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async assignVerification(req, res, next) {
+    try {
+      const data = await incidentService.assignForVerification(
+        req.user,
+        req.params.id,
+        req.body,
+      );
+
+      return ok(
+        res,
+        200,
+        'Incidente asignado para verificación correctamente.',
+        data,
+      );
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async changeIncidentStatus(req, res, next) {
+    try {
+      const incident = await incidentService.changeIncidentStatus(
+        req.user,
+        req.params.id,
+        req.body,
+      );
+
+      return ok(res, 200, 'Estado del incidente actualizado correctamente.', {
+        incident,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async getIncidentHistory(req, res, next) {
+    try {
+      const data = await incidentService.getIncidentHistory(
+        req.user,
+        req.params.id,
+      );
+
+      return ok(
+        res,
+        200,
+        'Historial del incidente consultado correctamente.',
+        data,
+      );
     } catch (error) {
       return next(error);
     }

@@ -82,6 +82,7 @@ const findAllManaged = async ({
   page = 1,
   limit = 10,
   status = null,
+  statuses = null,
   categoryId = null,
   from = null,
   to = null,
@@ -94,7 +95,9 @@ const findAllManaged = async ({
       { count: 'exact' },
     );
 
-  if (status) {
+  if (Array.isArray(statuses) && statuses.length > 0) {
+    query = query.in('status', statuses);
+  } else if (status) {
     query = query.eq('status', status);
   }
 
@@ -167,6 +170,21 @@ const update = async ({ id, userId, categoryId, title, description }) => {
   return data;
 };
 
+const updateStatus = async (id, status) => {
+  const { data, error } = await supabaseAdmin
+    .from('incidents')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 const remove = async (id) => {
   const { data, error } = await supabaseAdmin
     .from('incidents')
@@ -189,5 +207,6 @@ module.exports = {
   findAllManaged,
   countToday,
   update,
+  updateStatus,
   remove,
 };

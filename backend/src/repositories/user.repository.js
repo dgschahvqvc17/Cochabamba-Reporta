@@ -222,6 +222,21 @@ const countActiveByRoleName = async (roleName) => {
   return count ?? 0;
 };
 
+const findVerifiers = async () => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id, first_name, last_name, email, roles!inner(name)')
+    .eq('active', true)
+    .eq('roles.name', 'VERIFICADOR')
+    .order('first_name');
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 const update = async (id, fields) => {
   const { data, error } = await supabaseAdmin
     .from('users')
@@ -327,4 +342,5 @@ module.exports = {
   createAudit,
   findAuditByUserId,
   findUsersByIds,
+  findVerifiers,
 };

@@ -28,6 +28,8 @@ import IncidentFormScreen from '../screens/IncidentFormScreen';
 import ReportsScreen from '../screens/ReportsScreen';
 import IncidentsScreen from '../screens/IncidentsScreen';
 import IncidentDetailScreen from '../screens/IncidentDetailScreen';
+import PendingVerificationScreen from '../screens/PendingVerificationScreen';
+import AssignVerificationScreen from '../screens/AssignVerificationScreen';
 import AppNavBar from '../components/AppNavBar';
 import {
   clearSession,
@@ -62,7 +64,9 @@ type CitizenRoute =
 type StaffRoute =
   | { name: 'home' }
   | { name: 'incidents' }
-  | { name: 'incident-detail'; incidentId: number };
+  | { name: 'incident-detail'; incidentId: number }
+  | { name: 'pending-verification' }
+  | { name: 'assign-verification'; incidentId: number };
 
 const STAFF_ROLES: string[] = [
   'RECEPCION',
@@ -248,7 +252,10 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
     const isStaff = STAFF_ROLES.includes(session.user.role);
 
     if (isStaff) {
-      const isStaffSubRoute = staffRoute.name === 'incident-detail';
+      const isStaffSubRoute =
+        staffRoute.name === 'incident-detail' ||
+        staffRoute.name === 'pending-verification' ||
+        staffRoute.name === 'assign-verification';
 
       const staffNavActiveKey =
         staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
@@ -270,10 +277,26 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 incidentId={staffRoute.incidentId}
                 onBack={() => setStaffRoute({ name: 'incidents' })}
               />
+            ) : staffRoute.name === 'pending-verification' ? (
+              <PendingVerificationScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'assign-verification', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'assign-verification' ? (
+              <AssignVerificationScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'pending-verification' })}
+                onAssigned={() => setStaffRoute({ name: 'pending-verification' })}
+              />
             ) : (
               <StaffHomeScreen
                 user={session.user}
                 onGoToIncidents={() => setStaffRoute({ name: 'incidents' })}
+                onGoToPendingVerification={() =>
+                  setStaffRoute({ name: 'pending-verification' })
+                }
               />
             )}
           </View>
