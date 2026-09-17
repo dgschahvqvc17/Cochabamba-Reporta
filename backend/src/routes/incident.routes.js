@@ -14,6 +14,18 @@
  *                                                 paginación (rol-aware).
  *   - GET  /api/v1/incidents/:id                 → consultar detalle (incluye
  *                                                 ciudadano, ubicación y evidencia).
+ * HU10 — Asignar incidente para verificación:
+ *   - GET  /api/v1/incidents/verifiers    → funcionarios de verificación
+ *                                             (encargado de recepción).
+ *   - GET  /api/v1/incidents/pending-verification → incidentes pendientes
+ *                                             de verificación (REPORTADO/RECIBIDO).
+ *   - POST /api/v1/incidents/:id/assign-verification → asignar a verificación
+ *                                             (cambia a EN_VERIFICACION).
+ * Transición de estados:
+ *   - PATCH /api/v1/incidents/:id/status    → cambiar estado (transiciones
+ *                                             autorizadas por rol, con
+ *                                             historial y notificación).
+ *   - GET  /api/v1/incidents/:id/history    → historial de cambios de estado.
  * Editar / eliminar reporte (solo estado REPORTADO y edición única):
  *   - PATCH /api/v1/incidents/:id                → editar (ciudadano).
  *   - DELETE /api/v1/incidents/:id               → eliminar (ciudadano).
@@ -37,6 +49,8 @@ const {
 const {
   createIncidentValidation,
   listIncidentsValidation,
+  assignVerificationValidation,
+  changeStatusValidation,
 } = require('../validators/incident.validator');
 const {
   locationValidation,
@@ -58,6 +72,54 @@ router.get(
   authenticate,
   validate(listIncidentsValidation),
   incidentController.listIncidents,
+);
+
+/** HU10 — Funcionarios de verificación disponibles (encargado de recepción). */
+router.get(
+  '/verifiers',
+  authenticate,
+  requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
+  incidentController.listVerifiers,
+);
+
+/** HU10 — Incidentes pendientes de verificación (REPORTADO/RECIBIDO). */
+router.get(
+  '/pending-verification',
+  authenticate,
+  requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
+  incidentController.listPendingVerification,
+);
+
+/** HU10 — Asignar un incidente a verificación. */
+router.post(
+  '/:id/assign-verification',
+  authenticate,
+  requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
+  validate(assignVerificationValidation),
+  incidentController.assignVerification,
+);
+
+/** Transición de estado (transiciones autorizadas por rol). */
+router.patch(
+  '/:id/status',
+  authenticate,
+  requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
+  validate(changeStatusValidation),
+  incidentController.changeIncidentStatus,
+);
+
+/** Historial de cambios de estado del incidente. */
+router.get(
+  '/:id/history',
+  authenticate,
+  requireRole(
+    ROLES.RECEPCION,
+    ROLES.VERIFICADOR,
+    ROLES.ENCARGADO_SOLUCION,
+    ROLES.PERSONAL_SOLUCION,
+    ROLES.ADMINISTRADOR,
+  ),
+  incidentController.getIncidentHistory,
 );
 
 router.post(

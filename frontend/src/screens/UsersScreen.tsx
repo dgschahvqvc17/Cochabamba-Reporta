@@ -114,6 +114,7 @@ function UsersScreen({ onBack, onCreate, onOpenDetail }: UsersScreenProps) {
         title="Usuarios y roles"
         subtitle={`${total} usuarios registrados`}
         badge="GESTIÓN"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 

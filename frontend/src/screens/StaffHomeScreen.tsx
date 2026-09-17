@@ -2,9 +2,11 @@
  * Pantalla: Inicio del personal municipal (MVC - View).
  *
  * HU09 — Consultar y gestionar incidentes (Encargado de recepción).
+ * HU10 — Asignar incidente para verificación (Encargado de recepción).
  * Dashboard del personal de atención (RECEPCION, VERIFICADOR,
  * ENCARGADO_SOLUCION, PERSONAL_SOLUCION): perfil del usuario y acceso
- * al módulo de consulta y gestión de incidentes.
+ * a los módulos de consulta de incidentes y, para recepción,
+ * de asignación de incidentes para verificación.
  *
  * @format
  */
@@ -41,6 +43,7 @@ import { ROLE_LABELS } from '../utils/roles';
 type StaffHomeScreenProps = {
   user: User;
   onGoToIncidents: () => void;
+  onGoToPendingVerification: () => void;
 };
 
 const ROLE_TONES: Partial<Record<Role, PillTone>> = {
@@ -59,7 +62,11 @@ const ROLE_COLORS: Partial<Record<Role, string>> = {
   ADMINISTRADOR: Colors.danger,
 };
 
-function StaffHomeScreen({ user, onGoToIncidents }: StaffHomeScreenProps) {
+function StaffHomeScreen({
+  user,
+  onGoToIncidents,
+  onGoToPendingVerification,
+}: StaffHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -175,6 +182,16 @@ function StaffHomeScreen({ user, onGoToIncidents }: StaffHomeScreenProps) {
             color={Colors.accent}
             onPress={onGoToIncidents}
           />
+
+          {user.role === 'RECEPCION' ? (
+            <ModuleCard
+              icon="shieldCheck"
+              label="Asignar a verificación"
+              description="Asigna los incidentes pendientes (reportados o recibidos) a un funcionario de verificación para que verifique los hechos."
+              color={Colors.success}
+              onPress={onGoToPendingVerification}
+            />
+          ) : null}
 
           <View style={styles.sysInfoCard}>
             <Icon name="shieldCheck" size={18} color={Colors.success} />
