@@ -71,13 +71,13 @@ export default function MapPreview({ latitude, longitude }: MapPreviewProps) {
           ))
         : null}
 
-      <View style={styles.shade} pointerEvents="none" />
+      <View style={[styles.shade, styles.noPointer]} />
 
-      <View style={styles.marker} pointerEvents="none">
+      <View style={[styles.marker, styles.noPointer]}>
         <Icon name="pin" size={30} color={Colors.accent} />
       </View>
 
-      <Text style={styles.attribution} pointerEvents="none">
+      <Text style={[styles.attribution, styles.noPointer]}>
         © OpenStreetMap · © CARTO
       </Text>
     </View>
@@ -85,6 +85,10 @@ export default function MapPreview({ latitude, longitude }: MapPreviewProps) {
 }
 
 const styles = StyleSheet.create({
+  noPointer: {
+    // @ts-ignore — pointerEvents as style is the new API (evita la deprecación en web)
+    pointerEvents: 'none',
+  },
   wrap: {
     height: MAP_HEIGHT,
     borderRadius: radius.element,

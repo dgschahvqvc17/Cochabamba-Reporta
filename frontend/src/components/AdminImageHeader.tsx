@@ -41,6 +41,8 @@ type AdminImageHeaderProps = {
   subtitle?: string;
   badge?: string;
   onBack: () => void;
+  /** Fondo del contenido que sigue al encabezado; la curva lo replica (dark por defecto). */
+  contentBackground?: string;
 };
 
 function AdminImageHeader({
@@ -49,6 +51,7 @@ function AdminImageHeader({
   subtitle,
   badge,
   onBack,
+  contentBackground = Colors.bgDeep,
 }: AdminImageHeaderProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -104,15 +107,13 @@ function AdminImageHeader({
             <Icon name="chevronLeft" size={22} color={Colors.textOnPrimary} />
           </Pressable>
 
-          {/* Logo in neon ring */}
-          <View style={styles.logoRingOuter}>
-            <View style={styles.logoRing}>
-              <Image
-                source={brandLogo}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-            </View>
+          {/* Logo institucional como banner horizontal (no en círculo) */}
+          <View style={styles.logoCapsule}>
+            <Image
+              source={brandLogo}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
 
           <View style={styles.sideSlot} />
@@ -142,8 +143,8 @@ function AdminImageHeader({
         </Animated.View>
       </View>
 
-      {/* White curve transition to content area */}
-      <View style={styles.curve} />
+      {/* Transición al contenido: la curva replica el fondo de la pantalla */}
+      <View style={[styles.curve, { backgroundColor: contentBackground }]} />
     </ImageBackground>
   );
 }
@@ -185,27 +186,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 212, 255, 0.2)',
     transform: [{ scale: 0.94 }],
   },
-  logoRingOuter: {
-    padding: 3,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: 'rgba(0,212,255,0.5)',
-    // boxShadow replaces shadow* props
+  logoCapsule: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: radius.element,
+    backgroundColor: 'rgba(5, 18, 32, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.28)',
+    // boxShadow sustituye a shadow* (deprecados)
     // @ts-ignore
-    boxShadow: `0 0 12px 0 ${Colors.accent}99`,
-  },
-  logoRing: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
+    boxShadow: `0 0 14px 0 ${Colors.accent}33`,
   },
   logo: {
-    width: 52,
-    height: 52,
+    width: 176,
+    height: 42,
   },
   titleBlock: {
     marginTop: spacing.base,
@@ -255,11 +249,10 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.small,
   },
   curve: {
-    height: 28,
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: 2,
+    height: 24,
+    // Radio mayor que la altura → arco suave y amplio (no un semicírculo)
+    borderTopLeftRadius: 60,
+    borderTopRightRadius: 60,
   },
 });
 

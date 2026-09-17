@@ -78,6 +78,8 @@ const statusMeta = (status: IncidentStatus) =>
     tone: 'neutral' as PillTone,
   };
 
+const PENDING_STATUSES: IncidentStatus[] = ['REPORTADO', 'RECIBIDO'];
+
 function AssignVerificationScreen({
   incidentId,
   onBack,
@@ -124,6 +126,9 @@ function AssignVerificationScreen({
   }, [incidentId]);
 
   const meta = incident ? statusMeta(incident.status) : null;
+  const isPending = incident
+    ? PENDING_STATUSES.includes(incident.status)
+    : false;
   const reporterName = incident?.reporter
     ? `${incident.reporter.firstName} ${incident.reporter.lastName}`.trim()
     : '';
@@ -152,12 +157,17 @@ function AssignVerificationScreen({
         setIsSubmitting(false);
 
         if (!result.success) {
+          const conflict =
+            result.code === 'ALREADY_ASSIGNED' ||
+            result.code === 'INVALID_TRANSITION';
           error({
-            title: 'No se pudo asignar',
-            message:
-              result.fieldErrors?.assignedToId ??
-              result.message ??
-              'Ocurrió un error inesperado.',
+            title: conflict ? 'Ya no está pendiente' : 'No se pudo asignar',
+            message: conflict
+              ? `${incident.code} ya fue asignado o ya no está pendiente de verificación (fue gestionado en otra ventana). Al volver, la lista se actualizará.`
+              : result.fieldErrors?.assignedToId ??
+                result.message ??
+                'Ocurrió un error inesperado.',
+            onAccept: conflict ? onBack : undefined,
           });
           return;
         }
@@ -208,6 +218,19 @@ function AssignVerificationScreen({
           <View style={styles.centerBox}>
             <ActivityIndicator color={Colors.accent} size="large" />
             <Text style={styles.centerText}>Cargando información…</Text>
+          </View>
+        ) : !isPending ? (
+          <View style={styles.notPendingBox}>
+            <View style={styles.notPendingIcon}>
+              <Icon name="warning" size={32} color={Colors.warning} />
+            </View>
+            <Text style={styles.notPendingTitle}>Ya no está pendiente</Text>
+            <Text style={styles.notPendingText}>
+              El incidente {incident.code} tiene el estado "
+              {meta ? meta.label : incident.status}" y ya no puede asignarse a
+              verificación. Vuelve a la lista para ver su estado actualizado.
+            </Text>
+            <PrimaryButton label="Volver a la lista" onPress={onBack} />
           </View>
         ) : (
           <>
@@ -465,6 +488,35 @@ const styles = StyleSheet.create({
   centerText: {
     color: Colors.textSecondary,
     fontSize: fontSizes.body,
+  },
+  notPendingBox: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.sm,
+  },
+  notPendingIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255,214,0,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,214,0,0.30)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  notPendingTitle: {
+    color: Colors.warning,
+    fontSize: fontSizes.h4,
+    fontWeight: fontWeights.bold,
+  },
+  notPendingText: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.body,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: spacing.sm,
   },
   card: {
     backgroundColor: 'rgba(10, 30, 48, 0.92)',

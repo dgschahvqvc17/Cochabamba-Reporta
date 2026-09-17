@@ -121,6 +121,7 @@ function CategoriesScreen({ onBack, onCreate, onOpenEdit }: CategoriesScreenProp
         title="Categorías de incidentes"
         subtitle={`${categories.length} categorías registradas`}
         badge="CONFIGURACIÓN"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 

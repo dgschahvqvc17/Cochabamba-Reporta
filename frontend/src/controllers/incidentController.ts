@@ -56,6 +56,7 @@ export interface ActionResult<T> {
   message: string;
   data?: T;
   fieldErrors?: FieldErrors;
+  code?: string;
 }
 
 export interface EvidenceActionResult extends ActionResult<Evidence> {}
@@ -216,6 +217,7 @@ export async function assignIncidentForVerification(
     return {
       success: false,
       message: result.message,
+      code: result.error?.code,
       ...(toFieldErrors(result.error?.details) && {
         fieldErrors: toFieldErrors(result.error?.details),
       }),
