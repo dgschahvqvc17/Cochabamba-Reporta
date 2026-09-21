@@ -30,6 +30,9 @@ import IncidentsScreen from '../screens/IncidentsScreen';
 import IncidentDetailScreen from '../screens/IncidentDetailScreen';
 import PendingVerificationScreen from '../screens/PendingVerificationScreen';
 import AssignVerificationScreen from '../screens/AssignVerificationScreen';
+import VerificationQueueScreen from '../screens/VerificationQueueScreen';
+import VerifyIncidentScreen from '../screens/VerifyIncidentScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import AppNavBar from '../components/AppNavBar';
 import {
   clearSession,
@@ -58,7 +61,8 @@ type CitizenRoute =
   | { name: 'home' }
   | { name: 'incident-create' }
   | { name: 'incident-edit'; incidentId: number }
-  | { name: 'my-reports' };
+  | { name: 'my-reports' }
+  | { name: 'notifications' };
 
 /** Roles municipales que usan el módulo de recepción/consulta (HU09). */
 type StaffRoute =
@@ -66,7 +70,9 @@ type StaffRoute =
   | { name: 'incidents' }
   | { name: 'incident-detail'; incidentId: number }
   | { name: 'pending-verification' }
-  | { name: 'assign-verification'; incidentId: number };
+  | { name: 'assign-verification'; incidentId: number }
+  | { name: 'verification-queue' }
+  | { name: 'verify-incident'; incidentId: number };
 
 const STAFF_ROLES: string[] = [
   'RECEPCION',
@@ -255,7 +261,9 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
       const isStaffSubRoute =
         staffRoute.name === 'incident-detail' ||
         staffRoute.name === 'pending-verification' ||
-        staffRoute.name === 'assign-verification';
+        staffRoute.name === 'assign-verification' ||
+        staffRoute.name === 'verification-queue' ||
+        staffRoute.name === 'verify-incident';
 
       const staffNavActiveKey =
         staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
@@ -290,12 +298,28 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 onBack={() => setStaffRoute({ name: 'pending-verification' })}
                 onAssigned={() => setStaffRoute({ name: 'pending-verification' })}
               />
+            ) : staffRoute.name === 'verification-queue' ? (
+              <VerificationQueueScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'verify-incident', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'verify-incident' ? (
+              <VerifyIncidentScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'verification-queue' })}
+                onVerified={() => setStaffRoute({ name: 'verification-queue' })}
+              />
             ) : (
               <StaffHomeScreen
                 user={session.user}
                 onGoToIncidents={() => setStaffRoute({ name: 'incidents' })}
                 onGoToPendingVerification={() =>
                   setStaffRoute({ name: 'pending-verification' })
+                }
+                onGoToVerificationQueue={() =>
+                  setStaffRoute({ name: 'verification-queue' })
                 }
               />
             )}
@@ -307,7 +331,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 key: 'home',
                 label: 'Inicio',
                 icon: 'home',
-                onPress: () => !isStaffSubRoute && setStaffRoute({ name: 'home' }),
+                onPress: () => setStaffRoute({ name: 'home' }),
               },
               {
                 key: 'incidents',
@@ -352,11 +376,18 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 setCitizenRoute({ name: 'incident-edit', incidentId })
               }
             />
+          ) : citizenRoute.name === 'notifications' ? (
+            <NotificationsScreen
+              onBack={() => setCitizenRoute({ name: 'home' })}
+            />
           ) : (
             <HomeScreen
               user={session.user}
               onNewIncident={() => setCitizenRoute({ name: 'incident-create' })}
               onViewReports={() => setCitizenRoute({ name: 'my-reports' })}
+              onViewNotifications={() =>
+                setCitizenRoute({ name: 'notifications' })
+              }
             />
           )}
         </View>
@@ -366,7 +397,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
               key: 'home',
               label: 'Inicio',
               icon: 'home',
-              onPress: () => !isCitizenSubRoute && setCitizenRoute({ name: 'home' }),
+              onPress: () => setCitizenRoute({ name: 'home' }),
             },
             {
               key: 'reports',

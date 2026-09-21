@@ -21,6 +21,12 @@
  *                                             de verificación (REPORTADO/RECIBIDO).
  *   - POST /api/v1/incidents/:id/assign-verification → asignar a verificación
  *                                             (cambia a EN_VERIFICACION).
+ * HU11 — Verificar incidente (personal de verificación):
+ *   - GET  /api/v1/incidents/assigned-verification → incidentes asignados
+ *                                             al verificador.
+ *   - POST /api/v1/incidents/:id/verify → registrar decisión de verificación
+ *                                             (VERIFICADO/RECHAZADO).
+ *   - POST /api/v1/incidents/:id/evidence → evidencia del verificador/ciudadano.
  * Transición de estados:
  *   - PATCH /api/v1/incidents/:id/status    → cambiar estado (transiciones
  *                                             autorizadas por rol, con
@@ -51,6 +57,7 @@ const {
   listIncidentsValidation,
   assignVerificationValidation,
   changeStatusValidation,
+  verifyIncidentValidation,
 } = require('../validators/incident.validator');
 const {
   locationValidation,
@@ -90,6 +97,24 @@ router.get(
   incidentController.listPendingVerification,
 );
 
+/** HU11 — Incidentes asignados al verificador para su verificación. */
+router.get(
+  '/assigned-verification',
+  authenticate,
+  requireRole(ROLES.VERIFICADOR, ROLES.ADMINISTRADOR),
+  validate(listIncidentsValidation),
+  incidentController.listAssignedForVerification,
+);
+
+/** HU11 — Verificar un incidente asignado (VERIFICADO/RECHAZADO). */
+router.post(
+  '/:id/verify',
+  authenticate,
+  requireRole(ROLES.VERIFICADOR, ROLES.ADMINISTRADOR),
+  validate(verifyIncidentValidation),
+  incidentController.verifyIncident,
+);
+
 /** HU10 — Asignar un incidente a verificación. */
 router.post(
   '/:id/assign-verification',
@@ -125,7 +150,7 @@ router.get(
 router.post(
   '/:id/evidence',
   authenticate,
-  requireRole(ROLES.CIUDADANO),
+  requireRole(ROLES.CIUDADANO, ROLES.VERIFICADOR, ROLES.ADMINISTRADOR),
   uploadSingleEvidenceImage,
   incidentController.addEvidence,
 );

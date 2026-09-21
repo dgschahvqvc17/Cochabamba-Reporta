@@ -134,6 +134,48 @@ const findAllManaged = async ({
   return { incidents: data ?? [], total: count ?? data?.length ?? 0 };
 };
 
+/**
+ * HU11 — Incidentes asignados activamente a un usuario para verificación
+ * (assignments tipo VERIFICACION, active). El propio service limita el
+ * uso a los roles VERIFICADOR/ADMINISTRADOR. Con búsqueda y paginación.
+ */
+const findAssignedForVerification = async ({
+  userId,
+  page = 1,
+  limit = 10,
+  search = '',
+} = {}) => {
+  let query = supabaseAdmin
+    .from('incidents')
+    .select(
+      '*, category:categories(id, name), citizen:users(id, first_name, last_name, identity_number, phone, email), assignments!inner(assignment_type)',
+      { count: 'exact' },
+    )
+    .eq('assignments.assignment_type', 'VERIFICACION')
+    .eq('assignments.active', true)
+    .eq('assignments.assigned_to', userId);
+
+  const term = sanitizeSearchTerm(search);
+  if (term) {
+    query = query.or(
+      `code.ilike.%${term}%,title.ilike.%${term}%,description.ilike.%${term}%`,
+    );
+  }
+
+  const fromIndex = (page - 1) * limit;
+  const toIndex = fromIndex + limit - 1;
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(fromIndex, toIndex);
+
+  if (error) {
+    throw error;
+  }
+
+  return { incidents: data ?? [], total: count ?? data?.length ?? 0 };
+};
+
 const countToday = async () => {
   const startOfDay = new Date().toISOString().slice(0, 10);
 
@@ -170,10 +212,10 @@ const update = async ({ id, userId, categoryId, title, description }) => {
   return data;
 };
 
-const updateStatus = async (id, status) => {
+const updateStatus = async (id, status, extraFields = {}) => {
   const { data, error } = await supabaseAdmin
     .from('incidents')
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status, updated_at: new Date().toISOString(), ...extraFields })
     .eq('id', id)
     .select('*')
     .single();
@@ -205,6 +247,7 @@ module.exports = {
   findById,
   findByUserId,
   findAllManaged,
+  findAssignedForVerification,
   countToday,
   update,
   updateStatus,

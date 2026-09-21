@@ -29,6 +29,8 @@ import type {
   IncidentPayload,
   LocationPayload,
   VerifierUser,
+  VerifyIncidentPayload,
+  VerifyIncidentResult,
 } from '../models/Incident';
 import { clearSession } from '../utils/session';
 
@@ -292,6 +294,44 @@ export async function getIncidentHistory(
     `/incidents/${incidentId}/history`,
     accessToken,
   );
+}
+
+/**
+ * HU11: lista los incidentes asignados al verificador autenticado
+ * (asignación VERIFICACION activa), con búsqueda y paginación.
+ */
+export async function getAssignedVerificationIncidents(
+  accessToken: string,
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<ApiResponse<IncidentListData>> {
+  const query = new URLSearchParams();
+
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<IncidentListData>(
+    `/incidents/assigned-verification${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
+}
+
+/**
+ * HU11: registra la decisión de verificación del incidente asignado
+ * (VERIFICADO cuando verified=true; RECHAZADO con rejectedReason en caso
+ * contrario). Completa la asignación y notifica al ciudadano en el backend.
+ */
+export async function verifyIncident(
+  accessToken: string,
+  incidentId: number,
+  payload: VerifyIncidentPayload,
+): Promise<ApiResponse<VerifyIncidentResult>> {
+  return api<VerifyIncidentResult>(`/incidents/${incidentId}/verify`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function updateIncident(

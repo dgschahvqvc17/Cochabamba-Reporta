@@ -48,7 +48,27 @@ const findActiveByIncident = async (incidentId, type) => {
   return data;
 };
 
+/**
+ * HU11 — Marca la asignación como completada (active=false, completed_at).
+ * El estado del incidente ya fue actualizado por el service.
+ */
+const complete = async (id) => {
+  const { data, error } = await supabaseAdmin
+    .from('assignments')
+    .update({ active: false, completed_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 module.exports = {
   create,
   findActiveByIncident,
+  complete,
 };
