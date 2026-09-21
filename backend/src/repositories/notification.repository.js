@@ -30,6 +30,22 @@ const create = async ({ incidentId, userId, message }) => {
   return data;
 };
 
+const findByUser = async ({ userId, limit = 50 }) => {
+  const { data, error } = await supabaseAdmin
+    .from('notifications')
+    .select('*, incident:incidents(code)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 module.exports = {
   create,
+  findByUser,
 };

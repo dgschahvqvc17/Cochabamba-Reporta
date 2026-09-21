@@ -18,12 +18,14 @@ import {
   attachLocation as attachLocationRequest,
   createIncident as createIncidentRequest,
   deleteIncident as deleteIncidentRequest,
+  getAssignedVerificationIncidents as getAssignedVerificationIncidentsRequest,
   getIncidentById as getIncidentByIdRequest,
   getIncidents as getIncidentsRequest,
   getMyIncidents as getMyIncidentsRequest,
   getPendingVerificationIncidents as getPendingVerificationIncidentsRequest,
   getVerifiers as getVerifiersRequest,
   updateIncident as updateIncidentRequest,
+  verifyIncident as verifyIncidentRequest,
   type IncidentListParams,
 } from '../services/incidentService';
 import type {
@@ -36,6 +38,8 @@ import type {
   IncidentPayload,
   LocationPayload,
   VerifierUser,
+  VerifyIncidentPayload,
+  VerifyIncidentResult,
 } from '../models/Incident';
 import { getAccessToken } from '../utils/session';
 import { pickEvidence as pickEvidenceRequest, type PickerSource } from '../utils/imagePicker';
@@ -212,6 +216,58 @@ export async function assignIncidentForVerification(
 ): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
   const accessToken = getAccessToken();
   const result = await assignVerificationRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU11: lista los incidentes asignados al verificador (paginado). */
+export async function loadAssignedVerification(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getAssignedVerificationIncidentsRequest(
+    accessToken,
+    params,
+  );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU11: envía la decisión de verificación del incidente asignado. */
+export async function verifyIncidentById(
+  incidentId: number,
+  payload: VerifyIncidentPayload,
+): Promise<ActionResult<VerifyIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await verifyIncidentRequest(accessToken, incidentId, payload);
 
   if (!result.success) {
     return {

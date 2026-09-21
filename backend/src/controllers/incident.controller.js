@@ -6,6 +6,9 @@
  * HU08 — Registrar ubicación del incidente.
  * HU09 — Consultar y gestionar incidentes (personal municipal).
  * HU10 — Asignar incidente para verificación (encargado de recepción).
+ * HU11 — Verificar incidente (personal de verificación):
+ *   - listAssignedForVerification: cola del verificador asignado.
+ *   - verifyIncident: decisión VERIFICADO/RECHAZADO y evidencia en campo.
  *
  * Es la capa de presentación HTTP. Recibe la solicitud, extrae el ciudadano
  * autenticado (req.user) y el payload, delega en el service y devuelve la
@@ -169,6 +172,38 @@ const incidentController = {
         'Incidente asignado para verificación correctamente.',
         data,
       );
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async listAssignedForVerification(req, res, next) {
+    try {
+      const data = await incidentService.listAssignedForVerification(
+        req.user,
+        req.query,
+      );
+
+      return ok(
+        res,
+        200,
+        'Incidentes asignados para verificación consultados correctamente.',
+        data,
+      );
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async verifyIncident(req, res, next) {
+    try {
+      const data = await incidentService.verifyIncident(
+        req.user,
+        req.params.id,
+        req.body,
+      );
+
+      return ok(res, 200, 'Incidente verificado correctamente.', data);
     } catch (error) {
       return next(error);
     }

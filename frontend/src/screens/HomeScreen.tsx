@@ -40,6 +40,7 @@ type HomeScreenProps = {
   user: User;
   onNewIncident?: () => void;
   onViewReports?: () => void;
+  onViewNotifications?: () => void;
 };
 
 type QuickAction = {
@@ -57,7 +58,12 @@ const ACTIONS: QuickAction[] = [
   { icon: 'settings', label: 'Perfil', sub: 'Mis datos', color: Colors.info, bg: 'rgba(167,139,250,0.12)' },
 ];
 
-function HomeScreen({ user, onNewIncident, onViewReports }: HomeScreenProps) {
+function HomeScreen({
+  user,
+  onNewIncident,
+  onViewReports,
+  onViewNotifications,
+}: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -170,6 +176,8 @@ function HomeScreen({ user, onNewIncident, onViewReports }: HomeScreenProps) {
                     ? onNewIncident
                     : i === 1
                     ? onViewReports
+                    : i === 2
+                    ? onViewNotifications
                     : undefined
                 }
               />

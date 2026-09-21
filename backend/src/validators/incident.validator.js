@@ -134,11 +134,43 @@ const validateChangeComment = body('comment')
 
 const changeStatusValidation = [validateStatus, validateChangeComment];
 
+/** HU11: verificar un incidente (personal de verificación). */
+const MAX_OBSERVATIONS_LENGTH = 500;
+const MAX_REJECTED_REASON_LENGTH = 500;
+
+const validateVerified = body('verified')
+  .isBoolean()
+  .withMessage('Indique si el incidente fue verificado.')
+  .toBoolean();
+
+const validateObservations = body('observations')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: MAX_OBSERVATIONS_LENGTH })
+  .withMessage(
+    `Las observaciones no deben superar los ${MAX_OBSERVATIONS_LENGTH} caracteres.`,
+  );
+
+const validateRejectedReason = body('rejectedReason')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: MAX_REJECTED_REASON_LENGTH })
+  .withMessage(
+    `El motivo de rechazo no debe superar los ${MAX_REJECTED_REASON_LENGTH} caracteres.`,
+  );
+
+const verifyIncidentValidation = [
+  validateVerified,
+  validateObservations,
+  validateRejectedReason,
+];
+
 module.exports = {
   createIncidentValidation,
   listIncidentsValidation,
   assignVerificationValidation,
   changeStatusValidation,
+  verifyIncidentValidation,
   INCIDENT_STATUSES,
   DEFAULT_LIST_PAGE_SIZE,
   MAX_LIST_PAGE_SIZE,
@@ -146,4 +178,6 @@ module.exports = {
   MAX_TITLE_LENGTH,
   MIN_DESCRIPTION_LENGTH,
   MAX_DESCRIPTION_LENGTH,
+  MAX_OBSERVATIONS_LENGTH,
+  MAX_REJECTED_REASON_LENGTH,
 };

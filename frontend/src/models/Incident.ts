@@ -165,4 +165,22 @@ export interface Incident {
   reporter?: IncidentReporter | null;
   location?: IncidentLocation | null;
   evidence?: Evidence[];
+  /** Motivo del rechazo (HU11, estado RECHAZADO). */
+  rejectedReason?: string | null;
+}
+
+/** Payload para registrar la decisión de verificación (HU11). */
+export interface VerifyIncidentPayload {
+  verified: boolean;
+  observations?: string;
+  rejectedReason?: string;
+}
+
+/** Respuesta de la verificación: incidente actualizado + asignación completada. */
+export interface VerifyIncidentResult {
+  incident: Incident & {
+    observations?: string | null;
+    rejectedReason?: string | null;
+  };
+  assignment: IncidentAssignment;
 }
