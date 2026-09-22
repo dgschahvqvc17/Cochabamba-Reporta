@@ -1,8 +1,8 @@
 /**
  * Pantalla: Principal del ciudadano (MVC - View).
  *
- * HU02 — Dashboard dark-tech: fondo con foto + overlay,
- * tarjeta de perfil glassmorphic, grid de acciones con iconos neon
+ * HU02 — Dashboard premium: fondo con foto + overlay,
+ * tarjeta de perfil con marco dorado, grid de acciones refinado
  * y sección de estado.
  *
  * @format
@@ -28,6 +28,7 @@ import { cityBackground } from '../assets/images';
 import type { User } from '../models/User';
 import {
   Colors,
+  fonts,
   fontSizes,
   fontWeights,
   layout,
@@ -55,7 +56,7 @@ const ACTIONS: QuickAction[] = [
   { icon: 'report', label: 'Nuevo reporte', sub: 'Registrar incidente', color: Colors.accent, bg: Colors.accentSoft },
   { icon: 'map', label: 'Mis reportes', sub: 'Ver seguimiento', color: Colors.success, bg: Colors.successSoft },
   { icon: 'bell', label: 'Notificaciones', sub: 'Alertas recientes', color: Colors.warning, bg: Colors.warningSoft },
-  { icon: 'settings', label: 'Perfil', sub: 'Mis datos', color: Colors.info, bg: 'rgba(167,139,250,0.12)' },
+  { icon: 'settings', label: 'Perfil', sub: 'Mis datos', color: Colors.info, bg: 'rgba(108,92,176,0.12)' },
 ];
 
 function HomeScreen({
@@ -224,7 +225,7 @@ const chipStyles = StyleSheet.create({
     padding: spacing.sm,
     gap: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.1)',
+    borderColor: 'rgba(59, 130, 184, 0.1)',
   },
   text: { flex: 1 },
   label: {
@@ -290,6 +291,8 @@ const actionStyles = StyleSheet.create({
     padding: spacing.base,
     minHeight: 120,
     justifyContent: 'space-between',
+    // @ts-ignore
+    boxShadow: '0 14px 28px -16px rgba(2, 10, 18, 0.8)',
     overflow: 'hidden',
   },
   pressed: {
@@ -334,7 +337,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: 'rgba(0, 212, 255, 0.06)',
+    backgroundColor: 'rgba(59, 130, 184, 0.06)',
     top: -80,
     right: -60,
   },
@@ -343,7 +346,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(255, 184, 0, 0.04)',
+    backgroundColor: 'rgba(217, 164, 65, 0.04)',
     bottom: 100,
     left: -50,
   },
@@ -366,8 +369,12 @@ const styles = StyleSheet.create({
     color: Colors.textOnPrimary,
     fontSize: fontSizes.display,
     fontWeight: fontWeights.extraBold,
+    fontFamily: fonts.heading,
     letterSpacing: -1,
     lineHeight: 40,
+    // textShadow replaces deprecated textShadow* props
+    // @ts-ignore
+    textShadow: '0 2px 18px rgba(2, 10, 18, 0.65)',
   },
   heroSub: {
     color: Colors.textMuted,
@@ -376,16 +383,19 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   profileCard: {
-    backgroundColor: 'rgba(7, 22, 36, 0.85)',
+    backgroundColor: 'rgba(6, 22, 38, 0.88)',
     borderRadius: radius.cardLg,
     marginTop: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.2)',
+    borderColor: 'rgba(201, 162, 75, 0.3)',
+    // boxShadow replaces deprecated shadow* props
+    // @ts-ignore
+    boxShadow: '0 18px 40px -18px rgba(2, 10, 18, 0.85)',
     overflow: 'hidden',
   },
   cardBar: {
     height: 3,
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.gold,
   },
   profileRow: {
     flexDirection: 'row',
@@ -467,9 +477,9 @@ const styles = StyleSheet.create({
   comingSoonCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 184, 0, 0.08)',
+    backgroundColor: 'rgba(217, 164, 65, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 184, 0, 0.25)',
+    borderColor: 'rgba(217, 164, 65, 0.25)',
     borderRadius: radius.card,
     padding: spacing.base,
     marginTop: spacing.lg,
@@ -479,9 +489,9 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: radius.element,
-    backgroundColor: 'rgba(255, 184, 0, 0.12)',
+    backgroundColor: 'rgba(217, 164, 65, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 184, 0, 0.3)',
+    borderColor: 'rgba(217, 164, 65, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },

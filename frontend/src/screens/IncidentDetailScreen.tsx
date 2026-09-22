@@ -114,6 +114,7 @@ function IncidentDetailScreen({
             : 'Consultando…'
         }
         badge="DETALLE"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 
@@ -304,6 +305,7 @@ function InfoRow({
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   content: {
     padding: spacing.base,
@@ -313,8 +315,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,69,96,0.08)',
-    borderColor: 'rgba(255,69,96,0.25)',
+    backgroundColor: 'rgba(194,73,79,0.08)',
+    borderColor: 'rgba(194,73,79,0.25)',
     borderWidth: 1,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -340,9 +342,9 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
   },
   card: {
-    backgroundColor: 'rgba(10, 30, 48, 0.92)',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.12)',
+    borderColor: 'rgba(59,130,184,0.12)',
     borderRadius: radius.card,
     marginTop: spacing.base,
     overflow: 'hidden',
@@ -370,7 +372,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.wide,
@@ -384,18 +386,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
   },
   statusRaw: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.bold,
   },
   incidentTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h4,
     fontWeight: fontWeights.bold,
     lineHeight: 24,
   },
   incidentDescription: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
     lineHeight: 21,
     marginTop: spacing.sm,
@@ -405,17 +407,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   reporterName: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
     marginBottom: spacing.sm,
   },
   mutedText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
   },
   captureText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },
@@ -435,8 +437,8 @@ const styles = StyleSheet.create({
     height: 112,
     borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    backgroundColor: Colors.bgDeep,
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.background,
   },
   infoRow: {
     flexDirection: 'row',
@@ -444,20 +446,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: Colors.borderSoft,
   },
   infoTextWrap: {
     flex: 1,
   },
   infoLabel: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.wide,
     textTransform: 'uppercase',
   },
   infoValue: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     marginTop: 2,
     lineHeight: 18,

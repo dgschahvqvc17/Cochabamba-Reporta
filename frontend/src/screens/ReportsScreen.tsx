@@ -226,6 +226,7 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
               }`
         }
         badge="SEGUIMIENTO"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 
@@ -400,7 +401,7 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
                             onPress={() => onEdit(incident.id)}
                             style={({ pressed }) => [
                               styles.actionBtn,
-                              { borderColor: 'rgba(0, 212, 255, 0.4)' },
+                              { borderColor: 'rgba(59, 130, 184, 0.4)' },
                               pressed && styles.actionPressed,
                             ]}
                             hitSlop={6}
@@ -417,7 +418,7 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
                             disabled={isDeleting}
                             style={({ pressed }) => [
                               styles.actionBtn,
-                              { borderColor: 'rgba(255, 69, 96, 0.4)' },
+                              { borderColor: 'rgba(194, 73, 79, 0.4)' },
                               pressed && styles.actionPressed,
                             ]}
                             hitSlop={6}
@@ -458,6 +459,7 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -467,8 +469,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(0, 212, 255, 0.07)',
-    borderColor: 'rgba(0, 212, 255, 0.22)',
+    backgroundColor: 'rgba(59, 130, 184, 0.07)',
+    borderColor: 'rgba(59, 130, 184, 0.22)',
     borderWidth: 1,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -501,12 +503,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.surfaceSubtle,
   },
   chipSelected: {
     borderColor: Colors.accent,
-    backgroundColor: 'rgba(0,212,255,0.12)',
+    backgroundColor: 'rgba(59,130,184,0.12)',
   },
   chipPressed: {
     opacity: 0.8,
@@ -524,8 +526,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,69,96,0.08)',
-    borderColor: 'rgba(255,69,96,0.25)',
+    backgroundColor: 'rgba(194,73,79,0.08)',
+    borderColor: 'rgba(194,73,79,0.25)',
     borderWidth: 1,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -562,16 +564,16 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.surface,
     marginBottom: spacing.sm,
   },
   emptyTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h4,
     fontWeight: fontWeights.bold,
   },
   emptyText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
     textAlign: 'center',
   },
@@ -580,9 +582,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   card: {
-    backgroundColor: 'rgba(10, 30, 48, 0.92)',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.12)',
+    borderColor: 'rgba(59,130,184,0.12)',
     borderLeftWidth: 4,
     borderRadius: radius.card,
     overflow: 'hidden',
@@ -607,7 +609,7 @@ const styles = StyleSheet.create({
     letterSpacing: letterSpacings.wide,
   },
   cardTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semiBold,
     marginTop: spacing.sm,
@@ -641,7 +643,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingBottom: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: Colors.borderSoft,
   },
   footLink: {
     flexDirection: 'row',
@@ -687,8 +689,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(0,232,150,0.10)',
-    borderColor: 'rgba(0,232,150,0.3)',
+    backgroundColor: 'rgba(47,156,110,0.10)',
+    borderColor: 'rgba(47,156,110,0.3)',
     borderWidth: 1,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,

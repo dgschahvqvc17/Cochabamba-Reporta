@@ -10,7 +10,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,10 +25,8 @@ import AppDateField from '../components/AppDateField';
 import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import CalendarModal from '../components/CalendarModal';
-import GradientOverlay from '../components/GradientOverlay';
 import Icon, { type IconName } from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
-import { cityBackground } from '../assets/images';
 import {
   createUser,
   editUser,
@@ -238,18 +235,6 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
   // ── Main render ───────────────────────────────────────────────────
   return (
     <View style={styles.root}>
-      {/* Dark immersive background */}
-      <ImageBackground source={cityBackground} style={styles.bg} resizeMode="cover">
-        <GradientOverlay
-          colors={[
-            'rgba(4, 9, 18, 0.96)',
-            'rgba(5, 14, 26, 0.92)',
-            'rgba(3, 9, 18, 0.97)',
-          ]}
-        />
-        <View style={styles.orbTL} />
-        <View style={styles.orbBR} />
-      </ImageBackground>
 
       <AdminHeader
         title={isEdit ? 'Editar usuario' : 'Nuevo usuario'}
@@ -272,8 +257,8 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
         >
           {/* Datos personales */}
           <DarkSectionCard title="Datos personales" icon="person" color={Colors.accent}>
-            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={field('firstName')} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" dark />
-            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={field('lastName')} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" dark />
+            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={field('firstName')} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" />
+            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={field('lastName')} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" />
           </DarkSectionCard>
 
           {/* Acceso */}
@@ -288,22 +273,22 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
               editable={!isEdit}
               error={errors.email}
               icon="person"
-              dark
+
             />
             {!isEdit && (
               <>
-                <AppTextInput label="Contraseña *" value={form.password} onChangeText={field('password')} placeholder="Mínimo 8 caracteres" secureTextEntry autoCapitalize="none" error={errors.password} icon="lock" dark />
-                <AppTextInput label="Confirmar contraseña *" value={form.confirmPassword} onChangeText={field('confirmPassword')} placeholder="Repite la contraseña" secureTextEntry autoCapitalize="none" error={errors.confirmPassword} icon="shieldCheck" dark />
+                <AppTextInput label="Contraseña *" value={form.password} onChangeText={field('password')} placeholder="Mínimo 8 caracteres" secureTextEntry autoCapitalize="none" error={errors.password} icon="lock" />
+                <AppTextInput label="Confirmar contraseña *" value={form.confirmPassword} onChangeText={field('confirmPassword')} placeholder="Repite la contraseña" secureTextEntry autoCapitalize="none" error={errors.confirmPassword} icon="shieldCheck" />
               </>
             )}
           </DarkSectionCard>
 
           {/* Contacto */}
           <DarkSectionCard title="Contacto e identificación" icon="badge" color={Colors.success}>
-            <AppTextInput label="Teléfono" value={form.phone} onChangeText={field('phone')} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" dark />
-            <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={field('identityNumber')} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" dark />
-            <AppDateField label="Fecha de nacimiento" value={form.birthDate} onPress={() => setIsCalendarOpen(true)} error={errors.birthDate} dark />
-            <AppTextInput label="Dirección o referencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." icon="pin" dark />
+            <AppTextInput label="Teléfono" value={form.phone} onChangeText={field('phone')} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" />
+            <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={field('identityNumber')} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" />
+            <AppDateField label="Fecha de nacimiento" value={form.birthDate} onPress={() => setIsCalendarOpen(true)} error={errors.birthDate} />
+            <AppTextInput label="Dirección o referencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." icon="pin" />
           </DarkSectionCard>
 
           {/* Rol */}
@@ -405,7 +390,7 @@ function DarkSectionCard({
 
 const dsc = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(7, 22, 36, 0.82)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.card,
     borderWidth: 1,
     marginBottom: spacing.base,
@@ -418,7 +403,7 @@ const dsc = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     borderBottomWidth: 1,
     gap: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: Colors.surfaceSubtle,
   },
   iconWrap: {
     width: 28,
@@ -438,33 +423,10 @@ const dsc = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bgDeep },
-  bg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  flex: { flex: 1 },
-  orbTL: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(0, 212, 255, 0.05)',
-    top: -50,
-    left: -50,
-  },
-  orbBR: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255, 184, 0, 0.04)',
-    bottom: 200,
-    right: -40,
-  },
+  root: { flex: 1, backgroundColor: Colors.background },
+
+  flex: { flex: 1, backgroundColor: Colors.background },
+
   centerBox: {
     flex: 1,
     alignItems: 'center',
@@ -472,7 +434,7 @@ const styles = StyleSheet.create({
     padding: spacing.xxl,
     gap: spacing.base,
   },
-  centerText: { color: Colors.textMuted, fontSize: fontSizes.body },
+  centerText: { color: Colors.textSecondary, fontSize: fontSizes.body },
   errorText: { color: Colors.danger, fontSize: fontSizes.body, textAlign: 'center' },
   content: {
     padding: spacing.base,
@@ -490,8 +452,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.surface,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm - 1,
     gap: 5,
@@ -510,27 +472,27 @@ const styles = StyleSheet.create({
   },
   roleError: { color: Colors.danger, fontSize: fontSizes.caption, flexShrink: 1 },
   roleDisplayCard: {
-    backgroundColor: 'rgba(7, 22, 36, 0.82)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.18)',
+    borderColor: 'rgba(59, 130, 184, 0.18)',
     padding: spacing.base,
     marginBottom: spacing.base,
   },
   roleDisplayLabel: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.widest,
   },
   roleDisplayValue: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
     marginTop: spacing.xs,
   },
   roleDisplayHint: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },

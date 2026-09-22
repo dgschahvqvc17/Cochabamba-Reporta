@@ -1,7 +1,7 @@
 /**
  * Componente: Campo de texto (MVC - componentes).
  *
- * Diseño glassmorphic dark-mode compatible: borde fino con glow cyan al foco,
+ * Diseño refinado dark/light: borde fino con acento azul al foco,
  * fondo semitransparente, icono opcional, toggle contraseña estilizado,
  * y mensaje de error animado.
  *

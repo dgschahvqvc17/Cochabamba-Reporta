@@ -81,6 +81,7 @@ function NotificationsScreen({ onBack }: NotificationsScreenProps) {
               }`
         }
         badge="ALERTAS"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 
@@ -194,7 +195,7 @@ function NotificationsScreen({ onBack }: NotificationsScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
+  flex: { flex: 1, backgroundColor: Colors.background },
   content: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
@@ -212,8 +213,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,69,96,0.08)',
-    borderColor: 'rgba(255,69,96,0.25)',
+    backgroundColor: 'rgba(194,73,79,0.08)',
+    borderColor: 'rgba(194,73,79,0.25)',
     borderWidth: 1,
     borderRadius: 16,
     padding: spacing.base,
@@ -241,16 +242,16 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.surface,
     marginBottom: spacing.sm,
   },
   emptyTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: 18,
     fontWeight: fontWeights.bold,
   },
   emptyText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
     textAlign: 'center',
   },
@@ -261,16 +262,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   card: {
-    backgroundColor: 'rgba(10, 30, 48, 0.92)',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.12)',
+    borderColor: 'rgba(59,130,184,0.12)',
     borderRadius: 16,
     padding: spacing.base,
     marginTop: spacing.base,
     overflow: 'hidden',
   },
   cardUnread: {
-    borderColor: 'rgba(255,184,0,0.5)',
+    borderColor: 'rgba(217,164,65,0.5)',
   },
   cardTop: {
     flexDirection: 'row',
@@ -283,10 +284,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.surface,
   },
   cardIconUnread: {
-    backgroundColor: 'rgba(255,184,0,0.12)',
+    backgroundColor: 'rgba(217,164,65,0.12)',
   },
   cardCode: {
     flex: 1,
@@ -302,14 +303,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning,
   },
   cardMessage: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.medium,
     marginTop: spacing.sm,
     lineHeight: 20,
   },
   cardMessageRead: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontWeight: fontWeights.regular,
   },
   cardFoot: {

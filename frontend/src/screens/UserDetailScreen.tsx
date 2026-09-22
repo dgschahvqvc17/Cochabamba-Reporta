@@ -333,7 +333,7 @@ function SectionLabel({ label }: { label: string }) {
 
 const sLabelStyles = StyleSheet.create({
   label: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.widest,
@@ -376,7 +376,7 @@ const infoStyles = StyleSheet.create({
   },
   rowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 212, 255, 0.1)',
+    borderBottomColor: 'rgba(59, 130, 184, 0.1)',
   },
   iconWrap: {
     width: 34,
@@ -388,14 +388,14 @@ const infoStyles = StyleSheet.create({
   },
   text: { flex: 1 },
   label: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   value: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semiBold,
     marginTop: 2,
@@ -500,13 +500,13 @@ const timelineStyles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: Colors.accent,
   },
-  line: { flex: 1, width: 2, backgroundColor: 'rgba(0, 212, 255, 0.15)', marginTop: 4 },
+  line: { flex: 1, width: 2, backgroundColor: 'rgba(59, 130, 184, 0.15)', marginTop: 4 },
   card: {
     flex: 1,
-    backgroundColor: 'rgba(7, 22, 36, 0.82)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.12)',
+    borderColor: 'rgba(59, 130, 184, 0.12)',
     padding: spacing.sm,
   },
   cardHeader: {
@@ -516,14 +516,14 @@ const timelineStyles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.xs,
   },
-  date: { color: Colors.textMuted, fontSize: fontSizes.micro },
+  date: { color: Colors.textSecondary, fontSize: fontSizes.micro },
   summary: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.medium,
     marginTop: spacing.xs,
   },
-  actor: { color: Colors.textMuted, fontSize: fontSizes.micro, marginTop: 2 },
+  actor: { color: Colors.textSecondary, fontSize: fontSizes.micro, marginTop: 2 },
 });
 
 function RolePickerModal({
@@ -603,11 +603,11 @@ const modalStyles = StyleSheet.create({
     backgroundColor: 'rgba(3, 9, 18, 0.75)',
   },
   sheet: {
-    backgroundColor: Colors.bgCard,
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.15)',
+    borderColor: 'rgba(59, 130, 184, 0.15)',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,
@@ -617,7 +617,7 @@ const modalStyles = StyleSheet.create({
     width: 44,
     height: 5,
     borderRadius: 3,
-    backgroundColor: 'rgba(0, 212, 255, 0.25)',
+    backgroundColor: 'rgba(59, 130, 184, 0.25)',
     marginBottom: spacing.lg,
   },
   headerRow: {
@@ -636,15 +636,15 @@ const modalStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: fontSizes.h3, fontWeight: fontWeights.bold, color: Colors.textOnDark },
-  subtitle: { fontSize: fontSizes.caption, color: Colors.textMuted, marginTop: 2 },
+  title: { fontSize: fontSizes.h3, fontWeight: fontWeights.bold, color: Colors.textPrimary },
+  subtitle: { fontSize: fontSizes.caption, color: Colors.textSecondary, marginTop: 2 },
   list: { maxHeight: 360 },
   roleOption: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: radius.element,
     borderWidth: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: Colors.surfaceSubtle,
     padding: spacing.base,
     marginBottom: spacing.sm,
     gap: spacing.sm,
@@ -654,7 +654,7 @@ const modalStyles = StyleSheet.create({
   roleOptionText: { flex: 1 },
   roleOptionName: { fontSize: fontSizes.body, fontWeight: fontWeights.bold },
   roleOptionDesc: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
     lineHeight: 16,
@@ -664,7 +664,7 @@ const modalStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Colors.bgDeep },
+  flex: { flex: 1, backgroundColor: Colors.background },
   bgAbsolute: {
     position: 'absolute',
     top: 0,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(0, 212, 255, 0.05)',
+    backgroundColor: 'rgba(59, 130, 184, 0.05)',
     top: -40,
     left: -40,
   },
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: 'rgba(167, 139, 250, 0.04)',
+    backgroundColor: 'rgba(108, 92, 176, 0.04)',
     bottom: 100,
     right: -40,
   },
@@ -703,10 +703,10 @@ const styles = StyleSheet.create({
     gap: spacing.base,
     padding: spacing.xxl,
   },
-  centerText: { color: Colors.textMuted, fontSize: fontSizes.body },
+  centerText: { color: Colors.textSecondary, fontSize: fontSizes.body },
   errorText: { color: Colors.danger, fontSize: fontSizes.body, textAlign: 'center' },
   heroCard: {
-    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.cardLg,
     borderWidth: 1,
     overflow: 'hidden',
@@ -744,7 +744,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: Colors.success,
     borderWidth: 2,
-    borderColor: 'rgba(7, 22, 36, 0.9)',
+    borderColor: Colors.surface,
   },
   heroBody: {
     alignItems: 'center',
@@ -752,14 +752,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
   },
   heroName: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h2,
     fontWeight: fontWeights.extraBold,
     letterSpacing: -0.5,
     textAlign: 'center',
   },
   heroEmail: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
     marginTop: spacing.xs,
   },
@@ -771,10 +771,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   infoCard: {
-    backgroundColor: 'rgba(7, 22, 36, 0.82)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.14)',
+    borderColor: 'rgba(59, 130, 184, 0.14)',
     padding: spacing.base,
   },
   actionsCard: {
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   selfNoteText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     flex: 1,
   },
@@ -797,14 +797,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(7, 22, 36, 0.75)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.12)',
+    borderColor: 'rgba(59, 130, 184, 0.12)',
     padding: spacing.base,
   },
   emptyText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
   },
   timeline: { gap: 0 },

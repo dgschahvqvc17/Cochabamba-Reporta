@@ -19,7 +19,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  ImageBackground,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -35,11 +34,9 @@ import AdminHeader from '../components/AdminHeader';
 import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import EvidencePicker from '../components/EvidencePicker';
-import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import LocationPicker from '../components/LocationPicker';
 import PrimaryButton from '../components/PrimaryButton';
-import { cityBackground } from '../assets/images';
 import {
   attachEvidenceToIncident,
   attachLocationToIncident,
@@ -341,16 +338,6 @@ export default function IncidentFormScreen({
 
   return (
     <View style={styles.root}>
-      <ImageBackground source={cityBackground} style={styles.flex} resizeMode="cover">
-        <GradientOverlay
-          colors={[
-            'rgba(4, 9, 18, 0.96)',
-            'rgba(5, 14, 26, 0.92)',
-            'rgba(3, 9, 18, 0.97)',
-          ]}
-        />
-        <View style={styles.orbTL} />
-        <View style={styles.orbBR} />
 
         <KeyboardAvoidingView
           style={styles.flex}
@@ -415,7 +402,7 @@ export default function IncidentFormScreen({
                         ? selectedCategory.name
                         : 'Selecciona una categoría'}
                     </Text>
-                    <Icon name="chevronDown" size={18} color={Colors.textMuted} />
+                    <Icon name="chevronDown" size={18} color={Colors.textSecondary} />
                   </Pressable>
                   {errors.categoryId ? (
                     <Text style={styles.errorText}>{errors.categoryId}</Text>
@@ -491,7 +478,6 @@ export default function IncidentFormScreen({
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </ImageBackground>
 
       {/* Selector de categoría */}
       <Modal
@@ -556,30 +542,11 @@ export default function IncidentFormScreen({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.bgDeep,
+    backgroundColor: Colors.background,
   },
-  flex: { flex: 1 },
-  bg: {
-    ...StyleSheet.absoluteFill,
-  },
-  orbTL: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(0, 212, 255, 0.06)',
-    top: -50,
-    left: -50,
-  },
-  orbBR: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(0, 232, 150, 0.04)',
-    bottom: 150,
-    right: -40,
-  },
+  flex: { flex: 1, backgroundColor: Colors.background },
+
+
   content: {
     padding: spacing.base,
     width: '100%',
@@ -605,22 +572,22 @@ const styles = StyleSheet.create({
   },
   pageHeaderText: { flex: 1 },
   pageTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h3,
     fontWeight: fontWeights.bold,
     letterSpacing: -0.3,
   },
   pageSubtitle: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
     lineHeight: 17,
   },
   formCard: {
-    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.cardLg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.18)',
+    borderColor: 'rgba(59, 130, 184, 0.18)',
     overflow: 'hidden',
   },
   cardTopBar: {
@@ -631,7 +598,7 @@ const styles = StyleSheet.create({
     padding: spacing.base,
   },
   label: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.widest,
@@ -654,11 +621,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent,
   },
   pickerText: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
   },
   pickerPlaceholder: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
   },
   errorText: {
     color: Colors.danger,
@@ -678,8 +645,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.sm,
-    backgroundColor: 'rgba(0, 212, 255, 0.08)',
-    borderColor: 'rgba(0, 212, 255, 0.25)',
+    backgroundColor: 'rgba(59, 130, 184, 0.08)',
+    borderColor: 'rgba(59, 130, 184, 0.25)',
     borderWidth: 1,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -701,7 +668,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.cardLg,
     borderTopRightRadius: radius.cardLg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.22)',
+    borderColor: 'rgba(59, 130, 184, 0.22)',
     paddingBottom: spacing.xl,
     paddingHorizontal: spacing.base,
     paddingTop: spacing.sm,
@@ -716,7 +683,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
   },
   modalTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h4,
     fontWeight: fontWeights.bold,
     marginBottom: spacing.base,
@@ -735,13 +702,13 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(148, 163, 184, 0.12)',
   },
   modalItemSelected: {
-    backgroundColor: 'rgba(0, 212, 255, 0.08)',
+    backgroundColor: 'rgba(59, 130, 184, 0.08)',
   },
   modalItemPressed: {
     opacity: 0.7,
   },
   modalItemText: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     flex: 1,
   },
@@ -750,7 +717,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalEmptyText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
   },
 });

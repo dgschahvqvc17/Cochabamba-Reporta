@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  calIconDark: { backgroundColor: 'rgba(0, 212, 255, 0.1)' },
+  calIconDark: { backgroundColor: 'rgba(59, 130, 184, 0.1)' },
   errorRow: {
     flexDirection: 'row',
     alignItems: 'center',

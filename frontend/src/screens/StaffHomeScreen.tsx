@@ -32,6 +32,7 @@ import { cityBackground } from '../assets/images';
 import type { Role, User } from '../models/User';
 import {
   Colors,
+  fonts,
   fontSizes,
   fontWeights,
   layout,
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: 'rgba(0, 212, 255, 0.06)',
+    backgroundColor: 'rgba(59, 130, 184, 0.06)',
     top: -80,
     left: -80,
   },
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(167, 139, 250, 0.05)',
+    backgroundColor: 'rgba(108, 92, 176, 0.05)',
     bottom: 150,
     right: -50,
   },
@@ -305,8 +306,11 @@ const styles = StyleSheet.create({
     color: Colors.textOnPrimary,
     fontSize: fontSizes.display,
     fontWeight: fontWeights.extraBold,
+    fontFamily: fonts.heading,
     letterSpacing: -1,
     lineHeight: 40,
+    // @ts-ignore
+    textShadow: '0 2px 18px rgba(2, 10, 18, 0.65)',
   },
   heroSub: {
     color: Colors.textMuted,
@@ -315,11 +319,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   profileCard: {
-    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    backgroundColor: 'rgba(6, 22, 38, 0.88)',
     borderRadius: radius.cardLg,
     marginTop: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.2)',
+    borderColor: 'rgba(201, 162, 75, 0.3)',
+    // @ts-ignore
+    boxShadow: '0 18px 40px -18px rgba(2, 10, 18, 0.85)',
     overflow: 'hidden',
   },
   cardBar: {
@@ -406,11 +412,13 @@ const styles = StyleSheet.create({
   moduleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(7, 22, 36, 0.85)',
+    backgroundColor: 'rgba(10, 30, 48, 0.8)',
     borderRadius: radius.card,
     borderWidth: 1,
     padding: spacing.base,
     marginBottom: spacing.base,
+    // @ts-ignore
+    boxShadow: '0 14px 28px -16px rgba(2, 10, 18, 0.8)',
     overflow: 'hidden',
   },
   moduleCardPressed: {
@@ -463,7 +471,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.successSoft,
     borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: 'rgba(0, 232, 150, 0.2)',
+    borderColor: 'rgba(47, 156, 110, 0.2)',
     padding: spacing.base,
     marginTop: spacing.lg,
     gap: spacing.sm,

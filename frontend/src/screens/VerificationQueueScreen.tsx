@@ -134,6 +134,7 @@ function VerificationQueueScreen({
               } para verificación`
         }
         badge="VERIFICACIÓN"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 
@@ -346,6 +347,7 @@ function VerificationQueueScreen({
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -360,9 +362,9 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: Colors.borderSoft,
     borderRadius: radius.element,
     paddingHorizontal: spacing.base,
     minHeight: 52,
@@ -371,7 +373,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: fontSizes.body,
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     // @ts-ignore — web sólo (evita outline por defecto)
     outlineWidth: 0,
   },
@@ -402,8 +404,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,69,96,0.08)',
-    borderColor: 'rgba(255,69,96,0.25)',
+    backgroundColor: 'rgba(194,73,79,0.08)',
+    borderColor: 'rgba(194,73,79,0.25)',
     borderWidth: 1,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -440,23 +442,23 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.surface,
     marginBottom: spacing.sm,
   },
   emptyTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h4,
     fontWeight: fontWeights.bold,
   },
   emptyText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: 'rgba(10, 30, 48, 0.92)',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.12)',
+    borderColor: 'rgba(59,130,184,0.12)',
     borderLeftWidth: 4,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -479,14 +481,14 @@ const styles = StyleSheet.create({
     letterSpacing: letterSpacings.wide,
   },
   cardTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semiBold,
     marginTop: spacing.sm,
     lineHeight: 20,
   },
   cardDescription: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: 4,
     lineHeight: 17,
@@ -501,13 +503,13 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(0,212,255,0.12)',
+    backgroundColor: 'rgba(59,130,184,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   reporterText: {
     flex: 1,
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.medium,
   },
@@ -536,7 +538,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.base,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: Colors.borderSoft,
   },
   footLink: {
     flexDirection: 'row',
@@ -561,13 +563,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: Colors.accent + '50',
     gap: spacing.xs,
   },
   pageBtnDisabled: {
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: Colors.borderSoft,
     opacity: 0.5,
   },
   pageBtnText: {
@@ -582,7 +584,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   pageText: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.extraBold,
   },

@@ -1,7 +1,7 @@
 /**
  * Componente: Píldora / etiqueta de estado (MVC - componentes).
  *
- * Badge glassmorphic con glow de color y texto uppercase.
+ * Badge discreto con borde sutil y texto uppercase.
  * Soporte dark/light.
  *
  * @format
@@ -37,39 +37,39 @@ type ToneStyle = {
 
 const TONES: Record<PillTone, ToneStyle> = {
   primary: {
-    bg: 'rgba(11, 74, 111, 0.18)',
-    border: 'rgba(26, 111, 160, 0.6)',
-    text: '#5BC8F5',
-    dot: '#5BC8F5',
-    glow: 'rgba(11, 74, 111, 0.4)',
+    bg: 'rgba(42, 109, 158, 0.14)',
+    border: 'rgba(42, 109, 158, 0.5)',
+    text: Colors.primaryLight,
+    dot: Colors.primaryLight,
+    glow: 'rgba(18, 74, 112, 0.4)',
   },
   accent: {
-    bg: 'rgba(0, 212, 255, 0.12)',
-    border: 'rgba(0, 212, 255, 0.4)',
+    bg: 'rgba(59, 130, 184, 0.12)',
+    border: 'rgba(59, 130, 184, 0.4)',
     text: Colors.accent,
     dot: Colors.accent,
-    glow: 'rgba(0, 212, 255, 0.25)',
+    glow: 'rgba(59, 130, 184, 0.25)',
   },
   success: {
-    bg: 'rgba(0, 232, 150, 0.12)',
-    border: 'rgba(0, 232, 150, 0.4)',
+    bg: 'rgba(47, 156, 110, 0.12)',
+    border: 'rgba(47, 156, 110, 0.4)',
     text: Colors.success,
     dot: Colors.success,
-    glow: 'rgba(0, 232, 150, 0.25)',
+    glow: 'rgba(47, 156, 110, 0.25)',
   },
   warning: {
-    bg: 'rgba(255, 184, 0, 0.14)',
-    border: 'rgba(255, 184, 0, 0.45)',
+    bg: 'rgba(217, 164, 65, 0.14)',
+    border: 'rgba(217, 164, 65, 0.45)',
     text: Colors.warning,
     dot: Colors.warning,
-    glow: 'rgba(255, 184, 0, 0.3)',
+    glow: 'rgba(217, 164, 65, 0.3)',
   },
   danger: {
-    bg: 'rgba(255, 69, 96, 0.12)',
-    border: 'rgba(255, 69, 96, 0.4)',
+    bg: 'rgba(194, 73, 79, 0.12)',
+    border: 'rgba(194, 73, 79, 0.4)',
     text: Colors.danger,
     dot: Colors.danger,
-    glow: 'rgba(255, 69, 96, 0.25)',
+    glow: 'rgba(194, 73, 79, 0.25)',
   },
   neutral: {
     bg: 'rgba(138, 148, 162, 0.10)',
@@ -79,11 +79,11 @@ const TONES: Record<PillTone, ToneStyle> = {
     glow: 'transparent',
   },
   info: {
-    bg: 'rgba(167, 139, 250, 0.12)',
-    border: 'rgba(167, 139, 250, 0.4)',
+    bg: 'rgba(108, 92, 176, 0.12)',
+    border: 'rgba(108, 92, 176, 0.4)',
     text: Colors.info,
     dot: Colors.info,
-    glow: 'rgba(167, 139, 250, 0.25)',
+    glow: 'rgba(108, 92, 176, 0.25)',
   },
 };
 

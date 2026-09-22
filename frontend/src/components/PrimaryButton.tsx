@@ -1,8 +1,8 @@
 /**
  * Componente: Botón principal (MVC - componentes).
  *
- * Diseño neon-glass: gradiente cyan→azul, resplandor animado pulsante,
- * spring de escala al presionar, estados loading/disabled.
+ * Diseño refinado: gradiente azul institucional, borde sutil, sombra
+ * premium, spring de escala al presionar, estados loading/disabled.
  *
  * useNativeDriver: false (web no tiene native driver).
  * Sombras via boxShadow (no shadow* props obsoletas).
@@ -138,7 +138,7 @@ function PrimaryButton({
           style={[styles.btn, { transform: [{ scale: scaleAnim }] }]}
         >
           <GradientOverlay
-            colors={['#005F8A', Colors.accentDim, Colors.accent]}
+            colors={['#0E3D63', Colors.accentDim, Colors.accent]}
             style={styles.gradient}
           />
           <View style={styles.shimmer} />
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.base,
     // boxShadow replaces deprecated shadow* props
     // @ts-ignore
-    boxShadow: `0 0 18px 0 ${Colors.accent}55`,
+    boxShadow: '0 12px 28px -10px rgba(4, 18, 32, 0.55)',
   },
   wrapper: {
     borderRadius: radius.pill,
@@ -177,12 +177,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
     overflow: 'hidden',
   },
   dangerBtn: {
     backgroundColor: Colors.danger,
     borderRadius: radius.pill,
     minHeight: 56,
+    borderColor: 'rgba(255,255,255,0.14)',
   },
   ghostBtn: {
     borderRadius: radius.pill,
@@ -203,7 +206,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '50%',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderTopLeftRadius: radius.pill,
     borderTopRightRadius: radius.pill,
   },

@@ -1,8 +1,8 @@
 /**
  * Componente: Diálogo de la aplicación (MVC - componentes).
  *
- * Modal centrado glassmorphic con icono animado de entrada, backdrop blur
- * simulado, y botones estilizados según el tono del mensaje.
+ * Modal centrado refinado con icono animado de entrada, backdrop oscuro
+ * y marco dorado premium; botones estilizados según el tono del mensaje.
  *
  * @format
  */
@@ -49,11 +49,11 @@ type TonePalette = {
 };
 
 const TONE_PALETTE: Record<DialogTone, TonePalette> = {
-  accent: { icon: Colors.accent, bg: Colors.accentSoft, border: 'rgba(0,212,255,0.3)', glow: Colors.accent, btn: Colors.accentDim },
-  success: { icon: Colors.success, bg: Colors.successSoft, border: 'rgba(0,232,150,0.3)', glow: Colors.success, btn: Colors.successDim },
-  danger: { icon: Colors.danger, bg: Colors.dangerSoft, border: 'rgba(255,69,96,0.3)', glow: Colors.danger, btn: Colors.dangerDim },
-  warning: { icon: Colors.warning, bg: Colors.warningSoft, border: 'rgba(255,184,0,0.3)', glow: Colors.warning, btn: Colors.warningDim },
-  info: { icon: Colors.info, bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)', glow: Colors.info, btn: Colors.primary },
+  accent: { icon: Colors.accent, bg: Colors.accentSoft, border: 'rgba(59,130,184,0.3)', glow: Colors.accent, btn: Colors.accentDim },
+  success: { icon: Colors.success, bg: Colors.successSoft, border: 'rgba(47,156,110,0.3)', glow: Colors.success, btn: Colors.successDim },
+  danger: { icon: Colors.danger, bg: Colors.dangerSoft, border: 'rgba(194,73,79,0.3)', glow: Colors.danger, btn: Colors.dangerDim },
+  warning: { icon: Colors.warning, bg: Colors.warningSoft, border: 'rgba(217,164,65,0.3)', glow: Colors.warning, btn: Colors.warningDim },
+  info: { icon: Colors.info, bg: 'rgba(108,92,176,0.12)', border: 'rgba(108,92,176,0.3)', glow: Colors.info, btn: Colors.primary },
 };
 
 function DialogContent({
@@ -203,15 +203,15 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 370,
     alignItems: 'center',
-    backgroundColor: 'rgba(10, 30, 48, 0.97)',
+    backgroundColor: 'rgba(9, 30, 50, 0.98)',
     borderRadius: radius.cardLg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.12)',
+    borderColor: 'rgba(201, 162, 75, 0.35)',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
     paddingBottom: spacing.lg,
     // @ts-ignore
-    boxShadow: '0 0 40px 0 rgba(0,212,255,0.25)',
+    boxShadow: '0 24px 50px -20px rgba(2, 10, 18, 0.9)',
     overflow: 'hidden',
   },
   cardShimmer: {
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: 'rgba(0, 212, 255, 0.4)',
+    backgroundColor: 'rgba(201, 162, 75, 0.8)',
   },
   iconBadge: {
     width: 68,
