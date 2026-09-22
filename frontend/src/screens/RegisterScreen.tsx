@@ -28,7 +28,7 @@ import CalendarModal from '../components/CalendarModal';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon, { type IconName } from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
-import { cityBackground, fondo3 } from '../assets/images';
+import { cityBackground, fondoNew } from '../assets/images';
 import { handleRegister, type FieldErrors } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
 import type { CitizenRegistration } from '../models/Citizen';
@@ -164,12 +164,13 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
   };
 
   return (
-    <ImageBackground source={fondo3} style={styles.root} resizeMode="cover">
-      {/* Light blue-grey watermark overlay so the photo shows through */}
+    <ImageBackground source={fondoNew} style={styles.root} resizeMode="cover">
+      {/* Deep institutional navy overlay so the photo reads as a premium backdrop */}
       <GradientOverlay
         colors={[
-          'rgba(204, 224, 240, 0.66)',
-          'rgba(222, 236, 248, 0.78)',
+          'rgba(3, 10, 20, 0.94)',
+          'rgba(6, 24, 43, 0.9)',
+          'rgba(3, 15, 28, 0.96)',
         ]}
       />
       <KeyboardAvoidingView
@@ -189,9 +190,9 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
           >
             <GradientOverlay
               colors={[
-                'rgba(7, 16, 30, 0.96)',
-                'rgba(10, 24, 40, 0.9)',
-                'rgba(9, 20, 34, 0.96)',
+                'rgba(4, 12, 22, 0.97)',
+                'rgba(9, 24, 40, 0.92)',
+                'rgba(8, 20, 33, 0.94)',
               ]}
             />
             <View style={styles.heroGlow} />
@@ -199,6 +200,22 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               title="Crear cuenta"
               subtitle="Regístrate para reportar incidentes urbanos en Cochabamba"
             />
+
+            {/* Feature chips */}
+            <View style={styles.badgesRow}>
+              <View style={styles.badgeChip}>
+                <Icon name="person" size={14} color={Colors.gold} />
+                <Text style={styles.badgeText}>Sin costo</Text>
+              </View>
+              <View style={styles.badgeChip}>
+                <Icon name="shieldCheck" size={14} color={Colors.gold} />
+                <Text style={styles.badgeText}>Datos seguros</Text>
+              </View>
+              <View style={styles.badgeChip}>
+                <Icon name="send" size={14} color={Colors.gold} />
+                <Text style={styles.badgeText}>Respuesta directa</Text>
+              </View>
+            </View>
           </ImageBackground>
 
           {/* Floating white card */}
@@ -323,6 +340,23 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                   <Text style={styles.loginLinkAccent}>Inicia sesión</Text>
                 </Text>
               </Pressable>
+
+              <View style={styles.trustRow}>
+                <Icon name="shield" size={13} color={Colors.success} />
+                <Text style={styles.trustText}>
+                  Datos protegidos · Plataforma oficial de Cochabamba
+                </Text>
+              </View>
+            </View>
+
+            {/* Golden medallion straddling the card top edge */}
+            <View style={styles.medallion}>
+              <GradientOverlay
+                colors={['#0E3D63', Colors.accentDim, '#0A243C']}
+                style={styles.medallionBg}
+              />
+              <View style={styles.medallionRing} />
+              <Icon name="person" size={26} color={Colors.gold} />
             </View>
           </View>
         </ScrollView>
@@ -350,13 +384,33 @@ function SectionHeader({
 }) {
   return (
     <View style={sectionStyles.container}>
+      <View
+        style={[
+          sectionStyles.stepBadge,
+          { borderColor: config.color + '66', backgroundColor: config.color + '1F' },
+        ]}
+      >
+        <Text style={[sectionStyles.stepNumber, { color: config.color }]}>
+          {index}
+        </Text>
+      </View>
+      <View
+        style={[
+          sectionStyles.stepLine,
+          { backgroundColor: config.color + '40' },
+        ]}
+      />
       <View style={[sectionStyles.iconWrap, { borderColor: config.color + '50', backgroundColor: config.color + '14' }]}>
         <Icon name={config.icon} size={16} color={config.color} />
       </View>
       <View style={sectionStyles.textWrap}>
         <Text style={[sectionStyles.title, { color: config.color }]}>{config.title}</Text>
       </View>
-      <Text style={sectionStyles.counter}>{index}/{total}</Text>
+      <View style={[sectionStyles.counter, { backgroundColor: config.color + '14' }]}>
+        <Text style={[sectionStyles.counterText, { color: config.color }]}>
+          Paso {index} de {total}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -370,6 +424,25 @@ const sectionStyles = StyleSheet.create({
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(59, 130, 184, 0.08)',
+  },
+  stepBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
+  stepNumber: {
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.bold,
+  },
+  stepLine: {
+    width: 1,
+    height: 26,
+    marginRight: spacing.sm,
+    opacity: 0.5,
   },
   iconWrap: {
     width: 32,
@@ -388,7 +461,12 @@ const sectionStyles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   counter: {
-    color: Colors.textSecondary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    marginLeft: spacing.sm,
+  },
+  counterText: {
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.semiBold,
   },
@@ -397,7 +475,7 @@ const sectionStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#DCEAF7',
+    backgroundColor: '#030F1C',
   },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
@@ -405,19 +483,44 @@ const styles = StyleSheet.create({
   // Navy hero band
   hero: {
     width: '100%',
-    minHeight: 348,
+    minHeight: 398,
     overflow: 'hidden',
     borderBottomLeftRadius: 44,
     borderBottomRightRadius: 44,
   },
   heroGlow: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(201, 162, 75, 0.12)',
-    top: -100,
-    right: -75,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(201, 162, 75, 0.14)',
+    top: -110,
+    right: -80,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  badgeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.35)',
+  },
+  badgeText: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.semiBold,
+    letterSpacing: 0.4,
   },
 
   // Floating white card
@@ -432,14 +535,14 @@ const styles = StyleSheet.create({
     maxWidth: layout.cardMaxWidth,
     alignSelf: 'center',
     overflow: 'hidden',
-    paddingTop: spacing.lg,
+    paddingTop: spacing.xl,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(201, 162, 75, 0.25)',
+    borderColor: 'rgba(201, 162, 75, 0.3)',
     // boxShadow replaces deprecated shadow* props
     // @ts-ignore
-    boxShadow: '0 34px 70px -30px rgba(9, 27, 45, 0.5)',
+    boxShadow: '0 34px 70px -30px rgba(3, 15, 28, 0.75)',
   },
   goldBar: {
     position: 'absolute',
@@ -456,6 +559,36 @@ const styles = StyleSheet.create({
     right: 0,
     height: 96,
   },
+  medallion: {
+    position: 'absolute',
+    top: -38,
+    alignSelf: 'center',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2.5,
+    borderColor: Colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accentDim,
+    overflow: 'hidden',
+    zIndex: 5,
+    // @ts-ignore
+    boxShadow: '0 14px 30px -10px rgba(3, 15, 28, 0.7)',
+  },
+  medallionBg: {
+    borderRadius: 38,
+  },
+  medallionRing: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.5)',
+  },
   submitGap: {
     height: spacing.base,
   },
@@ -470,6 +603,17 @@ const styles = StyleSheet.create({
   loginLinkAccent: {
     color: Colors.accent,
     fontWeight: fontWeights.bold,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  trustText: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.micro,
   },
 });
 

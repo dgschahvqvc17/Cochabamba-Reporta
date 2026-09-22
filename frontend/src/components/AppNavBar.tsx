@@ -21,7 +21,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppDialog from './AppDialog';
-import GradientOverlay from './GradientOverlay';
 import Icon, { type IconName } from './Icon';
 import { handleLogout } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
@@ -102,19 +101,13 @@ function NavItem({
           { transform: [{ scale: scaleAnim }] },
         ]}
       >
-        {isActive ? (
-          <GradientOverlay
-            colors={['#0E3D63', Colors.accentDim, Colors.accent]}
-            style={styles.slotGradient}
-          />
-        ) : null}
         {isActive ? <View style={styles.slotNotch} /> : null}
         <Icon
           name={item.icon}
           size={22}
           color={
             isActive
-              ? Colors.textOnPrimary
+              ? Colors.accentDim
               : isHovered
               ? Colors.accent
               : Colors.textPrimary
@@ -264,7 +257,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: Colors.gold,
-    opacity: 0.55,
+    opacity: 0.7,
     // @ts-ignore
     pointerEvents: 'none',
   },
@@ -288,21 +281,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerSoft,
   },
   iconSlot: {
-    width: 46,
-    height: 32,
+    width: 48,
+    height: 34,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconSlotActive: {
+    backgroundColor: Colors.accentSoft,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
+    borderColor: 'rgba(59, 130, 184, 0.35)',
     // @ts-ignore
-    boxShadow: '0 10px 20px -10px rgba(4, 18, 32, 0.65)',
-  },
-  slotGradient: {
-    borderRadius: radius.pill,
-    overflow: 'hidden',
+    boxShadow: '0 10px 20px -10px rgba(30, 94, 143, 0.4)',
   },
   slotNotch: {
     position: 'absolute',
@@ -316,13 +306,15 @@ const styles = StyleSheet.create({
   },
   iconSlotLogout: {
     backgroundColor: Colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(194, 73, 79, 0.4)',
   },
   label: {
     marginTop: 3,
-    fontSize: fontSizes.micro,
-    fontWeight: fontWeights.medium,
-    color: Colors.textSecondary,
-    letterSpacing: 0.3,
+    fontSize: fontSizes.small,
+    fontWeight: fontWeights.semiBold,
+    color: Colors.textPrimary,
+    letterSpacing: 0.2,
     textAlign: 'center',
   },
   labelActive: {
@@ -334,8 +326,8 @@ const styles = StyleSheet.create({
   },
   logoutLabel: {
     marginTop: 3,
-    fontSize: fontSizes.micro,
-    fontWeight: fontWeights.semiBold,
+    fontSize: fontSizes.small,
+    fontWeight: fontWeights.bold,
     color: Colors.danger,
     textAlign: 'center',
   },

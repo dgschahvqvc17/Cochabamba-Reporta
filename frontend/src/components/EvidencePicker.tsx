@@ -124,10 +124,10 @@ const MAX_EVIDENCE_COUNT = 5;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(7, 22, 36, 0.6)',
+    backgroundColor: Colors.surfaceSubtle,
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 184, 0.14)',
+    borderColor: Colors.borderSoft,
     padding: spacing.base,
     marginTop: spacing.base,
   },
@@ -142,14 +142,14 @@ const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
   label: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.bold,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   hint: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     marginTop: spacing.xs,
   },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   counterText: {
-    color: Colors.accent,
+    color: Colors.accentDim,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.semiBold,
   },
@@ -223,28 +223,28 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: radius.element,
     borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 184, 0.35)',
-    backgroundColor: 'rgba(59, 130, 184, 0.08)',
+    borderColor: 'rgba(59, 130, 184, 0.3)',
+    backgroundColor: 'rgba(59, 130, 184, 0.06)',
   },
   actionBtnSecondary: {
-    backgroundColor: 'rgba(3, 12, 22, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   actionBtnPressed: {
     opacity: 0.75,
   },
   actionText: {
-    color: Colors.accent,
+    color: Colors.accentDim,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.semiBold,
   },
   pickingText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.sm,
     textAlign: 'center',
   },
   limitText: {
-    color: Colors.warning,
+    color: Colors.warningDim,
     fontSize: fontSizes.caption,
     marginTop: spacing.sm,
   },

@@ -65,7 +65,7 @@ export default function LocationPicker({
           <Icon
             name="pin"
             size={16}
-            color={position ? Colors.success : Colors.textMuted}
+            color={position ? Colors.success : Colors.textSecondary}
           />
           <Text
             style={[
@@ -102,7 +102,6 @@ export default function LocationPicker({
             placeholder="Ej.: Av. Principal, frente a la plaza"
             maxLength={MAX_ADDRESS_LENGTH}
             icon="pin"
-            dark
           />
 
           <View style={styles.actions}>
@@ -157,10 +156,10 @@ export default function LocationPicker({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(7, 22, 36, 0.6)',
+    backgroundColor: Colors.surfaceSubtle,
     borderRadius: radius.card,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 184, 0.14)',
+    borderColor: Colors.borderSoft,
     padding: spacing.base,
     marginTop: spacing.base,
   },
@@ -178,14 +177,14 @@ const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
   label: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.bold,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   hint: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     marginTop: spacing.xs,
   },
@@ -199,12 +198,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   statusText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.semiBold,
   },
   statusTextCaptured: {
-    color: Colors.success,
+    color: Colors.successDim,
   },
   captureBtn: {
     flexDirection: 'row',
@@ -214,11 +213,11 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: radius.element,
     borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 184, 0.35)',
-    backgroundColor: 'rgba(59, 130, 184, 0.08)',
+    borderColor: 'rgba(59, 130, 184, 0.3)',
+    backgroundColor: 'rgba(59, 130, 184, 0.06)',
   },
   captureText: {
-    color: Colors.accent,
+    color: Colors.accentDim,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.semiBold,
   },
@@ -229,9 +228,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(3, 12, 22, 0.6)',
+    backgroundColor: 'rgba(47, 156, 110, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(47, 156, 110, 0.25)',
+    borderColor: 'rgba(47, 156, 110, 0.3)',
     borderRadius: radius.element,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
@@ -241,14 +240,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   coordsLabel: {
-    color: Colors.textMuted,
+    color: Colors.successDim,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.semiBold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   coords: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semiBold,
     marginTop: 2,
@@ -267,18 +266,18 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: radius.element,
     borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 184, 0.35)',
-    backgroundColor: 'rgba(59, 130, 184, 0.08)',
+    borderColor: 'rgba(59, 130, 184, 0.3)',
+    backgroundColor: 'rgba(59, 130, 184, 0.06)',
   },
   actionBtnSecondary: {
-    borderColor: 'rgba(194, 73, 79, 0.35)',
-    backgroundColor: 'rgba(194, 73, 79, 0.06)',
+    borderColor: 'rgba(194, 73, 79, 0.3)',
+    backgroundColor: 'rgba(194, 73, 79, 0.05)',
   },
   actionBtnPressed: {
     opacity: 0.75,
   },
   actionText: {
-    color: Colors.accent,
+    color: Colors.accentDim,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.semiBold,
   },
@@ -288,7 +287,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.semiBold,
   },
   locatingText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.sm,
     textAlign: 'center',

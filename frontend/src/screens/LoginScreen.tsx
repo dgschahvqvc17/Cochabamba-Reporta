@@ -28,7 +28,7 @@ import BrandHeader from '../components/BrandHeader';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
-import { cityBackground, fondo3 } from '../assets/images';
+import { cityBackground, fondoNew } from '../assets/images';
 import { handleLogin, type FieldErrors } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
 import {
@@ -58,6 +58,7 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const cardAnim = useRef(new Animated.Value(0)).current;
+  const ringAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(cardAnim, {
@@ -67,6 +68,25 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
       useNativeDriver: false,
     }).start();
   }, [cardAnim]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(ringAnim, {
+          toValue: 1,
+          duration: 2600,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(ringAnim, {
+          toValue: 0,
+          duration: 2600,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+    ).start();
+  }, [ringAnim]);
 
   const validateForm = (): FieldErrors => {
     const errs: FieldErrors = {};
@@ -103,12 +123,13 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
     setErrors((c) => { const n = { ...c }; delete n[field]; return n; });
 
   return (
-    <ImageBackground source={fondo3} style={styles.root} resizeMode="cover">
-      {/* Light blue-grey watermark overlay so the photo shows through */}
+    <ImageBackground source={fondoNew} style={styles.root} resizeMode="cover">
+      {/* Deep institutional navy overlay so the photo reads as a premium backdrop */}
       <GradientOverlay
         colors={[
-          'rgba(204, 224, 240, 0.66)',
-          'rgba(222, 236, 248, 0.78)',
+          'rgba(3, 10, 20, 0.94)',
+          'rgba(6, 24, 43, 0.9)',
+          'rgba(3, 15, 28, 0.96)',
         ]}
       />
       <KeyboardAvoidingView
@@ -120,7 +141,7 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Navy hero band with curved bottom */}
+          {/* Navy hero band with curved bottom + animated gold rings */}
           <ImageBackground
             source={cityBackground}
             style={styles.hero}
@@ -128,19 +149,62 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
           >
             <GradientOverlay
               colors={[
-                'rgba(7, 16, 30, 0.96)',
-                'rgba(10, 24, 40, 0.9)',
-                'rgba(9, 20, 34, 0.96)',
+                'rgba(4, 12, 22, 0.97)',
+                'rgba(9, 24, 40, 0.92)',
+                'rgba(8, 20, 33, 0.94)',
               ]}
             />
             <View style={styles.heroGlow} />
+
+            {/* Breathing decorative rings */}
+            <Animated.View
+              style={[
+                styles.ring,
+                styles.ringOuter,
+                {
+                  opacity: ringAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.5, 0.12],
+                  }),
+                },
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.ring,
+                styles.ringInner,
+                {
+                  opacity: ringAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.2, 0.55],
+                  }),
+                },
+              ]}
+            />
+
             <BrandHeader
               title="Bienvenido de nuevo"
               subtitle="Ingresa para reportar y dar seguimiento a los incidentes de tu ciudad"
             />
+
+            {/* Feature chips */}
+            <View style={styles.badgesRow}>
+              <View style={styles.badgeChip}>
+                <Icon name="report" size={14} color={Colors.gold} />
+                <Text style={styles.badgeText}>Reporta</Text>
+              </View>
+              <View style={styles.badgeChip}>
+                <Icon name="clock" size={14} color={Colors.gold} />
+                <Text style={styles.badgeText}>Seguimiento</Text>
+              </View>
+              <View style={styles.badgeChip}>
+                <Icon name="shieldCheck" size={14} color={Colors.gold} />
+                <Text style={styles.badgeText}>Colabora</Text>
+              </View>
+            </View>
           </ImageBackground>
 
-          {/* Floating white card */}
+          {/* Floating white card with brand medallion */}
           <Animated.View
             style={[
               styles.cardWrap,
@@ -150,7 +214,7 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
                   {
                     translateY: cardAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [64, 0],
+                      outputRange: [70, 0],
                     }),
                   },
                 ],
@@ -240,6 +304,24 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
                 onPress={onGoToRegister}
                 variant="ghost"
               />
+
+              {/* Trust footer */}
+              <View style={styles.trustRow}>
+                <Icon name="shield" size={13} color={Colors.success} />
+                <Text style={styles.trustText}>
+                  Datos protegidos · Plataforma oficial de Cochabamba
+                </Text>
+              </View>
+            </View>
+
+            {/* Golden medallion straddling the card top edge */}
+            <View style={styles.medallion}>
+              <GradientOverlay
+                colors={['#0E3D63', Colors.accentDim, '#0A243C']}
+                style={styles.medallionBg}
+              />
+              <View style={styles.medallionRing} />
+              <Icon name="shieldCheck" size={26} color={Colors.gold} />
             </View>
           </Animated.View>
         </ScrollView>
@@ -253,7 +335,7 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#DCEAF7',
+    backgroundColor: '#030F1C',
   },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
@@ -261,19 +343,64 @@ const styles = StyleSheet.create({
   // Navy hero band
   hero: {
     width: '100%',
-    minHeight: 348,
+    minHeight: 398,
     overflow: 'hidden',
     borderBottomLeftRadius: 44,
     borderBottomRightRadius: 44,
   },
   heroGlow: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(201, 162, 75, 0.12)',
-    top: -100,
-    right: -75,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(201, 162, 75, 0.14)',
+    top: -110,
+    right: -80,
+  },
+  ring: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  ringOuter: {
+    width: 320,
+    height: 320,
+    borderWidth: 1.5,
+    borderColor: Colors.gold,
+    top: -120,
+    right: -70,
+  },
+  ringInner: {
+    width: 190,
+    height: 190,
+    borderWidth: 1,
+    borderColor: Colors.accent,
+    bottom: -70,
+    left: -45,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  badgeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.35)',
+  },
+  badgeText: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.semiBold,
+    letterSpacing: 0.4,
   },
 
   // Floating white card
@@ -289,13 +416,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     overflow: 'hidden',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(201, 162, 75, 0.25)',
+    borderColor: 'rgba(201, 162, 75, 0.3)',
     // boxShadow replaces deprecated shadow* props
     // @ts-ignore
-    boxShadow: '0 34px 70px -30px rgba(9, 27, 45, 0.5)',
+    boxShadow: '0 34px 70px -30px rgba(3, 15, 28, 0.75)',
   },
   goldBar: {
     position: 'absolute',
@@ -311,6 +438,38 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 96,
+  },
+
+  // Brand medallion
+  medallion: {
+    position: 'absolute',
+    top: -38,
+    alignSelf: 'center',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2.5,
+    borderColor: Colors.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accentDim,
+    overflow: 'hidden',
+    zIndex: 5,
+    // @ts-ignore
+    boxShadow: '0 14px 30px -10px rgba(3, 15, 28, 0.7)',
+  },
+  medallionBg: {
+    borderRadius: 38,
+  },
+  medallionRing: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.5)',
   },
 
   // Eyebrow
@@ -424,6 +583,17 @@ const styles = StyleSheet.create({
     letterSpacing: letterSpacings.widest,
     marginHorizontal: spacing.sm,
     textAlign: 'center',
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  trustText: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.micro,
   },
 });
 

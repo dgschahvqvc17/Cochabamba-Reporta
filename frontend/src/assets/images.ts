@@ -13,3 +13,4 @@ export const brandLogo = require('../../img/cbbaLogo.png');
 export const cityBackground = require('../../img/cbba1.jfif');
 export const fondo3 = require('../../img/fondo3.jpg');
 export const fondo4 = require('../../img/fondo4.jfif');
+export const fondoNew = require('../../img/fondoNew.jpg');

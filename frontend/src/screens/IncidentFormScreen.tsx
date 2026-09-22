@@ -19,6 +19,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  ImageBackground,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -34,9 +35,11 @@ import AdminHeader from '../components/AdminHeader';
 import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import EvidencePicker from '../components/EvidencePicker';
+import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import LocationPicker from '../components/LocationPicker';
 import PrimaryButton from '../components/PrimaryButton';
+import { fondoNew } from '../assets/images';
 import {
   attachEvidenceToIncident,
   attachLocationToIncident,
@@ -85,7 +88,7 @@ export default function IncidentFormScreen({
   const isEdit = mode === 'edit';
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categories, setCategories] = useState<
-    { id: number; name: string }[]
+    { id: number; name: string; description?: string | null }[]
   >([]);
   const [pickOpen, setPickOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -337,8 +340,19 @@ export default function IncidentFormScreen({
   const selectedCategory = categories.find((c) => c.id === categoryId);
 
   return (
-    <View style={styles.root}>
-
+    <ImageBackground
+      source={fondoNew}
+      style={styles.root}
+      resizeMode="cover"
+    >
+      {/* Degradé institucional: garantiza contraste sobre la foto de fondo */}
+      <GradientOverlay
+        colors={[
+          'rgba(4, 18, 33, 0.88)',
+          'rgba(7, 32, 56, 0.82)',
+          'rgba(4, 18, 33, 0.92)',
+        ]}
+      />
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -353,24 +367,14 @@ export default function IncidentFormScreen({
             <View style={styles.content}>
               <AdminHeader
                 title={isEdit ? 'Editar reporte' : 'Nuevo reporte'}
+                subtitle={
+                  isEdit
+                    ? 'Actualiza los datos de tu reporte. Solo puedes editarlo una vez.'
+                    : 'Describe el problema y presiona enviar.'
+                }
                 onBack={onBack}
+                overlay
               />
-
-              <View style={styles.pageHeader}>
-                <View style={styles.pageIconWrap}>
-                  <Icon name="report" size={28} color={Colors.accent} />
-                </View>
-                <View style={styles.pageHeaderText}>
-                  <Text style={styles.pageTitle}>
-                    {isEdit ? 'Editar incidente' : 'Registrar incidente'}
-                  </Text>
-                  <Text style={styles.pageSubtitle}>
-                    {isEdit
-                      ? 'Actualiza los datos de tu reporte. Solo puedes editarlo una vez.'
-                      : 'Describe el problema y presiona enviar.'}
-                  </Text>
-                </View>
-              </View>
 
               {isLoadingEdit ? (
                 <View style={styles.loadingEditBox}>
@@ -388,21 +392,40 @@ export default function IncidentFormScreen({
                   <Pressable
                     style={({ pressed }) => [
                       styles.picker,
+                      selectedCategory && styles.pickerSelected,
                       pressed && styles.pickerPressed,
                     ]}
                     onPress={() => setPickOpen(true)}
                   >
-                    <Text
-                      style={[
-                        styles.pickerText,
-                        !selectedCategory && styles.pickerPlaceholder,
-                      ]}
-                    >
-                      {selectedCategory
-                        ? selectedCategory.name
-                        : 'Selecciona una categoría'}
-                    </Text>
-                    <Icon name="chevronDown" size={18} color={Colors.textSecondary} />
+                    <View style={styles.pickerValue}>
+                      <Icon
+                        name="category"
+                        size={20}
+                        color={
+                          selectedCategory
+                            ? Colors.accentDim
+                            : Colors.textSecondary
+                        }
+                      />
+                      <Text
+                        style={[
+                          styles.pickerText,
+                          !selectedCategory && styles.pickerPlaceholder,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {selectedCategory
+                          ? selectedCategory.name
+                          : 'Selecciona una categoría'}
+                      </Text>
+                    </View>
+                    <View style={styles.pickerChevron}>
+                      <Icon
+                        name="chevronDown"
+                        size={18}
+                        color={Colors.accentDim}
+                      />
+                    </View>
                   </Pressable>
                   {errors.categoryId ? (
                     <Text style={styles.errorText}>{errors.categoryId}</Text>
@@ -489,7 +512,17 @@ export default function IncidentFormScreen({
         <Pressable style={styles.modalBackdrop} onPress={() => setPickOpen(false)}>
           <Pressable style={styles.modalSheet} onPress={() => {}}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Selecciona una categoría</Text>
+            <View style={styles.modalHeaderRow}>
+              <View style={styles.modalHeaderIcon}>
+                <Icon name="category" size={20} color={Colors.accentDim} />
+              </View>
+              <View style={styles.modalHeaderText}>
+                <Text style={styles.modalTitle}>Selecciona una categoría</Text>
+                <Text style={styles.modalSubtitle}>
+                  Elige la categoría que mejor describe el reporte.
+                </Text>
+              </View>
+            </View>
             <FlatList
               data={categories}
               keyExtractor={(item) => String(item.id)}
@@ -513,10 +546,35 @@ export default function IncidentFormScreen({
                       setPickOpen(false);
                     }}
                   >
-                    <Text style={styles.modalItemText}>{item.name}</Text>
-                    {selected ? (
-                      <Icon name="check" size={18} color={Colors.accent} />
-                    ) : null}
+                    <View
+                      style={[
+                        styles.modalItemIcon,
+                        selected && styles.modalItemIconSelected,
+                      ]}
+                    >
+                      <Icon
+                        name={selected ? 'check' : 'category'}
+                        size={18}
+                        color={
+                          selected ? Colors.textOnPrimary : Colors.accentDim
+                        }
+                      />
+                    </View>
+                    <View style={styles.modalItemBody}>
+                      <Text
+                        style={[
+                          styles.modalItemText,
+                          selected && styles.modalItemTextSelected,
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      {item.description ? (
+                        <Text style={styles.modalItemDesc} numberOfLines={2}>
+                          {item.description}
+                        </Text>
+                      ) : null}
+                    </View>
                   </Pressable>
                 );
               }}
@@ -535,16 +593,16 @@ export default function IncidentFormScreen({
       </Modal>
 
       <AppDialog dialog={dialog} onCancel={close} />
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
   },
-  flex: { flex: 1, backgroundColor: Colors.background },
+  flex: { flex: 1, backgroundColor: 'transparent' },
 
 
   content: {
@@ -553,42 +611,15 @@ const styles = StyleSheet.create({
     maxWidth: layout.contentMaxWidth,
     alignSelf: 'center',
   },
-  pageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.base,
-    marginBottom: spacing.base,
-    paddingTop: spacing.sm,
-  },
-  pageIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    backgroundColor: Colors.accentSoft,
-    borderWidth: 1.5,
-    borderColor: Colors.accent + '40',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pageHeaderText: { flex: 1 },
-  pageTitle: {
-    color: Colors.textPrimary,
-    fontSize: fontSizes.h3,
-    fontWeight: fontWeights.bold,
-    letterSpacing: -0.3,
-  },
-  pageSubtitle: {
-    color: Colors.textSecondary,
-    fontSize: fontSizes.caption,
-    marginTop: spacing.xs,
-    lineHeight: 17,
-  },
   formCard: {
     backgroundColor: Colors.surface,
     borderRadius: radius.cardLg,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 184, 0.18)',
+    borderColor: 'rgba(140, 175, 205, 0.45)',
     overflow: 'hidden',
+    // boxShadow replaces deprecated shadow* props
+    // @ts-ignore — web only
+    boxShadow: '0 30px 60px -28px rgba(1, 8, 16, 0.85)',
   },
   cardTopBar: {
     height: 3,
@@ -598,7 +629,7 @@ const styles = StyleSheet.create({
     padding: spacing.base,
   },
   label: {
-    color: Colors.textSecondary,
+    color: Colors.textPrimary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.widest,
@@ -610,22 +641,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(3, 12, 22, 0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.18)',
+    backgroundColor: Colors.surfaceSubtle,
+    borderWidth: 1.5,
+    borderColor: Colors.borderSoft,
     borderRadius: radius.element,
     paddingHorizontal: spacing.base,
-    paddingVertical: spacing.base,
+    paddingVertical: spacing.sm,
+    minHeight: 56,
+    gap: spacing.sm,
+  },
+  pickerSelected: {
+    borderColor: Colors.accent,
+    backgroundColor: 'rgba(59, 130, 184, 0.06)',
   },
   pickerPressed: {
     borderColor: Colors.accent,
   },
+  pickerValue: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   pickerText: {
+    flex: 1,
     color: Colors.textPrimary,
     fontSize: fontSizes.body,
   },
   pickerPlaceholder: {
     color: Colors.textSecondary,
+  },
+  pickerChevron: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 184, 0.10)',
   },
   errorText: {
     color: Colors.danger,
@@ -638,7 +690,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   loadingEditText: {
-    color: Colors.textSecondary,
+    color: 'rgba(232, 240, 248, 0.92)',
     fontSize: fontSizes.body,
   },
   editNoteBox: {
@@ -664,29 +716,52 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalSheet: {
-    backgroundColor: 'rgba(10, 26, 42, 0.98)',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: radius.cardLg,
     borderTopRightRadius: radius.cardLg,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 184, 0.22)',
+    borderColor: Colors.borderLight,
     paddingBottom: spacing.xl,
     paddingHorizontal: spacing.base,
     paddingTop: spacing.sm,
     maxHeight: '62%',
+    // @ts-ignore — web only
+    boxShadow: '0 -24px 60px -24px rgba(2, 10, 18, 0.65)',
   },
   modalHandle: {
     alignSelf: 'center',
     width: 44,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(148, 163, 184, 0.35)',
-    marginBottom: spacing.base,
+    backgroundColor: 'rgba(87, 103, 122, 0.45)',
+    marginBottom: spacing.sm,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  modalHeaderIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.element,
+    backgroundColor: 'rgba(59, 130, 184, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalHeaderText: {
+    flex: 1,
   },
   modalTitle: {
     color: Colors.textPrimary,
     fontSize: fontSizes.h4,
     fontWeight: fontWeights.bold,
-    marginBottom: spacing.base,
+  },
+  modalSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.caption,
+    marginTop: 2,
   },
   modalList: {
     flexGrow: 0,
@@ -694,23 +769,49 @@ const styles = StyleSheet.create({
   modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.base,
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.element,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(148, 163, 184, 0.12)',
+    marginVertical: 2,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: Colors.surfaceSubtle,
   },
   modalItemSelected: {
-    backgroundColor: 'rgba(59, 130, 184, 0.08)',
+    backgroundColor: 'rgba(59, 130, 184, 0.10)',
+    borderColor: 'rgba(59, 130, 184, 0.35)',
   },
   modalItemPressed: {
-    opacity: 0.7,
+    backgroundColor: 'rgba(59, 130, 184, 0.16)',
+  },
+  modalItemIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(59, 130, 184, 0.12)',
+  },
+  modalItemIconSelected: {
+    backgroundColor: Colors.accentDim,
+  },
+  modalItemBody: {
+    flex: 1,
   },
   modalItemText: {
     color: Colors.textPrimary,
     fontSize: fontSizes.body,
-    flex: 1,
+    fontWeight: fontWeights.semiBold,
+  },
+  modalItemTextSelected: {
+    color: Colors.accentDim,
+  },
+  modalItemDesc: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.micro,
+    marginTop: 2,
+    lineHeight: 15,
   },
   modalEmpty: {
     paddingVertical: spacing.lg,

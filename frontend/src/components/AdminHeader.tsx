@@ -19,32 +19,66 @@ type AdminHeaderProps = {
   subtitle?: string;
   onBack: () => void;
   rightAction?: React.ReactNode;
+  /** Modo oscuro translúcido para pantallas con imagen/cabecera premium de fondo. */
+  overlay?: boolean;
 };
 
-function AdminHeader({ title, subtitle, onBack, rightAction }: AdminHeaderProps) {
+function AdminHeader({
+  title,
+  subtitle,
+  onBack,
+  rightAction,
+  overlay = false,
+}: AdminHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-      <GradientOverlay
-        colors={['#E7EEF6', Colors.surface]}
-        style={styles.bg}
-      />
+    <View
+      style={[
+        styles.header,
+        overlay && styles.headerOverlay,
+        { paddingTop: insets.top + spacing.sm },
+      ]}
+    >
+      {overlay ? null : (
+        <GradientOverlay
+          colors={['#E7EEF6', Colors.surface]}
+          style={styles.bg}
+        />
+      )}
 
       <View style={styles.inner}>
         <Pressable
           onPress={onBack}
           hitSlop={12}
-          style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+          style={({ pressed }) => [
+            styles.backBtn,
+            overlay && styles.backBtnOverlay,
+            pressed && styles.backBtnPressed,
+          ]}
           testID="admin-back"
         >
-          <Icon name="chevronLeft" size={22} color={Colors.accent} />
+          <Icon
+            name="chevronLeft"
+            size={22}
+            color={overlay ? Colors.textOnDark : Colors.accent}
+          />
         </Pressable>
 
         <View style={styles.titles}>
-          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+          <Text
+            style={[styles.title, overlay && styles.titleOverlay]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
           {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+            <Text
+              style={[styles.subtitle, overlay && styles.subtitleOverlay]}
+              numberOfLines={1}
+            >
+              {subtitle}
+            </Text>
           ) : null}
         </View>
 
@@ -71,6 +105,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: Colors.background,
   },
+  headerOverlay: {
+    backgroundColor: 'transparent',
+  },
   bg: {
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
@@ -91,6 +128,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  backBtnOverlay: {
+    backgroundColor: 'rgba(255, 255, 255, 0.10)',
+    borderColor: 'rgba(255, 255, 255, 0.28)',
+  },
   backBtnPressed: {
     backgroundColor: 'rgba(59, 130, 184, 0.22)',
     transform: [{ scale: 0.94 }],
@@ -105,10 +146,16 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     letterSpacing: -0.3,
   },
+  titleOverlay: {
+    color: Colors.textOnDark,
+  },
   subtitle: {
     fontSize: fontSizes.caption,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  subtitleOverlay: {
+    color: 'rgba(232, 240, 248, 0.92)',
   },
   rightSlot: {
     width: 40,
