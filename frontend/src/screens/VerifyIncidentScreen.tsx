@@ -271,6 +271,7 @@ function VerifyIncidentScreen({
             : `${incident.title} · ${reporterName || 'Sin reportante'}`
         }
         badge="VERIFICACIÓN"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 
@@ -568,6 +569,7 @@ function InfoRow({
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   content: {
     padding: spacing.base,
@@ -577,8 +579,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,69,96,0.08)',
-    borderColor: 'rgba(255,69,96,0.25)',
+    backgroundColor: 'rgba(194,73,79,0.08)',
+    borderColor: 'rgba(194,73,79,0.25)',
     borderWidth: 1,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -613,9 +615,9 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: 'rgba(255,184,0,0.10)',
+    backgroundColor: 'rgba(217,164,65,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(255,184,0,0.30)',
+    borderColor: 'rgba(217,164,65,0.30)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
@@ -633,9 +635,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   card: {
-    backgroundColor: 'rgba(10, 30, 48, 0.92)',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.12)',
+    borderColor: 'rgba(59,130,184,0.12)',
     borderRadius: radius.card,
     marginTop: spacing.base,
     overflow: 'hidden',
@@ -663,7 +665,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.wide,
@@ -677,7 +679,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
   },
   decisionHint: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     lineHeight: 18,
     marginBottom: spacing.base,
@@ -689,23 +691,23 @@ const styles = StyleSheet.create({
     padding: spacing.base,
     borderRadius: radius.element,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.surfaceSubtle,
     marginTop: spacing.sm,
   },
   decisionCardVerified: {
     borderColor: Colors.success,
-    backgroundColor: 'rgba(0,232,150,0.10)',
+    backgroundColor: 'rgba(47,156,110,0.10)',
   },
   decisionCardRejected: {
     borderColor: Colors.danger,
-    backgroundColor: 'rgba(255,69,96,0.10)',
+    backgroundColor: 'rgba(194,73,79,0.10)',
   },
   decisionIcon: {
     width: 38,
     height: 38,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -719,12 +721,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   decisionTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
   },
   decisionSubtitle: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: 2,
     lineHeight: 17,
@@ -739,15 +741,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   inputWrap: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: Colors.borderSoft,
     borderRadius: radius.element,
     padding: spacing.base,
   },
   input: {
     minHeight: 72,
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     textAlignVertical: 'top',
     // @ts-ignore — web sólo (evita outline por defecto)
@@ -765,30 +767,30 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   incidentTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h4,
     fontWeight: fontWeights.bold,
     lineHeight: 24,
   },
   incidentDescription: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
     lineHeight: 21,
     marginTop: spacing.sm,
     marginBottom: spacing.base,
   },
   reporterName: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
     marginBottom: spacing.sm,
   },
   mutedText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
   },
   captureText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },
@@ -808,8 +810,8 @@ const styles = StyleSheet.create({
     height: 112,
     borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    backgroundColor: Colors.bgDeep,
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.background,
   },
   infoRow: {
     flexDirection: 'row',
@@ -817,20 +819,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: Colors.borderSoft,
   },
   infoTextWrap: {
     flex: 1,
   },
   infoLabel: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.wide,
     textTransform: 'uppercase',
   },
   infoValue: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     marginTop: 2,
     lineHeight: 18,

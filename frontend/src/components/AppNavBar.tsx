@@ -1,8 +1,8 @@
 /**
- * Componente: Barra de navegación inferior glassmorphic (MVC - componentes).
+ * Componente: Barra de navegación inferior refinada (MVC - componentes).
  *
- * Barra flotante con fondo glass oscuro, indicador activo con glow neon,
- * transiciones suaves, hover en web, y botón de logout estilizado.
+ * Barra flotante clara con indicador activo azul, sombra sutil,
+ * transiciones suaves, hover en web y logout estilizado.
  *
  * @format
  */
@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AppDialog from './AppDialog';
+import GradientOverlay from './GradientOverlay';
 import Icon, { type IconName } from './Icon';
 import { handleLogout } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
@@ -101,15 +102,22 @@ function NavItem({
           { transform: [{ scale: scaleAnim }] },
         ]}
       >
+        {isActive ? (
+          <GradientOverlay
+            colors={['#0E3D63', Colors.accentDim, Colors.accent]}
+            style={styles.slotGradient}
+          />
+        ) : null}
+        {isActive ? <View style={styles.slotNotch} /> : null}
         <Icon
           name={item.icon}
-          size={20}
+          size={22}
           color={
             isActive
-              ? Colors.bgDeep
+              ? Colors.textOnPrimary
               : isHovered
               ? Colors.accent
-              : Colors.textSecondary
+              : Colors.textPrimary
           }
         />
       </Animated.View>
@@ -183,6 +191,7 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
       ]}
     >
       <View style={[styles.bar, isDesktop && styles.barDesktop, dimmed && styles.barDimmed]}>
+        <View style={styles.barAccent} />
         {items.map((item) => (
           <NavItem
             key={item.key}
@@ -223,24 +232,41 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
 const styles = StyleSheet.create({
   wrapper: {
     // Solid background so content behind doesn't bleed through
-    backgroundColor: Colors.bgDeep,
-    // Separator line at top
+    backgroundColor: '#FFFFFF',
+    // Premium hairline (soft gold) on top edge
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 212, 255, 0.12)',
+    borderTopColor: 'rgba(201, 162, 75, 0.35)',
+    // @ts-ignore
+    boxShadow: '0 -8px 30px -18px rgba(18, 38, 58, 0.35)',
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(7, 22, 36, 0.98)',
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.cardLg,
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.xs,
     paddingBottom: spacing.xs,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.18)',
+    borderColor: Colors.borderSoft,
     maxWidth: layout.contentMaxWidth,
     alignSelf: 'center',
     width: '100%',
+    // @ts-ignore
+    boxShadow: '0 18px 42px -18px rgba(18, 38, 58, 0.45)',
+  },
+  barAccent: {
+    position: 'absolute',
+    top: -1,
+    left: '50%',
+    marginLeft: -22,
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.gold,
+    opacity: 0.55,
+    // @ts-ignore
+    pointerEvents: 'none',
   },
   barDesktop: {
     paddingHorizontal: spacing.md,
@@ -256,23 +282,40 @@ const styles = StyleSheet.create({
     minWidth: 52,
   },
   itemHovered: {
-    backgroundColor: 'rgba(0, 212, 255, 0.06)',
+    backgroundColor: Colors.accentSoft,
   },
   itemLogoutHovered: {
-    backgroundColor: 'rgba(255, 69, 96, 0.08)',
+    backgroundColor: Colors.dangerSoft,
   },
   iconSlot: {
-    width: 40,
-    height: 28,
+    width: 46,
+    height: 32,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconSlotActive: {
-    backgroundColor: Colors.accent,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    // @ts-ignore
+    boxShadow: '0 10px 20px -10px rgba(4, 18, 32, 0.65)',
+  },
+  slotGradient: {
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  slotNotch: {
+    position: 'absolute',
+    top: -6,
+    left: '50%',
+    marginLeft: -8,
+    width: 16,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Colors.gold,
   },
   iconSlotLogout: {
-    backgroundColor: 'rgba(255, 69, 96, 0.12)',
+    backgroundColor: Colors.dangerSoft,
   },
   label: {
     marginTop: 3,
@@ -283,7 +326,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   labelActive: {
-    color: Colors.accent,
+    color: Colors.accentDim,
     fontWeight: fontWeights.bold,
   },
   labelHovered: {
@@ -299,7 +342,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(0, 212, 255, 0.12)',
+    backgroundColor: Colors.borderSoft,
     marginHorizontal: spacing.xs,
   },
 });

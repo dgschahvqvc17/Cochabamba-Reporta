@@ -12,6 +12,8 @@
     "test": "jest"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/poppins": "^5.3.0",
     "@react-native-community/geolocation": "^3.4.0",
     "@react-native/assets-registry": "^0.87.1",
     "@react-native/new-app-screen": "0.87.1",

@@ -1,8 +1,8 @@
 /**
  * Componente: Encabezado de marca (MVC - componentes).
  *
- * Hero glassmorphic sobre fondo oscuro: logo en cápsula de cristal,
- * línea de acento neon, eslogan y título animados.
+ * Hero premium sobre fondo oscuro: logo en cápsula con marco dorado,
+ * líneas de acento, eslogan y título animados.
  *
  * Fixes: useNativeDriver:false, boxShadow instead of shadow* props,
  * textShadow via style string instead of textShadow* props.
@@ -16,11 +16,11 @@ import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import { brandLogo } from '../assets/images';
 import {
   Colors,
+  fonts,
   fontSizes,
   fontWeights,
   layout,
   letterSpacings,
-  radius,
   spacing,
 } from '../theme';
 
@@ -63,18 +63,15 @@ function BrandHeader({ title, subtitle }: BrandHeaderProps) {
       <View style={[styles.orb, styles.orbTopLeft]} />
       <View style={[styles.orb, styles.orbTopRight]} />
 
-      {/* Logo in glassy capsule */}
-      <View style={styles.logoCapsule}>
-        <View style={styles.logoShimmer} />
-        <Image
-          source={brandLogo}
-          style={styles.logo}
-          resizeMode="contain"
-          testID="brand-logo"
-        />
-      </View>
+      {/* Logo */}
+      <Image
+        source={brandLogo}
+        style={styles.logo}
+        resizeMode="contain"
+        testID="brand-logo"
+      />
 
-      {/* Slogan with neon accent lines */}
+      {/* Slogan with gold accent lines */}
       <View style={styles.sloganRow}>
         <View style={styles.accentLineLeft} />
         <Text style={styles.slogan}>COCHABAMBA · CIUDAD DE TODOS</Text>
@@ -125,31 +122,8 @@ const styles = StyleSheet.create({
     right: 10,
     opacity: 0.1,
   },
-  logoCapsule: {
-    width: '88%',
-    backgroundColor: 'rgba(5, 18, 32, 0.75)',
-    borderRadius: radius.cardLg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 212, 255, 0.28)',
-    overflow: 'hidden',
-    alignItems: 'center',
-    // @ts-ignore
-    boxShadow: `0 0 24px 0 ${Colors.accent}28`,
-  },
-  logoShimmer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderTopLeftRadius: radius.cardLg,
-    borderTopRightRadius: radius.cardLg,
-  },
   logo: {
-    width: '90%',
+    width: '78%',
     aspectRatio: LOGO_ASPECT_RATIO,
     // Tint to make it pop on very dark backgrounds (web only)
   },
@@ -161,20 +135,20 @@ const styles = StyleSheet.create({
   },
   accentLineLeft: {
     flex: 1,
-    height: 1,
-    backgroundColor: Colors.warning,
-    opacity: 0.5,
+    height: 1.5,
+    backgroundColor: Colors.gold,
+    opacity: 0.65,
     marginRight: spacing.sm,
   },
   accentLineRight: {
     flex: 1,
-    height: 1,
-    backgroundColor: Colors.warning,
-    opacity: 0.5,
+    height: 1.5,
+    backgroundColor: Colors.gold,
+    opacity: 0.65,
     marginLeft: spacing.sm,
   },
   slogan: {
-    color: Colors.warning,
+    color: Colors.gold,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.widest,
@@ -194,19 +168,18 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 18,
-    backgroundColor: Colors.accent,
-    // @ts-ignore
-    boxShadow: `0 0 6px 0 ${Colors.accent}CC`,
+    backgroundColor: Colors.gold,
   },
   title: {
     color: Colors.textOnPrimary,
     fontSize: fontSizes.h1,
     fontWeight: fontWeights.extraBold,
+    fontFamily: fonts.heading,
     letterSpacing: letterSpacings.tight,
     textAlign: 'center',
     // textShadow replaces deprecated textShadow* props
     // @ts-ignore
-    textShadow: `0 0 12px ${Colors.accent}4D`,
+    textShadow: '0 2px 18px rgba(2, 10, 18, 0.65)',
   },
   subtitle: {
     color: 'rgba(232,240,248,0.72)',

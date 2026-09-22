@@ -1,8 +1,9 @@
 /**
  * Pantalla: Registro de ciudadano (MVC - View).
  *
- * HU01 — Diseño dark glassmorphic con secciones visuales separadas
- * por encabezados de color neon, stepper de progreso y cards de sección.
+ * HU01 — Diseño premium de alto contraste: banda hero navy con base
+ * curva, tarjeta blanca flotante, secciones de color y campos claros
+ * con acentos azules y dorados.
  *
  * @format
  */
@@ -27,7 +28,7 @@ import CalendarModal from '../components/CalendarModal';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon, { type IconName } from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
-import { cityBackground } from '../assets/images';
+import { cityBackground, fondo3 } from '../assets/images';
 import { handleRegister, type FieldErrors } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
 import type { CitizenRegistration } from '../models/Citizen';
@@ -163,36 +164,59 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
   };
 
   return (
-    <View style={styles.flex}>
-      <ImageBackground source={cityBackground} style={styles.flex} resizeMode="cover">
-        <GradientOverlay
-          colors={[
-            'rgba(4, 9, 18, 0.97)',
-            'rgba(5, 14, 26, 0.94)',
-            'rgba(3, 9, 18, 0.98)',
-          ]}
-        />
-        {/* Decorative orbs */}
-        <View style={styles.orbCyan} />
-        <View style={styles.orbGold} />
-
-        <KeyboardAvoidingView
+    <ImageBackground source={fondo3} style={styles.root} resizeMode="cover">
+      {/* Light blue-grey watermark overlay so the photo shows through */}
+      <GradientOverlay
+        colors={[
+          'rgba(204, 224, 240, 0.66)',
+          'rgba(222, 236, 248, 0.78)',
+        ]}
+      />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
+          {/* Navy hero band with curved bottom */}
+          <ImageBackground
+            source={cityBackground}
+            style={styles.hero}
+            resizeMode="cover"
           >
+            <GradientOverlay
+              colors={[
+                'rgba(7, 16, 30, 0.96)',
+                'rgba(10, 24, 40, 0.9)',
+                'rgba(9, 20, 34, 0.96)',
+              ]}
+            />
+            <View style={styles.heroGlow} />
             <BrandHeader
               title="Crear cuenta"
               subtitle="Regístrate para reportar incidentes urbanos en Cochabamba"
             />
+          </ImageBackground>
 
+          {/* Floating white card */}
+          <View style={styles.cardWrap}>
             <View style={styles.formCard}>
-              {/* Card top accent */}
-              <View style={styles.cardBar} />
+              {/* Gold gradient top bar */}
+              <GradientOverlay
+                colors={['#9C7A31', '#E8CB82', '#C9A24B']}
+                style={styles.goldBar}
+              />
+              <GradientOverlay
+                colors={[
+                  'rgba(201, 162, 75, 0.12)',
+                  'rgba(59, 130, 184, 0.05)',
+                  'rgba(14, 61, 99, 0)',
+                ]}
+                style={styles.goldShine}
+              />
 
               {/* Section 0: Datos personales */}
               <SectionHeader config={SECTIONS[0]} index={1} total={4} />
@@ -203,7 +227,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 placeholder="Ej. Juan Carlos"
                 error={errors.firstName}
                 icon="person"
-                dark
               />
               <AppTextInput
                 label="Apellidos *"
@@ -212,14 +235,12 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 placeholder="Ej. Pérez Mamani"
                 error={errors.lastName}
                 icon="person"
-                dark
               />
               <AppDateField
                 label="Fecha de nacimiento *"
                 value={form.birthDate}
                 onPress={() => setIsCalendarOpen(true)}
                 error={errors.birthDate}
-                dark
               />
 
               {/* Section 1: Identificación */}
@@ -233,7 +254,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 maxLength={8}
                 error={errors.identityNumber}
                 icon="badge"
-                dark
               />
               <AppTextInput
                 label="Teléfono *"
@@ -244,7 +264,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 maxLength={8}
                 error={errors.phone}
                 icon="bell"
-                dark
               />
               <AppTextInput
                 label="Correo electrónico *"
@@ -255,7 +274,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 autoCapitalize="none"
                 error={errors.email}
                 icon="person"
-                dark
               />
 
               {/* Section 2: Seguridad */}
@@ -270,7 +288,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 error={errors.password}
                 icon="lock"
                 hint="Mínimo 8 caracteres"
-                dark
               />
               <AppTextInput
                 label="Confirmar contraseña *"
@@ -281,7 +298,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 autoCapitalize="none"
                 error={errors.confirmPassword}
                 icon="shieldCheck"
-                dark
               />
 
               {/* Section 3: Ubicación */}
@@ -292,7 +308,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 onChangeText={onChangeField('address')}
                 placeholder="Ej. Av. Heroínas, zona..."
                 icon="pin"
-                dark
               />
 
               <View style={styles.submitGap} />
@@ -309,9 +324,9 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 </Text>
               </Pressable>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </ImageBackground>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <CalendarModal
         visible={isCalendarOpen}
@@ -320,7 +335,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
         onClose={() => setIsCalendarOpen(false)}
       />
       <AppDialog dialog={dialog} onCancel={close} />
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -354,7 +369,7 @@ const sectionStyles = StyleSheet.create({
     marginBottom: spacing.base,
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 212, 255, 0.08)',
+    borderBottomColor: 'rgba(59, 130, 184, 0.08)',
   },
   iconWrap: {
     width: 32,
@@ -373,53 +388,73 @@ const sectionStyles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   counter: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.semiBold,
   },
 });
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#DCEAF7',
+  },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
-  orbCyan: {
-    position: 'absolute',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(0, 212, 255, 0.06)',
-    top: -60,
-    right: -60,
+
+  // Navy hero band
+  hero: {
+    width: '100%',
+    minHeight: 348,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 44,
+    borderBottomRightRadius: 44,
   },
-  orbGold: {
+  heroGlow: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255, 184, 0, 0.04)',
-    bottom: 300,
-    left: -40,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(201, 162, 75, 0.12)',
+    top: -100,
+    right: -75,
+  },
+
+  // Floating white card
+  cardWrap: {
+    marginTop: -34,
+    paddingHorizontal: spacing.base,
   },
   formCard: {
-    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.cardLg,
-    marginHorizontal: spacing.base,
-    marginTop: spacing.lg,
-    paddingTop: 0,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.18)',
-    overflow: 'hidden',
     width: '100%',
     maxWidth: layout.cardMaxWidth,
     alignSelf: 'center',
+    overflow: 'hidden',
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.25)',
+    // boxShadow replaces deprecated shadow* props
+    // @ts-ignore
+    boxShadow: '0 34px 70px -30px rgba(9, 27, 45, 0.5)',
   },
-  cardBar: {
-    height: 3,
-    backgroundColor: Colors.accent,
-    marginHorizontal: -spacing.lg,
-    marginBottom: spacing.sm,
+  goldBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    borderRadius: 0,
+  },
+  goldShine: {
+    position: 'absolute',
+    top: 4,
+    left: 0,
+    right: 0,
+    height: 96,
   },
   submitGap: {
     height: spacing.base,
@@ -430,7 +465,7 @@ const styles = StyleSheet.create({
   },
   loginLinkText: {
     fontSize: fontSizes.small,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
   },
   loginLinkAccent: {
     color: Colors.accent,

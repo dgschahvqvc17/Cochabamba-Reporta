@@ -1,7 +1,7 @@
 /**
  * Componente: Encabezado de pantallas administrativas (MVC - componentes).
  *
- * Barra oscura con línea de acento neon, botón back glassmorphic y título limpio.
+ * Barra clara con línea de acento dorado, botón back refinado y título limpio.
  *
  * @format
  */
@@ -27,7 +27,7 @@ function AdminHeader({ title, subtitle, onBack, rightAction }: AdminHeaderProps)
   return (
     <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
       <GradientOverlay
-        colors={[Colors.bgDeep, Colors.bgMid]}
+        colors={['#E7EEF6', Colors.surface]}
         style={styles.bg}
       />
 
@@ -53,10 +53,10 @@ function AdminHeader({ title, subtitle, onBack, rightAction }: AdminHeaderProps)
         </View>
       </View>
 
-      {/* Neon accent line */}
+      {/* Gold accent line */}
       <View style={styles.accentLine}>
         <GradientOverlay
-          colors={['transparent', Colors.accent, Colors.accentDim, 'transparent']}
+          colors={['transparent', Colors.gold, Colors.goldDim, 'transparent']}
           style={styles.accentGrad}
         />
       </View>
@@ -69,6 +69,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     zIndex: 10,
     overflow: 'hidden',
+    backgroundColor: Colors.background,
   },
   bg: {
     borderBottomLeftRadius: 0,
@@ -84,14 +85,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 212, 255, 0.08)',
+    backgroundColor: Colors.accentSoft,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.25)',
+    borderColor: 'rgba(59, 130, 184, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   backBtnPressed: {
-    backgroundColor: 'rgba(0, 212, 255, 0.18)',
+    backgroundColor: 'rgba(59, 130, 184, 0.22)',
     transform: [{ scale: 0.94 }],
   },
   titles: {
@@ -101,12 +102,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSizes.h3,
     fontWeight: fontWeights.bold,
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: fontSizes.caption,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   rightSlot: {

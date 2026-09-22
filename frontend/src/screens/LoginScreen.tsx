@@ -1,9 +1,9 @@
 /**
  * Pantalla: Inicio de sesión (MVC - View).
  *
- * HU02 — Diseño dark immersive: fondo degradado multicapa con orbes
- * de color, tarjeta glassmorphic con entrada animada, glow neon en
- * campos de foco, checkbox rediseñado y botón con pulso.
+ * HU02 — Diseño premium de alto contraste: banda hero navy con base
+ * curva y tarjeta blanca flotante, acentos dorados del escudo, campos
+ * claros y botón degradado institucional.
  *
  * @format
  */
@@ -28,11 +28,12 @@ import BrandHeader from '../components/BrandHeader';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
-import { cityBackground } from '../assets/images';
+import { cityBackground, fondo3 } from '../assets/images';
 import { handleLogin, type FieldErrors } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
 import {
   Colors,
+  fonts,
   fontSizes,
   fontWeights,
   layout,
@@ -57,25 +58,15 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const cardAnim = useRef(new Animated.Value(0)).current;
-  const orb1Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(cardAnim, {
       toValue: 1,
-      duration: 600,
+      duration: 650,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(orb1Anim, { toValue: 1, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-        Animated.timing(orb1Anim, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      ]),
-    ).start();
-  }, [cardAnim, orb1Anim]);
-
-  const orbScale = orb1Anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
+  }, [cardAnim]);
 
   const validateForm = (): FieldErrors => {
     const errs: FieldErrors = {};
@@ -112,67 +103,87 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
     setErrors((c) => { const n = { ...c }; delete n[field]; return n; });
 
   return (
-    <View style={styles.flex}>
-      <ImageBackground source={cityBackground} style={styles.flex} resizeMode="cover">
-        {/* Multi-layer dark overlay */}
-        <GradientOverlay
-          colors={[
-            'rgba(4, 9, 18, 0.97)',
-            'rgba(5, 14, 26, 0.93)',
-            'rgba(3, 9, 18, 0.98)',
-          ]}
-        />
-
-        {/* Animated color orbs */}
-        <Animated.View style={[styles.orbCyan, { transform: [{ scale: orbScale }] }]} />
-        <View style={styles.orbGold} />
-        <View style={styles.orbPurple} />
-
-        {/* Scan line decoration */}
-        <View style={styles.scanLine} />
-        <View style={[styles.scanLine, styles.scanLine2]} />
-
-        <KeyboardAvoidingView
+    <ImageBackground source={fondo3} style={styles.root} resizeMode="cover">
+      {/* Light blue-grey watermark overlay so the photo shows through */}
+      <GradientOverlay
+        colors={[
+          'rgba(204, 224, 240, 0.66)',
+          'rgba(222, 236, 248, 0.78)',
+        ]}
+      />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
+          {/* Navy hero band with curved bottom */}
+          <ImageBackground
+            source={cityBackground}
+            style={styles.hero}
+            resizeMode="cover"
           >
+            <GradientOverlay
+              colors={[
+                'rgba(7, 16, 30, 0.96)',
+                'rgba(10, 24, 40, 0.9)',
+                'rgba(9, 20, 34, 0.96)',
+              ]}
+            />
+            <View style={styles.heroGlow} />
             <BrandHeader
               title="Bienvenido de nuevo"
               subtitle="Ingresa para reportar y dar seguimiento a los incidentes de tu ciudad"
             />
+          </ImageBackground>
 
-            {/* Glass card */}
-            <Animated.View
-              style={[
-                styles.card,
-                {
-                  opacity: cardAnim,
-                  transform: [
-                    {
-                      translateY: cardAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [40, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              {/* Top accent line */}
-              <View style={styles.cardTopBar} />
-              <View style={styles.cardTopGlow} />
+          {/* Floating white card */}
+          <Animated.View
+            style={[
+              styles.cardWrap,
+              {
+                opacity: cardAnim,
+                transform: [
+                  {
+                    translateY: cardAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [64, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.card}>
+              {/* Gold gradient top bar */}
+              <GradientOverlay
+                colors={['#9C7A31', '#E8CB82', '#C9A24B']}
+                style={styles.goldBar}
+              />
+              <GradientOverlay
+                colors={[
+                  'rgba(201, 162, 75, 0.12)',
+                  'rgba(59, 130, 184, 0.05)',
+                  'rgba(14, 61, 99, 0)',
+                ]}
+                style={styles.heroShine}
+              />
 
-              {/* Card shimmer */}
-              <View style={styles.cardShimmer} />
+              {/* Gold eyebrow pill */}
+              <View style={styles.eyebrowPill}>
+                <View style={styles.eyebrowDot} />
+                <Text style={styles.eyebrow}>ACCESO CIUDADANO</Text>
+                <View style={styles.eyebrowDot} />
+              </View>
 
-              <Text style={styles.eyebrow}>⬡ ACCESO CIUDADANO</Text>
               <Text style={styles.cardTitle}>Inicia sesión</Text>
-              <Text style={styles.cardSub}>Escribe tus credenciales para continuar</Text>
+              <View style={styles.titleUnderline} />
+              <Text style={styles.cardSub}>
+                Escribe tus credenciales para continuar
+              </Text>
 
               <View style={styles.dividerH} />
 
@@ -186,7 +197,6 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
                   autoCapitalize="none"
                   error={errors.email}
                   icon="person"
-                  dark
                 />
                 <AppTextInput
                   label="Contraseña"
@@ -197,7 +207,6 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
                   autoCapitalize="none"
                   error={errors.password}
                   icon="lock"
-                  dark
                 />
               </View>
 
@@ -208,7 +217,7 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
                 hitSlop={8}
               >
                 <View style={[styles.checkbox, remember && styles.checkboxChecked]}>
-                  {remember && <Icon name="check" size={12} color={Colors.bgDeep} />}
+                  {remember && <Icon name="check" size={12} color={Colors.textOnPrimary} />}
                 </View>
                 <Text style={styles.rememberText}>Mantener mi sesión iniciada</Text>
               </Pressable>
@@ -231,126 +240,145 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
                 onPress={onGoToRegister}
                 variant="ghost"
               />
-            </Animated.View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </ImageBackground>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <AppDialog dialog={dialog} onCancel={close} />
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#DCEAF7',
+  },
   flex: { flex: 1 },
   scroll: { paddingBottom: spacing.xxl },
 
-  // Orbs
-  orbCyan: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(0, 212, 255, 0.07)',
-    top: -80,
-    right: -80,
+  // Navy hero band
+  hero: {
+    width: '100%',
+    minHeight: 348,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 44,
+    borderBottomRightRadius: 44,
   },
-  orbGold: {
+  heroGlow: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255, 184, 0, 0.05)',
-    top: 100,
-    left: -60,
-  },
-  orbPurple: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(167, 139, 250, 0.04)',
-    bottom: 200,
-    right: -40,
-  },
-  scanLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(0, 212, 255, 0.06)',
-    top: '30%',
-  },
-  scanLine2: {
-    top: '65%',
-    backgroundColor: 'rgba(255, 184, 0, 0.04)',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: 'rgba(201, 162, 75, 0.12)',
+    top: -100,
+    right: -75,
   },
 
-  // Card
+  // Floating white card
+  cardWrap: {
+    marginTop: -34,
+    paddingHorizontal: spacing.base,
+  },
   card: {
-    backgroundColor: 'rgba(7, 22, 36, 0.88)',
+    backgroundColor: Colors.surface,
     borderRadius: radius.cardLg,
-    marginHorizontal: spacing.base,
-    marginTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-    paddingTop: 0,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.18)',
-    overflow: 'hidden',
     width: '100%',
     maxWidth: layout.cardMaxWidth,
     alignSelf: 'center',
+    overflow: 'hidden',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.25)',
+    // boxShadow replaces deprecated shadow* props
+    // @ts-ignore
+    boxShadow: '0 34px 70px -30px rgba(9, 27, 45, 0.5)',
   },
-  cardTopBar: {
-    height: 3,
-    backgroundColor: Colors.accent,
-    marginHorizontal: -spacing.lg,
-    marginBottom: 0,
-  },
-  cardTopGlow: {
-    height: 40,
-    marginHorizontal: -spacing.lg,
-    backgroundColor: 'rgba(0, 212, 255, 0.04)',
-    marginBottom: spacing.lg,
-  },
-  cardShimmer: {
+  goldBar: {
     position: 'absolute',
-    top: 3,
+    top: 0,
     left: 0,
     right: 0,
-    height: 80,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    height: 4,
+    borderRadius: 0,
+  },
+  heroShine: {
+    position: 'absolute',
+    top: 4,
+    left: 0,
+    right: 0,
+    height: 96,
+  },
+
+  // Eyebrow
+  eyebrowPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: Colors.goldSoft,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.32)',
+  },
+  eyebrowDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.gold,
+    opacity: 0.85,
+    marginHorizontal: spacing.xs,
   },
   eyebrow: {
-    color: Colors.accent,
+    color: Colors.goldDim,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.widest,
     textAlign: 'center',
   },
+
+  // Title
   cardTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h2,
     fontWeight: fontWeights.extraBold,
+    fontFamily: fonts.heading,
     textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.base,
     letterSpacing: -0.5,
   },
+  titleUnderline: {
+    width: 54,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.gold,
+    opacity: 0.85,
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+  },
   cardSub: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.small,
     textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
+    maxWidth: 300,
+    alignSelf: 'center',
+    lineHeight: 19,
   },
+
   dividerH: {
     height: 1,
-    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    backgroundColor: Colors.borderSoft,
     marginVertical: spacing.base,
     marginHorizontal: -spacing.lg,
   },
   fields: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   rememberRow: {
     flexDirection: 'row',
@@ -362,19 +390,21 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: 'rgba(0, 212, 255, 0.4)',
-    backgroundColor: 'rgba(0, 212, 255, 0.06)',
+    borderColor: 'rgba(59, 130, 184, 0.45)',
+    backgroundColor: 'rgba(59, 130, 184, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxChecked: {
     backgroundColor: Colors.accent,
     borderColor: Colors.accent,
+    // @ts-ignore
+    boxShadow: '0 4px 12px -4px rgba(59, 130, 184, 0.7)',
   },
   rememberText: {
     marginLeft: spacing.sm,
     fontSize: fontSizes.small,
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
   },
   separatorRow: {
     flexDirection: 'row',
@@ -385,10 +415,10 @@ const styles = StyleSheet.create({
   separatorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(0, 212, 255, 0.1)',
+    backgroundColor: Colors.borderSoft,
   },
   separatorText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.semiBold,
     letterSpacing: letterSpacings.widest,

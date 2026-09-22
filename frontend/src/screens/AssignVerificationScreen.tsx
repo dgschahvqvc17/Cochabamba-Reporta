@@ -194,6 +194,7 @@ function AssignVerificationScreen({
             : `${incident.title} · ${reporterName || 'Sin reportante'}`
         }
         badge="ASIGNACIÓN"
+        contentBackground={Colors.background}
         onBack={onBack}
       />
 
@@ -454,6 +455,7 @@ function InfoRow({
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
   content: {
     padding: spacing.base,
@@ -463,8 +465,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,69,96,0.08)',
-    borderColor: 'rgba(255,69,96,0.25)',
+    backgroundColor: 'rgba(194,73,79,0.08)',
+    borderColor: 'rgba(194,73,79,0.25)',
     borderWidth: 1,
     borderRadius: radius.card,
     padding: spacing.base,
@@ -519,9 +521,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   card: {
-    backgroundColor: 'rgba(10, 30, 48, 0.92)',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.12)',
+    borderColor: 'rgba(59,130,184,0.12)',
     borderRadius: radius.card,
     marginTop: spacing.base,
     overflow: 'hidden',
@@ -549,7 +551,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.wide,
@@ -563,36 +565,36 @@ const styles = StyleSheet.create({
     marginBottom: spacing.base,
   },
   incidentTitle: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.h4,
     fontWeight: fontWeights.bold,
     lineHeight: 24,
   },
   incidentDescription: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
     lineHeight: 21,
     marginTop: spacing.sm,
     marginBottom: spacing.base,
   },
   reporterName: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.bold,
     marginBottom: spacing.sm,
   },
   mutedText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.body,
   },
   mutedTextSmall: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
     lineHeight: 17,
   },
   captureText: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
   },
@@ -612,8 +614,8 @@ const styles = StyleSheet.create({
     height: 112,
     borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    backgroundColor: Colors.bgDeep,
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.background,
   },
   verifierCard: {
     flexDirection: 'row',
@@ -622,19 +624,19 @@ const styles = StyleSheet.create({
     padding: spacing.base,
     borderRadius: radius.element,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.surfaceSubtle,
     marginTop: spacing.sm,
   },
   verifierCardSelected: {
     borderColor: Colors.accent,
-    backgroundColor: 'rgba(0,212,255,0.10)',
+    backgroundColor: 'rgba(59,130,184,0.10)',
   },
   verifierAvatar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: Colors.borderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -642,7 +644,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentDim,
   },
   verifierAvatarText: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.bold,
   },
@@ -650,7 +652,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verifierName: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     fontWeight: fontWeights.semiBold,
   },
@@ -664,7 +666,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: Colors.borderSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -673,15 +675,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
   },
   noteInputWrap: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: Colors.surface,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: Colors.borderSoft,
     borderRadius: radius.element,
     padding: spacing.base,
   },
   noteInput: {
     minHeight: 80,
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.body,
     textAlignVertical: 'top',
     // @ts-ignore — web sólo (evita outline por defecto)
@@ -699,20 +701,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: Colors.borderSoft,
   },
   infoTextWrap: {
     flex: 1,
   },
   infoLabel: {
-    color: Colors.textMuted,
+    color: Colors.textSecondary,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.wide,
     textTransform: 'uppercase',
   },
   infoValue: {
-    color: Colors.textOnDark,
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     marginTop: 2,
     lineHeight: 18,

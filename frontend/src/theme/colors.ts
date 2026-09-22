@@ -1,67 +1,75 @@
 /**
  * Design tokens — Colores (src/theme).
  *
- * Paleta "Dark Civic Tech" — Cochabamba Reporta.
- * Combina el azul institucional con tonos neon/glassmorphism modernos.
+ * Paleta "Azul Refinado + Dorado" — Cochabamba Reporta.
+ * Azul institucional sobrio y premium, sin neon/glassmorphism,
+ * con dorado del escudo para marcos y acentos elegantes.
+ * Diseño híbrido: cabeceras oscuras premium + contenido claro.
  *
  * @format
  */
 
 export const Colors = {
   // ── Primarios institucionales ──────────────────────────────────────
-  primary: '#0B4A6F',       // Azul Cochabamba (institucional)
-  primaryLight: '#1A6FA0',  // Azul intermedio
-  accent: '#00D4FF',        // Cyan Neon (acento principal)
-  accentDim: '#16A3E0',     // Cyan estándar (botones, links)
-  accentSoft: 'rgba(0, 212, 255, 0.18)', // Glassmorphic accent
+  primary: '#124A70',       // Azul Cochabamba (institucional, sobrio)
+  primaryLight: '#2A6D9E',  // Azul intermedio
+  accent: '#3B82B8',        // Azul refinado (acento principal, sin neon)
+  accentDim: '#1E5E8F',     // Azul profundo (botones, links)
+  accentSoft: 'rgba(59, 130, 184, 0.16)', // Acento translúcido
+
+  // ── Dorado del escudo (marcos y acentos premium) ───────────────────
+  gold: '#C9A24B',          // Dorado institucional (marcos, separadores)
+  goldDim: '#A88636',       // Dorado oscuro
+  goldSoft: 'rgba(201, 162, 75, 0.16)', // Dorado translúcido
 
   // ── Semánticos ────────────────────────────────────────────────────
-  success: '#00E896',       // Verde neon
-  successDim: '#4CA866',    // Verde estándar
-  successSoft: 'rgba(0, 232, 150, 0.14)',
-  warning: '#FFB800',       // Dorado vivo
-  warningDim: '#F2B705',    // Dorado clásico
-  warningSoft: 'rgba(255, 184, 0, 0.16)',
-  danger: '#FF4560',        // Rojo coral neon
-  dangerDim: '#E63946',     // Rojo estándar
-  dangerSoft: 'rgba(255, 69, 96, 0.14)',
-  info: '#A78BFA',          // Violeta info
+  success: '#2F9C6E',       // Verde institucional
+  successDim: '#1F7150',    // Verde oscuro
+  successSoft: 'rgba(47, 156, 110, 0.15)',
+  warning: '#D9A441',       // Ámbar refinado
+  warningDim: '#B3842A',    // Ámbar clásico
+  warningSoft: 'rgba(217, 164, 65, 0.16)',
+  danger: '#C2494F',        // Rojo institucional
+  dangerDim: '#97303A',     // Rojo oscuro
+  dangerSoft: 'rgba(194, 73, 79, 0.15)',
+  info: '#6C5CB0',          // Violeta info
 
-  // ── Fondos oscuros (modo principal) ───────────────────────────────
-  bgDark: '#050E1A',        // Fondo base casi negro
-  bgDeep: '#030912',        // Fondo profundo (cards, modales)
-  bgMid: '#071624',         // Fondo intermedio
-  bgCard: '#0A1E30',        // Superficie de card dark
-  bgCardHover: '#0E2640',   // Card hover state
-  bgGlass: 'rgba(10, 30, 48, 0.72)',  // Glassmorphic dark
+  // ── Fondos oscuros (cabeceras / hero premium) ──────────────────────
+  bgDark: '#06182B',        // Fondo base azul noche
+  bgDeep: '#030F1C',        // Fondo profundo (navbar, modales)
+  bgMid: '#0A243C',         // Fondo intermedio
+  bgCard: '#0D2C4A',        // Superficie de card dark
+  bgCardHover: '#113758',   // Card hover state
+  bgGlass: 'rgba(9, 32, 54, 0.82)',  // Glass dark refinado
   bgGlassLight: 'rgba(255, 255, 255, 0.06)', // Glass blanco sutil
 
-  // ── Superficie clara (formularios admin, listas) ──────────────────
-  background: '#F0F4F8',    // Gris claro para pantallas admin
+  // ── Superficie clara (contenido admin, listas) ─────────────────────
+  background: '#F2F5F9',    // Gris azulado claro para contenido
   surface: '#FFFFFF',
-  surfaceSubtle: '#F4F7FA',
-  surfaceDark: '#0D1F32',   // Superficie dark para uso interno
+  surfaceSubtle: '#F6F9FC',
+  surfaceDark: '#081B2E',   // Superficie dark para uso interno
 
   // ── Bordes ────────────────────────────────────────────────────────
-  border: '#1A3A52',        // Borde dark
-  borderLight: '#E6ECF1',   // Borde claro (para pantallas blancas)
-  borderGlow: 'rgba(0, 212, 255, 0.35)', // Borde con glow
-  borderSoft: '#E4EBF2',
+  border: '#14375A',        // Borde dark
+  borderLight: '#DCE4EC',   // Borde claro (pantallas blancas)
+  borderGlow: 'rgba(59, 130, 184, 0.4)', // Borde con resplandor sutil
+  borderGold: '#C9A24B',    // Borde dorado para marcos premium
+  borderSoft: '#E5EBF2',
 
   // ── Texto ─────────────────────────────────────────────────────────
-  textPrimary: '#141B22',   // Texto principal (sobre blanco)
-  textSecondary: '#8A94A2', // Texto secundario
+  textPrimary: '#12263A',   // Texto principal (sobre blanco)
+  textSecondary: '#57677A', // Texto secundario
   textOnPrimary: '#FFFFFF', // Texto sobre fondos oscuros
-  textOnDark: '#E8F0F8',    // Texto claro sobre dark
-  textMuted: 'rgba(232, 240, 248, 0.55)', // Texto atenuado sobre dark
-  textAccent: '#00D4FF',    // Texto resaltado
+  textOnDark: '#EDF4FA',    // Texto claro sobre dark
+  textMuted: 'rgba(237, 244, 250, 0.6)', // Texto atenuado sobre dark
+  textAccent: '#3B82B8',    // Texto resaltado
 
   // ── Gradientes (colores de parada) ────────────────────────────────
-  gradientStart: '#040D18',
-  gradientMid: '#071828',
-  gradientEnd: '#030912',
+  gradientStart: '#020B14',
+  gradientMid: '#0A2240',
+  gradientEnd: '#030F1C',
 
   // ── Legados (compatibilidad) ──────────────────────────────────────
-  navy: '#063043',
-  navyDeep: '#031220',
+  navy: '#0A3A5C',
+  navyDeep: '#04182A',
 } as const;

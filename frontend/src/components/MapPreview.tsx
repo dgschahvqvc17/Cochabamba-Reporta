@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgDeep,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.18)',
+    borderColor: 'rgba(59, 130, 184, 0.18)',
   },
   tile: {
     position: 'absolute',

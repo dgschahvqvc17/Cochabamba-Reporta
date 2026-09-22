@@ -1,8 +1,8 @@
 /**
  * Componente: Encabezado con imagen de fondo para pantallas admin (MVC - componentes).
  *
- * Hero full-bleed con overlay glassmorphic multicapa, logo en anillo neon,
- * título animado y curva de transición.
+ * Hero full-bleed con overlay oscuro multicapa, logo en cápsula con marco
+ * dorado, título animado y curva de transición.
  *
  * Fixes: useNativeDriver:false, boxShadow/textShadow instead of deprecated props.
  *
@@ -89,7 +89,7 @@ function AdminImageHeader({
           'rgba(3, 9, 18, 0.9)',
         ]}
       />
-      {/* Cyan tint at bottom */}
+      {/* Blue tint at bottom */}
       <View style={styles.cyanTint} />
 
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 60,
-    backgroundColor: 'rgba(0, 212, 255, 0.04)',
+    backgroundColor: 'rgba(59, 130, 184, 0.04)',
   },
   header: {
     paddingHorizontal: spacing.base,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backBtnPressed: {
-    backgroundColor: 'rgba(0, 212, 255, 0.2)',
+    backgroundColor: 'rgba(59, 130, 184, 0.2)',
     transform: [{ scale: 0.94 }],
   },
   logoCapsule: {
@@ -192,10 +192,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.element,
     backgroundColor: 'rgba(5, 18, 32, 0.55)',
     borderWidth: 1,
-    borderColor: 'rgba(0, 212, 255, 0.28)',
+    borderColor: 'rgba(201, 162, 75, 0.45)',
     // boxShadow sustituye a shadow* (deprecados)
     // @ts-ignore
-    boxShadow: `0 0 14px 0 ${Colors.accent}33`,
+    boxShadow: '0 10px 24px -8px rgba(2, 10, 18, 0.8)',
   },
   logo: {
     width: 176,
@@ -207,16 +207,16 @@ const styles = StyleSheet.create({
   },
   badgePill: {
     alignSelf: 'flex-start',
-    backgroundColor: Colors.accentSoft,
+    backgroundColor: Colors.goldSoft,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,255,0.4)',
+    borderColor: 'rgba(201,162,75,0.5)',
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: 3,
     marginBottom: spacing.sm,
   },
   badgeText: {
-    color: Colors.accent,
+    color: Colors.gold,
     fontSize: fontSizes.micro,
     fontWeight: fontWeights.bold,
     letterSpacing: letterSpacings.widest,
@@ -241,8 +241,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: Colors.accent,
     marginRight: 8,
-    // @ts-ignore
-    boxShadow: `0 0 4px 0 ${Colors.accent}CC`,
   },
   subtitle: {
     color: 'rgba(232,240,248,0.75)',
