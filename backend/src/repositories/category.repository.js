@@ -10,12 +10,7 @@
 'use strict';
 
 const { supabaseAdmin } = require('../config/supabase');
-
-const sanitizeSearchTerm = (value) =>
-  value
-    .replace(/[%,]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+const { sanitizeSearchTerm } = require('../utils/text');
 
 const findAll = async ({ onlyActive = false, search = '' } = {}) => {
   let query = supabaseAdmin.from('categories').select('*');

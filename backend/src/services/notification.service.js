@@ -13,15 +13,9 @@
 'use strict';
 
 const notificationRepository = require('../repositories/notification.repository');
+const { buildError } = require('../utils/errors');
 
 const MAX_NOTIFICATIONS = 50;
-
-const buildError = (message, status, code) => {
-  const error = new Error(message);
-  error.status = status;
-  error.code = code;
-  return error;
-};
 
 const toPublicNotification = (notification) => ({
   id: notification.id,

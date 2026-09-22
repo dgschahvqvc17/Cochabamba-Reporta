@@ -2,18 +2,17 @@
  * Controlador de incidentes (MVC - Controller).
  *
  * HU06 — Registro de incidentes por parte del ciudadano.
- * HU07 — Adjuntar evidencia fotográfica.
- * HU08 — Registrar ubicación del incidente.
  * HU09 — Consultar y gestionar incidentes (personal municipal).
- * HU10 — Asignar incidente para verificación (encargado de recepción).
- * HU11 — Verificar incidente (personal de verificación):
- *   - listAssignedForVerification: cola del verificador asignado.
- *   - verifyIncident: decisión VERIFICADO/RECHAZADO y evidencia en campo.
+ * Editar / eliminar el reporte del ciudadano (estado REPORTADO, edición única).
  *
- * Es la capa de presentación HTTP. Recibe la solicitud, extrae el ciudadano
- * autenticado (req.user) y el payload, delega en el service y devuelve la
- * respuesta estandarizada con `ok()` de utils/response. No contiene lógica
+ * Es la capa de presentación HTTP. Recibe la solicitud, extrae el usuario
+ * autenticado (req.user) y el payload, delega en incidentService y devuelve
+ * la respuesta estandarizada con `ok()` de utils/response. No contiene lógica
  * de negocio (el service la tiene).
+ *
+ * La evidencia (HU07), la ubicación (HU08), la asignación a verificación
+ * (HU10), la verificación (HU11) y la transición de estados viven en sus
+ * propios controllers (evidence, location, assignment, verification, status).
  *
  * Replica el patrón de category.controller.js (try/next + ok + toPublic).
  *
@@ -66,38 +65,6 @@ const incidentController = {
     }
   },
 
-  async addEvidence(req, res, next) {
-    try {
-      const evidence = await incidentService.addEvidence(
-        req.user,
-        req.params.id,
-        req.file,
-      );
-
-      return ok(res, 201, 'Evidencia adjuntada correctamente.', {
-        evidence,
-      });
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async addLocation(req, res, next) {
-    try {
-      const location = await incidentService.addLocation(
-        req.user,
-        req.params.id,
-        req.body,
-      );
-
-      return ok(res, 201, 'Ubicación registrada correctamente.', {
-        location,
-      });
-    } catch (error) {
-      return next(error);
-    }
-  },
-
   async updateIncident(req, res, next) {
     try {
       const incident = await incidentService.updateIncident(
@@ -120,124 +87,6 @@ const incidentController = {
       );
 
       return ok(res, 200, 'Reporte eliminado correctamente.', deleted);
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async listVerifiers(req, res, next) {
-    try {
-      const data = await incidentService.listVerifiers(req.user);
-
-      return ok(
-        res,
-        200,
-        'Funcionarios de verificación consultados correctamente.',
-        data,
-      );
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async listPendingVerification(req, res, next) {
-    try {
-      const data = await incidentService.listPendingVerification(
-        req.user,
-        req.query,
-      );
-
-      return ok(
-        res,
-        200,
-        'Incidentes pendientes de verificación consultados correctamente.',
-        data,
-      );
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async assignVerification(req, res, next) {
-    try {
-      const data = await incidentService.assignForVerification(
-        req.user,
-        req.params.id,
-        req.body,
-      );
-
-      return ok(
-        res,
-        200,
-        'Incidente asignado para verificación correctamente.',
-        data,
-      );
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async listAssignedForVerification(req, res, next) {
-    try {
-      const data = await incidentService.listAssignedForVerification(
-        req.user,
-        req.query,
-      );
-
-      return ok(
-        res,
-        200,
-        'Incidentes asignados para verificación consultados correctamente.',
-        data,
-      );
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async verifyIncident(req, res, next) {
-    try {
-      const data = await incidentService.verifyIncident(
-        req.user,
-        req.params.id,
-        req.body,
-      );
-
-      return ok(res, 200, 'Incidente verificado correctamente.', data);
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async changeIncidentStatus(req, res, next) {
-    try {
-      const incident = await incidentService.changeIncidentStatus(
-        req.user,
-        req.params.id,
-        req.body,
-      );
-
-      return ok(res, 200, 'Estado del incidente actualizado correctamente.', {
-        incident,
-      });
-    } catch (error) {
-      return next(error);
-    }
-  },
-
-  async getIncidentHistory(req, res, next) {
-    try {
-      const data = await incidentService.getIncidentHistory(
-        req.user,
-        req.params.id,
-      );
-
-      return ok(
-        res,
-        200,
-        'Historial del incidente consultado correctamente.',
-        data,
-      );
     } catch (error) {
       return next(error);
     }

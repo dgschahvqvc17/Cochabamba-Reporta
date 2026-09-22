@@ -18,15 +18,16 @@
 
 const { body, query } = require('express-validator');
 const { INCIDENT_STATUSES } = require('../utils/incidentStatus');
-
-const MIN_TITLE_LENGTH = 8;
-const MAX_TITLE_LENGTH = 120;
-const MIN_DESCRIPTION_LENGTH = 15;
-const MAX_DESCRIPTION_LENGTH = 2000;
-
-/** Tamaño de página por defecto y máximo para listar incidentes (HU09). */
-const DEFAULT_LIST_PAGE_SIZE = 10;
-const MAX_LIST_PAGE_SIZE = 50;
+const {
+  MIN_TITLE_LENGTH,
+  MAX_TITLE_LENGTH,
+  MIN_DESCRIPTION_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  DEFAULT_LIST_PAGE_SIZE,
+  MAX_LIST_PAGE_SIZE,
+  MAX_OBSERVATIONS_LENGTH,
+  MAX_REJECTED_REASON_LENGTH,
+} = require('../utils/incidentRules');
 
 const validateCategoryId = body('categoryId')
   .isInt({ min: 1 })
@@ -135,8 +136,6 @@ const validateChangeComment = body('comment')
 const changeStatusValidation = [validateStatus, validateChangeComment];
 
 /** HU11: verificar un incidente (personal de verificación). */
-const MAX_OBSERVATIONS_LENGTH = 500;
-const MAX_REJECTED_REASON_LENGTH = 500;
 
 const validateVerified = body('verified')
   .isBoolean()

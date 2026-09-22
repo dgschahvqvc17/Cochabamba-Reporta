@@ -10,6 +10,7 @@
 'use strict';
 
 const { supabaseAdmin } = require('../config/supabase');
+const { sanitizeSearchTerm } = require('../utils/text');
 
 const findByEmail = async (email) => {
   const { data, error } = await supabaseAdmin
@@ -97,20 +98,6 @@ const findByIdentityNumber = async (identityNumber) => {
   return data;
 };
 
-const findByRoleName = async (roleName) => {
-  const { data, error } = await supabaseAdmin
-    .from('roles')
-    .select('id')
-    .eq('name', roleName)
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-};
-
 const createAuthUser = async ({ email, password, metadata }) => {
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
@@ -154,12 +141,6 @@ const findById = async (id) => {
   return data;
 };
 
-const sanitizeSearchTerm = (value) =>
-  value
-    .replace(/[%,]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
 const findAll = async ({ page, limit, search, role, active }) => {
   let query = supabaseAdmin
     .from('users')
@@ -192,20 +173,6 @@ const findAll = async ({ page, limit, search, role, active }) => {
   }
 
   return { users: data, total: count ?? data.length };
-};
-
-const findRoles = async () => {
-  const { data, error } = await supabaseAdmin
-    .from('roles')
-    .select('id, name, description, active')
-    .eq('active', true)
-    .order('name');
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
 };
 
 const countActiveByRoleName = async (roleName) => {
@@ -282,29 +249,6 @@ const updateRole = async (id, roleId) => {
   return data;
 };
 
-const createAudit = async (entry) => {
-  const { error } = await supabaseAdmin.from('user_audit_log').insert(entry);
-
-  if (error) {
-    throw error;
-  }
-};
-
-const findAuditByUserId = async (userId) => {
-  const { data, error } = await supabaseAdmin
-    .from('user_audit_log')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(50);
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-};
-
 const findUsersByIds = async (ids) => {
   if (ids.length === 0) {
     return [];
@@ -330,17 +274,13 @@ module.exports = {
   findByIdentityNumber,
   findByEmailExcludingId,
   findByIdentityNumberExcludingId,
-  findByRoleName,
   createAuthUser,
   create,
   findAll,
-  findRoles,
   countActiveByRoleName,
   update,
   updateActive,
   updateRole,
-  createAudit,
-  findAuditByUserId,
   findUsersByIds,
   findVerifiers,
 };

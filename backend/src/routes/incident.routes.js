@@ -46,6 +46,11 @@
 const express = require('express');
 
 const incidentController = require('../controllers/incident.controller');
+const evidenceController = require('../controllers/evidence.controller');
+const locationController = require('../controllers/location.controller');
+const assignmentController = require('../controllers/assignment.controller');
+const verificationController = require('../controllers/verification.controller');
+const statusController = require('../controllers/status.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
 const { requireRole } = require('../middlewares/role.middleware');
 const { validate } = require('../middlewares/validation.middleware');
@@ -86,7 +91,7 @@ router.get(
   '/verifiers',
   authenticate,
   requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
-  incidentController.listVerifiers,
+  assignmentController.listVerifiers,
 );
 
 /** HU10 — Incidentes pendientes de verificación (REPORTADO/RECIBIDO). */
@@ -94,7 +99,7 @@ router.get(
   '/pending-verification',
   authenticate,
   requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
-  incidentController.listPendingVerification,
+  assignmentController.listPendingVerification,
 );
 
 /** HU11 — Incidentes asignados al verificador para su verificación. */
@@ -103,7 +108,7 @@ router.get(
   authenticate,
   requireRole(ROLES.VERIFICADOR, ROLES.ADMINISTRADOR),
   validate(listIncidentsValidation),
-  incidentController.listAssignedForVerification,
+  verificationController.listAssignedForVerification,
 );
 
 /** HU11 — Verificar un incidente asignado (VERIFICADO/RECHAZADO). */
@@ -112,7 +117,7 @@ router.post(
   authenticate,
   requireRole(ROLES.VERIFICADOR, ROLES.ADMINISTRADOR),
   validate(verifyIncidentValidation),
-  incidentController.verifyIncident,
+  verificationController.verifyIncident,
 );
 
 /** HU10 — Asignar un incidente a verificación. */
@@ -121,7 +126,7 @@ router.post(
   authenticate,
   requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
   validate(assignVerificationValidation),
-  incidentController.assignVerification,
+  assignmentController.assignVerification,
 );
 
 /** Transición de estado (transiciones autorizadas por rol). */
@@ -130,7 +135,7 @@ router.patch(
   authenticate,
   requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
   validate(changeStatusValidation),
-  incidentController.changeIncidentStatus,
+  statusController.changeIncidentStatus,
 );
 
 /** Historial de cambios de estado del incidente. */
@@ -144,7 +149,7 @@ router.get(
     ROLES.PERSONAL_SOLUCION,
     ROLES.ADMINISTRADOR,
   ),
-  incidentController.getIncidentHistory,
+  statusController.getIncidentHistory,
 );
 
 router.post(
@@ -152,7 +157,7 @@ router.post(
   authenticate,
   requireRole(ROLES.CIUDADANO, ROLES.VERIFICADOR, ROLES.ADMINISTRADOR),
   uploadSingleEvidenceImage,
-  incidentController.addEvidence,
+  evidenceController.addEvidence,
 );
 
 router.post(
@@ -160,7 +165,7 @@ router.post(
   authenticate,
   requireRole(ROLES.CIUDADANO),
   validate(locationValidation),
-  incidentController.addLocation,
+  locationController.addLocation,
 );
 
 router.patch(

@@ -18,6 +18,7 @@
 const multer = require('multer');
 
 const { fail } = require('../utils/response');
+const { buildError } = require('../utils/errors');
 const {
   ALLOWED_MIME_TYPES,
   ALLOWED_EXTENSIONS,
@@ -26,14 +27,6 @@ const {
 } = require('../utils/evidence');
 
 const EVIDENCE_FIELD = 'image';
-
-const buildUploadError = (message, status, code, field) => {
-  const error = new Error(message);
-  error.status = status;
-  error.code = code;
-  error.details = [{ field, message }];
-  return error;
-};
 
 const hasAllowedExtension = (file) => {
   const name = String((file && file.originalname) || '').toLowerCase();
@@ -49,7 +42,7 @@ const uploadImage = multer({
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       return cb(
-        buildUploadError(
+        buildError(
           'El formato de la imagen no es válido. Solo se permiten JPG, JFIF, PNG y WebP.',
           422,
           'INVALID_IMAGE_FORMAT',
@@ -60,7 +53,7 @@ const uploadImage = multer({
 
     if (!hasAllowedExtension(file)) {
       return cb(
-        buildUploadError(
+        buildError(
           'La extensión de la imagen no es válida. Usa .jpg, .jpeg, .jfif, .png o .webp.',
           422,
           'INVALID_IMAGE_FORMAT',

@@ -18,31 +18,17 @@
 
 const { supabaseAdmin } = require('../config/supabase');
 const userRepository = require('../repositories/user.repository');
+const roleRepository = require('../repositories/role.repository');
+const auditRepository = require('../repositories/audit.repository');
 const { toPublicUser } = require('../utils/userMapper');
 const ROLES = require('../utils/roles');
+const { buildError } = require('../utils/errors');
+const { parsePositiveInt } = require('../utils/pagination');
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
 
-const buildError = (message, status, code, field = null) => {
-  const error = new Error(message);
-  error.status = status;
-  error.code = code;
-  if (field) {
-    error.details = [{ field, message }];
-  }
-  return error;
-};
-
 const normalizeRoleName = (role) => String(role || '').trim().toUpperCase();
-
-const parsePositiveInt = (value, fallback, max) => {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 1) {
-    return fallback;
-  }
-  return Math.min(parsed, max);
-};
 
 const buildAuditActorMap = (rows, actors) => {
   const nameById = new Map(
@@ -90,7 +76,7 @@ const userService = {
   },
 
   async listRoles() {
-    return userRepository.findRoles();
+    return roleRepository.findRoles();
   },
 
   async getUserDetail(id) {
@@ -108,7 +94,7 @@ const userService = {
   },
 
   async getUserAudit(userId) {
-    const rows = await userRepository.findAuditByUserId(userId);
+    const rows = await auditRepository.findAuditByUserId(userId);
     const actorIds = [...new Set(rows.map((row) => row.changed_by).filter(Boolean))];
     const actors = await userRepository.findUsersByIds(actorIds);
 
@@ -151,7 +137,7 @@ const userService = {
       }
     }
 
-    const role = await userRepository.findByRoleName(roleName);
+    const role = await roleRepository.findByRoleName(roleName);
     if (!role) {
       throw buildError(
         'El rol seleccionado no está configurado.',
@@ -189,7 +175,7 @@ const userService = {
       throw error;
     }
 
-    await userRepository.createAudit({
+    await auditRepository.createAudit({
       user_id: createdUser.id,
       action: 'create',
       field_name: 'role',
@@ -257,7 +243,7 @@ const userService = {
     const updated = await userRepository.update(id, updates);
 
     for (const entry of auditEntries) {
-      await userRepository.createAudit({
+      await auditRepository.createAudit({
         user_id: id,
         action: 'update',
         ...entry,
@@ -300,7 +286,7 @@ const userService = {
 
     const updated = await userRepository.updateActive(id, Boolean(active));
 
-    await userRepository.createAudit({
+    await auditRepository.createAudit({
       user_id: id,
       action: active ? 'activate' : 'deactivate',
       field_name: 'active',
@@ -349,7 +335,7 @@ const userService = {
       );
     }
 
-    const role = await userRepository.findByRoleName(normalized);
+    const role = await roleRepository.findByRoleName(normalized);
     if (!role) {
       throw buildError(
         'El rol seleccionado no está configurado.',
@@ -360,7 +346,7 @@ const userService = {
 
     const updated = await userRepository.updateRole(id, role.id);
 
-    await userRepository.createAudit({
+    await auditRepository.createAudit({
       user_id: id,
       action: 'role_change',
       field_name: 'role',

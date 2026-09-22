@@ -1,0 +1,150 @@
+@startuml ModeloEntidadRelacion
+' ============================================================
+' Modelo entidad-relación actualizado (relación general).
+' 'users.auth_id' referencia 'auth.users' de Supabase Auth.
+' ============================================================
+title Modelo entidad-relación actualizado — Relación general
+
+skinparam linetype ortho
+skinparam defaultFontSize 10
+
+entity "roles" as roles {
+  * id : bigint <<PK>>
+  --
+  name : varchar(50) <<UQ>>
+  description : text
+  active : boolean
+  created_at : timestamptz
+  updated_at : timestamptz
+}
+
+entity "users" as users {
+  * id : bigint <<PK>>
+  --
+  auth_id : uuid <<UQ, FK→auth.users>>
+  first_name : varchar(100)
+  last_name : varchar(100)
+  birth_date : date
+  identity_number : varchar(20)
+  phone : varchar(20)
+  email : varchar(150) <<UQ>>
+  address : varchar(200)
+  role_id : bigint <<FK→roles>>
+  active : boolean
+  created_at : timestamptz
+  updated_at : timestamptz
+}
+
+entity "categories" as categories {
+  * id : bigint <<PK>>
+  --
+  name : varchar(100) <<UQ>>
+  description : varchar(255)
+  active : boolean
+  created_at : timestamptz
+  updated_at : timestamptz
+}
+
+entity "incidents" as incidents {
+  * id : bigint <<PK>>
+  --
+  code : varchar(20) <<UQ>>
+  user_id : bigint <<FK→users>>
+  category_id : bigint <<FK→categories>>
+  title : varchar(150)
+  description : text
+  status : incident_status
+  latitude : numeric(10,7)
+  longitude : numeric(10,7)
+  address : varchar(200)
+  rejected_reason : text
+  created_at : timestamptz
+  updated_at : timestamptz
+}
+
+entity "evidence" as evidence {
+  * id : bigint <<PK>>
+  --
+  incident_id : bigint <<FK→incidents>>
+  url : varchar(500)
+  storage_path : varchar(500)
+  mime_type : varchar(100)
+  size_bytes : bigint
+  uploaded_by : bigint <<FK→users>>
+  created_at : timestamptz
+}
+
+entity "locations" as locations {
+  * id : bigint <<PK>>
+  --
+  incident_id : bigint <<FK→incidents>>
+  latitude : numeric(10,7)
+  longitude : numeric(10,7)
+  address : varchar(200)
+  captured_at : timestamptz
+}
+
+entity "assignments" as assignments {
+  * id : bigint <<PK>>
+  --
+  incident_id : bigint <<FK→incidents>>
+  assignment_type : assignment_type
+  assigned_by : bigint <<FK→users>>
+  assigned_to : bigint <<FK→users>>
+  note : text
+  active : boolean
+  created_at : timestamptz
+  completed_at : timestamptz
+}
+
+entity "history" as history {
+  * id : bigint <<PK>>
+  --
+  incident_id : bigint <<FK→incidents>>
+  from_status : incident_status
+  to_status : incident_status
+  changed_by : bigint <<FK→users>>
+  comment : text
+  created_at : timestamptz
+}
+
+entity "notifications" as notifications {
+  * id : bigint <<PK>>
+  --
+  incident_id : bigint <<FK→incidents>>
+  user_id : bigint <<FK→users>>
+  message : varchar(255)
+  read : boolean
+  created_at : timestamptz
+}
+
+entity "user_audit_log" as user_audit_log {
+  * id : bigint <<PK>>
+  --
+  user_id : bigint <<FK→users>>
+  action : varchar(30)
+  field_name : varchar(50)
+  old_value : text
+  new_value : text
+  changed_by : bigint <<FK→users>>
+  created_at : timestamptz
+}
+
+' ---- Relaciones generales ----
+roles ||--o{ users : "tiene (role_id)"
+users ||--o{ incidents : "reporta (user_id)"
+categories ||--o{ incidents : "clasifica (category_id)"
+incidents ||--o{ evidence : "tiene evidencia (incident_id)"
+incidents ||--o{ locations : "tiene ubicación (incident_id)"
+incidents ||--o{ assignments : "se asigna (incident_id)"
+incidents ||--o{ history : "registra historial (incident_id)"
+incidents ||--o{ notifications : "genera (incident_id)"
+users ||--o{ assignments : "asigna (assigned_by)"
+users ||--o{ assignments : "recibe (assigned_to)"
+users ||--o{ history : "cambia estado (changed_by)"
+users ||--o{ evidence : "adjunta (uploaded_by)"
+users ||--o{ notifications : "es destinatario (user_id)"
+users ||--o{ user_audit_log : "sujeto (user_id)"
+users ||--o{ user_audit_log : "ejecuta (changed_by)"
+
+@enduml

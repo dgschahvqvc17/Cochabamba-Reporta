@@ -10,6 +10,7 @@
 'use strict';
 
 const { supabaseAdmin } = require('../config/supabase');
+const { sanitizeSearchTerm } = require('../utils/text');
 
 const create = async ({ code, userId, categoryId, title, description }) => {
   const { data, error } = await supabaseAdmin
@@ -65,12 +66,6 @@ const findByUserId = async ({ userId, status = null } = {}) => {
 
   return data ?? [];
 };
-
-const sanitizeSearchTerm = (value) =>
-  value
-    .replace(/[%,]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 
 /**
  * Lista todos los incidentes (HU09). Uso exclusivo del personal
@@ -177,12 +172,13 @@ const findAssignedForVerification = async ({
 };
 
 const countToday = async () => {
-  const startOfDay = new Date().toISOString().slice(0, 10);
+  const localMidnight = new Date();
+  localMidnight.setHours(0, 0, 0, 0);
 
   const { count, error } = await supabaseAdmin
     .from('incidents')
     .select('id', { count: 'exact', head: true })
-    .gte('created_at', startOfDay);
+    .gte('created_at', localMidnight.toISOString());
 
   if (error) {
     throw error;

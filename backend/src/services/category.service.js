@@ -18,19 +18,11 @@
 
 const categoryRepository = require('../repositories/category.repository');
 const ROLES = require('../utils/roles');
+const { buildError } = require('../utils/errors');
+const { normalizeText } = require('../utils/text');
 
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 255;
-
-const buildError = (message, status, code, field = null) => {
-  const error = new Error(message);
-  error.status = status;
-  error.code = code;
-  if (field) {
-    error.details = [{ field, message }];
-  }
-  return error;
-};
 
 const toPublicCategory = (category) => ({
   id: category.id,
@@ -40,8 +32,6 @@ const toPublicCategory = (category) => ({
   createdAt: category.created_at,
   updatedAt: category.updated_at,
 });
-
-const normalizeText = (value) => (value ? String(value).trim() : '');
 
 const categoryService = {
   async listCategories(user, query = {}) {

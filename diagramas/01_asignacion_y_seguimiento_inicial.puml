@@ -1,0 +1,62 @@
+@startuml DiagramaAsignacionSeguimiento
+' ============================================================
+' Diagrama de asignación y seguimiento inicial (HU10 + trazabilidad).
+' Copiar este código en https://www.plantuml.com/plantuml → render.
+' ============================================================
+title Asignación y seguimiento inicial del incidente (HU10)
+
+skinparam sequenceMessageAlign center
+skinparam maxMessageSize 160
+
+actor "Ciudadano" as citizen
+actor "Encargado de Recepción" as reception
+actor "Verificador" as verifier
+participant "API REST /api/v1" as api
+database "Supabase" as db
+
+== Creación y disponibilidad (HU06 / HU09) ==
+citizen -> api : POST /incidents\n{categoría, título, descripción}
+api -> db : insert incidents\n(status = REPORTADO)
+api --> citizen : 201 {incident, code}
+
+reception -> api : GET /incidents/pending-verification\n{page, limit, search}
+api -> db : select incidents\n(status REPORTADO o RECIBIDO)
+api --> reception : {incidents, paginación}
+
+reception -> api : GET /incidents/verifiers
+api -> db : select users role = VERIFICADOR
+api --> reception : {verifiers}
+
+group Asignación a verificación (HU10)
+  reception -> api : POST /incidents/:id/assign-verification\n{assignedToId, note}
+  api -> db : chequear incidente NO asignado activo
+  alt Incidente válido (REPORTADO/RECIBIDO)
+    api -> db : insert assignments (VERIFICACION, active=true)
+    api -> db : update incidents → EN_VERIFICACION
+    api -> db : insert history\n(REPORTADO|RECIBIDO → EN_VERIFICACION)
+    api -> db : insert notifications\n(verificador y ciudadano)
+    api --> reception : 200 {assignment, incident}
+    verifier <-- api : notificación "se le asignó el incidente"
+    citizen <-- api : notificación "cambió de estado a En verificación"
+  else Ya asignado / transición no válida
+    api --> reception : 409 (nada se registra)
+  end
+end
+
+== Seguimiento del verificador (HU11) ==
+verifier -> api : GET /incidents/assigned-verification
+api -> db : select incidents asignados al verificador
+api --> verifier : {incidents}
+
+verifier -> api : POST /incidents/:id/evidence\n(constatación en campo)
+api -> db : subir archivo a Storage\n+ insert evidence
+api --> verifier : 201 {evidence}
+
+verifier -> api : POST /incidents/:id/verify\n{verified, observations|rejectedReason}
+api -> db : update incidents\n→ VERIFICADO o RECHAZADO
+api -> db : update assignments\n(completed_at, active=false)
+api -> db : insert history + notifications
+api --> verifier : 200 {incident, assignment}
+citizen <-- api : notificación verificado / rechazado
+
+@enduml

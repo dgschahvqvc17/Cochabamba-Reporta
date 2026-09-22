@@ -17,20 +17,12 @@
 
 const { supabaseAdmin, supabasePublic } = require('../config/supabase');
 const userRepository = require('../repositories/user.repository');
+const roleRepository = require('../repositories/role.repository');
 const { toPublicUser } = require('../utils/userMapper');
 const ROLES = require('../utils/roles');
+const { buildError } = require('../utils/errors');
 
 const ROLE_CIUDADANO = ROLES.CIUDADANO;
-
-const buildError = (message, status, code, field = null) => {
-  const error = new Error(message);
-  error.status = status;
-  error.code = code;
-  if (field) {
-    error.details = [{ field, message }];
-  }
-  return error;
-};
 
 const claimDuplicateEmail = 'Ya existe una cuenta con este correo electrónico.';
 const claimDuplicateIdentity =
@@ -58,7 +50,7 @@ const authService = {
       );
     }
 
-    const role = await userRepository.findByRoleName(ROLE_CIUDADANO);
+    const role = await roleRepository.findByRoleName(ROLE_CIUDADANO);
     if (!role) {
       throw buildError(
         'El rol CIUDADANO no está configurado.',

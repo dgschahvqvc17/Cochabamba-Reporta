@@ -1,0 +1,117 @@
+@startuml ComponentesSistema
+' ============================================================
+' Diagrama de componentes del sistema actual (avance hasta verificación).
+' Los nombres siguen el refactor: Controller → Service → Repository.
+' ============================================================
+title Diagrama de componentes del sistema actual
+
+skinparam componentStyle uml2
+skinparam packageStyle rectangle
+
+actor "Ciudadano" as A1
+actor "Encargado de Recepción" as A2
+actor "Verificador" as A3
+actor "Administrador" as A4
+
+package "Frontend" {
+  component "App React Native" as FE [
+    App React Native
+    consume /api/v1
+  ]
+}
+
+package "Backend (Node.js + Express 5)" {
+  package "Controllers (HTTP)" as controllers {
+    component "AuthController" as cAuth
+    component "UserController" as cUser
+    component "CategoryController" as cCat
+    component "IncidentController" as cInc
+    component "EvidenceController" as cEv
+    component "LocationController" as cLoc
+    component "AssignmentController" as cAsg
+    component "VerificationController" as cVer
+    component "StatusController" as cSta
+    component "NotificationController" as cNot
+  }
+  package "Services (reglas de negocio)" as services {
+    component "UserService" as sUser
+    component "AuthService" as sAuth
+    component "IncidentService" as sInc
+    component "EvidenceService" as sEv
+    component "LocationService" as sLoc
+    component "AssignmentService" as sAsg
+    component "VerificationService" as sVer
+    component "StatusService" as sSta
+    component "NotificationService" as sNot
+    component "CategoryService" as sCat
+  }
+  package "Repositories (datos + storage)" as repos {
+    component "user / role / audit Repository" as rUser
+    component "incident / category Repository" as rInc
+    component "evidence / location Repository" as rEvLoc
+    component "assignment / history Repository" as rAsgHis
+    component "notification Repository" as rNot
+    component "StorageRepository" as rStorage
+  }
+}
+
+database "Supabase: PostgreSQL" as DB [
+  PostgreSQL
+  roles · users · categories
+  incidents · evidence · locations
+  assignments · history
+  notifications · user_audit_log
+]
+component "Supabase Auth" as SAuth [
+  Auth (JWT)
+]
+component "Supabase Storage" as SStorage [
+  Storage bucket 'evidence'
+]
+
+A1 -> FE
+A2 -> FE
+A3 -> FE
+A4 -> FE
+
+FE --> cAuth
+FE --> cInc
+FE --> cEv
+FE --> cUser
+FE --> cNot
+FE --> cCat
+FE --> cLoc
+FE --> cAsg
+FE --> cVer
+FE --> cSta
+
+cAuth --> sAuth
+cUser --> sUser
+cInc --> sInc
+cEv --> sEv
+cLoc --> sLoc
+cAsg --> sAsg
+cVer --> sVer
+cSta --> sSta
+cNot --> sNot
+cCat --> sCat
+
+sAuth --> rUser
+sUser --> rUser
+sInc --> rInc
+sEv --> rEvLoc
+sLoc --> rEvLoc
+sAsg --> rAsgHis
+sVer --> rAsgHis
+sSta --> rAsgHis
+sNot --> rNot
+rUser --> DB
+rInc --> DB
+rEvLoc --> DB
+rAsgHis --> DB
+rNot --> DB
+rStorage --> SStorage : upload / remove
+rUser --> SAuth : signUp / signIn
+rStorage --> DB
+
+@enduml
