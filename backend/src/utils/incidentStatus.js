@@ -44,6 +44,12 @@ const ASSIGNABLE_TO_VERIFICATION = [
 /** Estados que se muestran como "pendientes de verificación". */
 const PENDING_VERIFICATION_STATUSES = [...ASSIGNABLE_TO_VERIFICATION];
 
+/** Estados desde los que el encargado de solución puede asignar a solución (HU12). */
+const ASSIGNABLE_TO_SOLUTION = [INCIDENT_STATUS.VERIFICADO];
+
+/** Estados que se muestran como "pendientes de asignación para solución". */
+const PENDING_SOLUTION_STATUSES = [...ASSIGNABLE_TO_SOLUTION];
+
 /** Etiquetas legibles en español para mensajes y notificaciones. */
 const INCIDENT_STATUS_LABELS = {
   [INCIDENT_STATUS.REPORTADO]: 'Reportado',
@@ -104,6 +110,8 @@ module.exports = {
   INCIDENT_STATUS_LABELS,
   ASSIGNABLE_TO_VERIFICATION,
   PENDING_VERIFICATION_STATUSES,
+  ASSIGNABLE_TO_SOLUTION,
+  PENDING_SOLUTION_STATUSES,
   ALLOWED_TRANSITIONS,
   ROLE_STATUS_TRANSITIONS,
   isTransitionAllowed,

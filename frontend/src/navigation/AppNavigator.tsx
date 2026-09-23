@@ -32,6 +32,8 @@ import PendingVerificationScreen from '../screens/PendingVerificationScreen';
 import AssignVerificationScreen from '../screens/AssignVerificationScreen';
 import VerificationQueueScreen from '../screens/VerificationQueueScreen';
 import VerifyIncidentScreen from '../screens/VerifyIncidentScreen';
+import PendingSolutionScreen from '../screens/PendingSolutionScreen';
+import AssignSolutionScreen from '../screens/AssignSolutionScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import AppNavBar from '../components/AppNavBar';
 import {
@@ -72,7 +74,9 @@ type StaffRoute =
   | { name: 'pending-verification' }
   | { name: 'assign-verification'; incidentId: number }
   | { name: 'verification-queue' }
-  | { name: 'verify-incident'; incidentId: number };
+  | { name: 'verify-incident'; incidentId: number }
+  | { name: 'pending-solution' }
+  | { name: 'assign-solution'; incidentId: number };
 
 const STAFF_ROLES: string[] = [
   'RECEPCION',
@@ -263,7 +267,9 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
         staffRoute.name === 'pending-verification' ||
         staffRoute.name === 'assign-verification' ||
         staffRoute.name === 'verification-queue' ||
-        staffRoute.name === 'verify-incident';
+        staffRoute.name === 'verify-incident' ||
+        staffRoute.name === 'pending-solution' ||
+        staffRoute.name === 'assign-solution';
 
       const staffNavActiveKey =
         staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
@@ -311,6 +317,19 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 onBack={() => setStaffRoute({ name: 'verification-queue' })}
                 onVerified={() => setStaffRoute({ name: 'verification-queue' })}
               />
+            ) : staffRoute.name === 'pending-solution' ? (
+              <PendingSolutionScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'assign-solution', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'assign-solution' ? (
+              <AssignSolutionScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'pending-solution' })}
+                onAssigned={() => setStaffRoute({ name: 'pending-solution' })}
+              />
             ) : (
               <StaffHomeScreen
                 user={session.user}
@@ -320,6 +339,9 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 }
                 onGoToVerificationQueue={() =>
                   setStaffRoute({ name: 'verification-queue' })
+                }
+                onGoToPendingSolution={() =>
+                  setStaffRoute({ name: 'pending-solution' })
                 }
               />
             )}

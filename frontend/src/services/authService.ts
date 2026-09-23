@@ -11,8 +11,7 @@
 import type { Citizen, CitizenRegistration } from '../models/Citizen';
 import type { Session } from '../models/Session';
 import type { User } from '../models/User';
-
-const BASE_URL = 'http://localhost:3000/api/v1';
+import { API_BASE_URL as BASE_URL } from '../config/api';
 
 export interface ApiResponse<T> {
   success: boolean;

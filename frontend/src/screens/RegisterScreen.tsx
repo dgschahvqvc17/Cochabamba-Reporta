@@ -25,6 +25,7 @@ import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import BrandHeader from '../components/BrandHeader';
 import CalendarModal from '../components/CalendarModal';
+import FloatingOrbs from '../components/FloatingOrbs';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon, { type IconName } from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
@@ -47,6 +48,8 @@ import {
   isValidIdentityNumber,
   isValidPassword,
   isValidPhone,
+  onlyDigits,
+  onlyLetters,
 } from '../utils/validators';
 
 type RegisterScreenProps = {
@@ -166,13 +169,16 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
   return (
     <ImageBackground source={fondoNew} style={styles.root} resizeMode="cover">
       {/* Deep institutional navy overlay so the photo reads as a premium backdrop */}
+      {/* Fondo inferior (azul oscuro) aplicado uniformemente a toda la imagen */}
       <GradientOverlay
         colors={[
-          'rgba(3, 10, 20, 0.94)',
-          'rgba(6, 24, 43, 0.9)',
-          'rgba(3, 15, 28, 0.96)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
         ]}
       />
+      {/* Esferas decorativas que se desplazan por todo el fondo */}
+      <FloatingOrbs />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -195,7 +201,6 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 'rgba(8, 20, 33, 0.94)',
               ]}
             />
-            <View style={styles.heroGlow} />
             <BrandHeader
               title="Crear cuenta"
               subtitle="Regístrate para reportar incidentes urbanos en Cochabamba"
@@ -240,7 +245,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Nombres *"
                 value={form.firstName}
-                onChangeText={(v) => { onChangeField('firstName')(v); clearError('firstName'); }}
+                onChangeText={(v) => { onChangeField('firstName')(onlyLetters(v)); clearError('firstName'); }}
                 placeholder="Ej. Juan Carlos"
                 error={errors.firstName}
                 icon="person"
@@ -248,7 +253,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Apellidos *"
                 value={form.lastName}
-                onChangeText={(v) => { onChangeField('lastName')(v); clearError('lastName'); }}
+                onChangeText={(v) => { onChangeField('lastName')(onlyLetters(v)); clearError('lastName'); }}
                 placeholder="Ej. Pérez Mamani"
                 error={errors.lastName}
                 icon="person"
@@ -265,7 +270,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Documento de identidad *"
                 value={form.identityNumber}
-                onChangeText={(v) => { onChangeField('identityNumber')(v); clearError('identityNumber'); }}
+                onChangeText={(v) => { onChangeField('identityNumber')(onlyDigits(v)); clearError('identityNumber'); }}
                 placeholder="Ej. 7654321"
                 keyboardType="number-pad"
                 maxLength={8}
@@ -275,7 +280,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Teléfono *"
                 value={form.phone}
-                onChangeText={(v) => { onChangeField('phone')(v); clearError('phone'); }}
+                onChangeText={(v) => { onChangeField('phone')(onlyDigits(v)); clearError('phone'); }}
                 placeholder="Ej. 78901234"
                 keyboardType="phone-pad"
                 maxLength={8}
@@ -487,15 +492,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderBottomLeftRadius: 44,
     borderBottomRightRadius: 44,
-  },
-  heroGlow: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(201, 162, 75, 0.14)',
-    top: -110,
-    right: -80,
   },
   badgesRow: {
     flexDirection: 'row',

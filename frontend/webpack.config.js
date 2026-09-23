@@ -18,6 +18,9 @@ module.exports = {
         'config',
         'asset-registry.stub.js',
       ),
+      // En el build web la App usa la URL del host de Expo solo en
+      // dispositivos; en web siempre es localhost, así que se usa un stub.
+      'expo-constants': path.resolve(__dirname, 'config', 'expo-constants.stub.js'),
     },
     extensions: ['.web.tsx', '.web.ts', '.tsx', '.ts', '.web.js', '.js'],
   },
@@ -25,14 +28,14 @@ module.exports = {
     rules: [
       {
         test: /\.(js|jsx|ts|tsx)$/,
-        // HU07: react-native-image-picker se distribuye como TS (src/) y debe
-        // compilarse con babel. Se excluye node_modules salvo esos paquetes.
-        exclude: /node_modules[/\\](?!react-native-web|react-native-image-picker)/,
+        // Los paquetes de Expo se distribuyen como TS/ESM en parte; se
+        // compilan con babel para garantizar compatibilidad con el build web.
+        exclude: /node_modules[/\\](?!react-native-web|expo|expo-.*|@expo|react-native-svg)/,
         use: {
           loader: 'babel-loader',
           options: {
             presets: [
-              '@react-native/babel-preset',
+              'babel-preset-expo',
               ['@babel/preset-typescript', { onlyRemoveTypeImports: true }],
             ],
             cacheDirectory: true,

@@ -25,6 +25,7 @@ import {
 import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import BrandHeader from '../components/BrandHeader';
+import FloatingOrbs from '../components/FloatingOrbs';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
@@ -125,13 +126,16 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
   return (
     <ImageBackground source={fondoNew} style={styles.root} resizeMode="cover">
       {/* Deep institutional navy overlay so the photo reads as a premium backdrop */}
+      {/* Fondo inferior (azul oscuro) aplicado uniformemente a toda la imagen */}
       <GradientOverlay
         colors={[
-          'rgba(3, 10, 20, 0.94)',
-          'rgba(6, 24, 43, 0.9)',
-          'rgba(3, 15, 28, 0.96)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
         ]}
       />
+      {/* Esferas decorativas que se desplazan por todo el fondo */}
+      <FloatingOrbs />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -154,7 +158,6 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
                 'rgba(8, 20, 33, 0.94)',
               ]}
             />
-            <View style={styles.heroGlow} />
 
             {/* Breathing decorative rings */}
             <Animated.View
@@ -347,15 +350,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderBottomLeftRadius: 44,
     borderBottomRightRadius: 44,
-  },
-  heroGlow: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(201, 162, 75, 0.14)',
-    top: -110,
-    right: -80,
   },
   ring: {
     position: 'absolute',

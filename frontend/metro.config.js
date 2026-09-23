@@ -1,18 +1,15 @@
-const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const { getDefaultConfig } = require('expo/metro-config');
 
 /**
- * Metro configuration
- * https://reactnative.dev/docs/metro
+ * Configuración de Metro (Expo).
  *
- * @type {import('@react-native/metro-config').MetroConfig}
+ * Parte de la base de Expo (maneja fuentes, node modules de expo, web, etc.)
+ * y suma la extensión de asset `jfif` usada por la aplicación.
+ *
+ * @type {import('expo/metro-config').MetroConfig}
  */
-const defaultConfig = getDefaultConfig(__dirname);
-const { assetExts } = defaultConfig.resolver;
+const config = getDefaultConfig(__dirname);
 
-const config = {
-  resolver: {
-    assetExts: [...assetExts, 'jfif'],
-  },
-};
+config.resolver.assetExts.push('jfif');
 
-module.exports = mergeConfig(defaultConfig, config);
+module.exports = config;

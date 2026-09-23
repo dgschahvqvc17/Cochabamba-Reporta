@@ -50,6 +50,8 @@ import {
   isValidEmail,
   isValidIdentityNumber,
   isValidPhone,
+  onlyDigits,
+  onlyLetters,
   parseBirthDate,
 } from '../utils/validators';
 
@@ -257,8 +259,8 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
         >
           {/* Datos personales */}
           <DarkSectionCard title="Datos personales" icon="person" color={Colors.accent}>
-            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={field('firstName')} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" />
-            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={field('lastName')} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" />
+            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={(v) => field('firstName')(onlyLetters(v))} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" />
+            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={(v) => field('lastName')(onlyLetters(v))} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" />
           </DarkSectionCard>
 
           {/* Acceso */}
@@ -285,8 +287,8 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
 
           {/* Contacto */}
           <DarkSectionCard title="Contacto e identificación" icon="badge" color={Colors.success}>
-            <AppTextInput label="Teléfono" value={form.phone} onChangeText={field('phone')} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" />
-            <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={field('identityNumber')} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" />
+            <AppTextInput label="Teléfono" value={form.phone} onChangeText={(v) => field('phone')(onlyDigits(v))} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" />
+            <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={(v) => field('identityNumber')(onlyDigits(v))} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" />
             <AppDateField label="Fecha de nacimiento" value={form.birthDate} onPress={() => setIsCalendarOpen(true)} error={errors.birthDate} />
             <AppTextInput label="Dirección o referencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." icon="pin" />
           </DarkSectionCard>

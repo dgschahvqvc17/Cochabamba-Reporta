@@ -18,6 +18,7 @@
  */
 
 import type {
+  AssignSolutionPayload,
   AssignVerificationPayload,
   Evidence,
   Incident,
@@ -28,13 +29,13 @@ import type {
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
+  SolutionUser,
   VerifierUser,
   VerifyIncidentPayload,
   VerifyIncidentResult,
 } from '../models/Incident';
 import { clearSession } from '../utils/session';
-
-const BASE_URL = 'http://localhost:3000/api/v1';
+import { API_BASE_URL as BASE_URL } from '../config/api';
 
 /** Timeout de cada petición para que la UI nunca quede "cargando" sin fin. */
 const REQUEST_TIMEOUT_MS = 20000;
@@ -332,6 +333,57 @@ export async function verifyIncident(
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+/** HU12: lista el personal de solución disponible (encargado de solución). */
+export async function getSolutionStaff(
+  accessToken: string,
+): Promise<ApiResponse<{ staff: SolutionUser[] }>> {
+  return api<{ staff: SolutionUser[] }>(
+    '/incidents/solution-staff',
+    accessToken,
+  );
+}
+
+/** HU12: lista los incidentes verificados pendientes de solución. */
+export async function getPendingSolutionIncidents(
+  accessToken: string,
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<ApiResponse<IncidentListData>> {
+  const query = new URLSearchParams();
+
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<IncidentListData>(
+    `/incidents/pending-solution${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
+}
+
+/**
+ * HU12: asigna un incidente verificado a un responsable de solución.
+ * Cambia el estado a ASIGNADO_PARA_SOLUCION, registra la asignación y
+ * las notificaciones en el backend.
+ */
+export async function assignSolution(
+  accessToken: string,
+  incidentId: number,
+  payload: AssignSolutionPayload,
+): Promise<
+  ApiResponse<{ assignment: IncidentAssignment; incident: Incident }>
+> {
+  return api<{ assignment: IncidentAssignment; incident: Incident }>(
+    `/incidents/${incidentId}/assign-solution`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function updateIncident(

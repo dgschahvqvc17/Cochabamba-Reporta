@@ -27,6 +27,12 @@
  *   - POST /api/v1/incidents/:id/verify → registrar decisión de verificación
  *                                             (VERIFICADO/RECHAZADO).
  *   - POST /api/v1/incidents/:id/evidence → evidencia del verificador/ciudadano.
+ * HU12 — Asignar incidente para solución (encargado de solución):
+ *   - GET  /api/v1/incidents/solution-staff → personal de solución disponible.
+ *   - GET  /api/v1/incidents/pending-solution → incidentes verificados
+ *                                             pendientes de solución.
+ *   - POST /api/v1/incidents/:id/assign-solution → asignar a solución
+ *                                             (cambia a ASIGNADO_PARA_SOLUCION).
  * Transición de estados:
  *   - PATCH /api/v1/incidents/:id/status    → cambiar estado (transiciones
  *                                             autorizadas por rol, con
@@ -61,6 +67,7 @@ const {
   createIncidentValidation,
   listIncidentsValidation,
   assignVerificationValidation,
+  assignSolutionValidation,
   changeStatusValidation,
   verifyIncidentValidation,
 } = require('../validators/incident.validator');
@@ -127,6 +134,31 @@ router.post(
   requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
   validate(assignVerificationValidation),
   assignmentController.assignVerification,
+);
+
+/** HU12 — Personal de solución disponible (encargado de solución). */
+router.get(
+  '/solution-staff',
+  authenticate,
+  requireRole(ROLES.ENCARGADO_SOLUCION, ROLES.ADMINISTRADOR),
+  assignmentController.listSolutionStaff,
+);
+
+/** HU12 — Incidentes verificados pendientes de solución. */
+router.get(
+  '/pending-solution',
+  authenticate,
+  requireRole(ROLES.ENCARGADO_SOLUCION, ROLES.ADMINISTRADOR),
+  assignmentController.listPendingSolution,
+);
+
+/** HU12 — Asignar un incidente verificado a solución. */
+router.post(
+  '/:id/assign-solution',
+  authenticate,
+  requireRole(ROLES.ENCARGADO_SOLUCION, ROLES.ADMINISTRADOR),
+  validate(assignSolutionValidation),
+  assignmentController.assignSolution,
 );
 
 /** Transición de estado (transiciones autorizadas por rol). */

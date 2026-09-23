@@ -41,11 +41,17 @@ describe('mapTiles utils (HU08)', () => {
 
   test('genera URLs de tile y las envuelve por el borde del mundo', () => {
     const url = tileUrl(1, 1, 1);
-    expect(url).toMatch(
-      /^https:\/\/[a-f]\.basemaps\.cartocdn\.com\/dark_all\/1\/1\/1\.png$/,
+    expect('' + url).toMatch(
+      /^https:\/\/[a-f]\.basemaps\.cartocdn\.com\/light_all\/1\/1\/1\.png$/,
     );
 
     // x negativo debe envolverse al final de la fila (zoom 1 → 2 tiles).
     expect(tileUrl(-1, 1, 1)).toContain('/1/1/1.png');
+
+    // Permite solicitar el estilo oscuro o el "voyager" si se necesita.
+    expect(tileUrl(1, 1, 1, 'dark_all')).toContain('/dark_all/1/1/1.png');
+    expect(tileUrl(1, 1, 1, 'rastertiles/voyager')).toContain(
+      '/rastertiles/voyager/1/1/1.png',
+    );
   });
 });

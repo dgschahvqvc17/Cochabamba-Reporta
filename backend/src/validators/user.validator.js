@@ -21,19 +21,25 @@ const ROLES = require('../utils/roles');
 const MIN_PASSWORD_LENGTH = 8;
 const ROLE_VALUES = Object.values(ROLES);
 
+const LETTERS_ONLY = /^[\p{L}\p{M}\s'’-]+$/u;
+
 const validateFirstName = body('firstName')
   .trim()
   .notEmpty()
   .withMessage('El nombre es obligatorio.')
   .isLength({ max: 100 })
-  .withMessage('El nombre no debe superar los 100 caracteres.');
+  .withMessage('El nombre no debe superar los 100 caracteres.')
+  .matches(LETTERS_ONLY)
+  .withMessage('El nombre solo puede contener letras.');
 
 const validateLastName = body('lastName')
   .trim()
   .notEmpty()
   .withMessage('El apellido es obligatorio.')
   .isLength({ max: 100 })
-  .withMessage('El apellido no debe superar los 100 caracteres.');
+  .withMessage('El apellido no debe superar los 100 caracteres.')
+  .matches(LETTERS_ONLY)
+  .withMessage('El apellido solo puede contener letras.');
 
 const validateBirthDate = body('birthDate')
   .trim()

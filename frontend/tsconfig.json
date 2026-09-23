@@ -1,7 +1,7 @@
 {
   "extends": "@react-native/typescript-config",
   "compilerOptions": {
-    // HU07: react-native-image-picker (src/platforms/web.ts) usa tipos DOM
+    // expo-image-picker y expo-constants (plataformas web) usan tipos DOM
     // (Blob, File, MediaStream…). El base RN no los incluye.
     "lib": ["ESNext", "DOM"]
   },

@@ -6,11 +6,12 @@
  * formato/tamaño según la plataforma, validaciones y conversión de la
  * imagen seleccionada para su envío como multipart/form-data).
  *
- * Comportamiento por plataforma (react-native-image-picker):
- *   - Web: devuelve `uri` como data URL (data:image/...;base64,....). La
- *     librería NO entrega fileName/type/fileSize en web, por lo que se
- *     derivan del contenido de la data URL.
- *   - Nativo: devuelve una URI de archivo local con fileName/type/fileSize.
+ * Comportamiento por plataforma (expo-image-picker):
+ *   - Web: devuelve `uri` como blob URL y el `base64` (si se pidió). Como
+ *     el envío multipart depende de una data URL, se reconstruye aquí
+ *     (`data:<mime>;base64,…`). La librería puede no entregar
+ *     fileName/type/fileSize, por lo que se derivan del contenido.
+ *   - Nativo: devuelve una URI de archivo local con fileName/mimeType/fileSize.
  *
  * @format
  */
@@ -115,7 +116,7 @@ export function normalizeEvidence(asset: {
   width?: number;
   height?: number;
 }): PickedEvidence {
-  const uri = asset.uri ?? '';
+  let uri = asset.uri ?? '';
 
   if (Platform.OS === 'web') {
     const parsed = parseDataUrl(uri);
@@ -123,6 +124,13 @@ export function normalizeEvidence(asset: {
       (parsed && parsed.mimeType) ||
       'image/jpeg';
     const base64 = asset.base64 || (parsed ? parsed.base64 : '');
+
+    // expo-image-picker (web) entrega blob URLs: se reconstruye la data URL
+    // para que `dataUrlToBlob` y la subida multipart sigan funcionando.
+    if (!parsed && base64) {
+      uri = `data:${mimeType};base64,${base64}`;
+    }
+
     const sizeBytes =
       asset.fileSize || (base64 ? computeBase64Size(base64) : 0);
     const fileName =

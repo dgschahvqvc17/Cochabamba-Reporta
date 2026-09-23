@@ -13,6 +13,7 @@
  */
 
 import {
+  assignSolution as assignSolutionRequest,
   assignVerification as assignVerificationRequest,
   attachEvidence as attachEvidenceRequest,
   attachLocation as attachLocationRequest,
@@ -20,23 +21,29 @@ import {
   deleteIncident as deleteIncidentRequest,
   getAssignedVerificationIncidents as getAssignedVerificationIncidentsRequest,
   getIncidentById as getIncidentByIdRequest,
+  getIncidentHistory as getIncidentHistoryRequest,
   getIncidents as getIncidentsRequest,
   getMyIncidents as getMyIncidentsRequest,
+  getPendingSolutionIncidents as getPendingSolutionIncidentsRequest,
   getPendingVerificationIncidents as getPendingVerificationIncidentsRequest,
+  getSolutionStaff as getSolutionStaffRequest,
   getVerifiers as getVerifiersRequest,
   updateIncident as updateIncidentRequest,
   verifyIncident as verifyIncidentRequest,
   type IncidentListParams,
 } from '../services/incidentService';
 import type {
+  AssignSolutionPayload,
   AssignVerificationPayload,
   Evidence,
   Incident,
   IncidentAssignment,
+  IncidentHistoryEntry,
   IncidentListData,
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
+  SolutionUser,
   VerifierUser,
   VerifyIncidentPayload,
   VerifyIncidentResult,
@@ -284,6 +291,97 @@ export async function verifyIncidentById(
     success: true,
     message: result.message,
     data: result.data,
+  };
+}
+
+/** HU12: lista el personal de solución disponible (encargado de solución). */
+export async function loadSolutionStaff(): Promise<
+  ActionResult<SolutionUser[]>
+> {
+  const accessToken = getAccessToken();
+  const result = await getSolutionStaffRequest(accessToken);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.staff,
+  };
+}
+
+/** HU12: lista los incidentes verificados pendientes de solución (paginado). */
+export async function loadPendingSolution(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getPendingSolutionIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU12: asigna un incidente verificado a un responsable de solución. */
+export async function assignIncidentForSolution(
+  incidentId: number,
+  payload: AssignSolutionPayload,
+): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
+  const accessToken = getAccessToken();
+  const result = await assignSolutionRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** Historial de cambios de estado de un incidente (trazabilidad, HU12). */
+export async function loadIncidentHistory(
+  incidentId: number,
+): Promise<ActionResult<IncidentHistoryEntry[]>> {
+  const accessToken = getAccessToken();
+  const result = await getIncidentHistoryRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.history,
   };
 }
 
