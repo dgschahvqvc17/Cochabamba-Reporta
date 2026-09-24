@@ -33,6 +33,17 @@
  *                                             pendientes de solución.
  *   - POST /api/v1/incidents/:id/assign-solution → asignar a solución
  *                                             (cambia a ASIGNADO_PARA_SOLUCION).
+ * HU13 — Atender y cerrar incidente (personal de solución):
+ *   - GET  /api/v1/incidents/assigned-solution → incidentes asignados
+ *                                             al responsable (cola de atención).
+ *   - POST /api/v1/incidents/:id/attend → iniciar la atención
+ *                                             (ASIGNADO_PARA_SOLUCION → EN_ATENCION).
+ *   - POST /api/v1/incidents/:id/mark-attended → marcar atendido
+ *                                             (EN_ATENCION → ATENDIDO).
+ *   - POST /api/v1/incidents/:id/close → cerrar la solicitud
+ *                                             (ATENDIDO → CERRADO).
+ *   - POST /api/v1/incidents/:id/evidence → evidencia del trabajo
+ *                                             realizado (personal de solución).
  * Transición de estados:
  *   - PATCH /api/v1/incidents/:id/status    → cambiar estado (transiciones
  *                                             autorizadas por rol, con
@@ -56,6 +67,7 @@ const evidenceController = require('../controllers/evidence.controller');
 const locationController = require('../controllers/location.controller');
 const assignmentController = require('../controllers/assignment.controller');
 const verificationController = require('../controllers/verification.controller');
+const solutionController = require('../controllers/solution.controller');
 const statusController = require('../controllers/status.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
 const { requireRole } = require('../middlewares/role.middleware');
@@ -70,6 +82,9 @@ const {
   assignSolutionValidation,
   changeStatusValidation,
   verifyIncidentValidation,
+  attendIncidentValidation,
+  markAttendedValidation,
+  closeIncidentValidation,
 } = require('../validators/incident.validator');
 const {
   locationValidation,
@@ -161,6 +176,42 @@ router.post(
   assignmentController.assignSolution,
 );
 
+/** HU13 — Incidentes asignados al responsable de solución para su atención. */
+router.get(
+  '/assigned-solution',
+  authenticate,
+  requireRole(ROLES.PERSONAL_SOLUCION, ROLES.ADMINISTRADOR),
+  validate(listIncidentsValidation),
+  solutionController.listAssignedForSolution,
+);
+
+/** HU13 — Iniciar la atención de un incidente asignado (EN_ATENCION). */
+router.post(
+  '/:id/attend',
+  authenticate,
+  requireRole(ROLES.PERSONAL_SOLUCION, ROLES.ADMINISTRADOR),
+  validate(attendIncidentValidation),
+  solutionController.attendIncident,
+);
+
+/** HU13 — Marcar un incidente en atención como atendido (ATENDIDO). */
+router.post(
+  '/:id/mark-attended',
+  authenticate,
+  requireRole(ROLES.PERSONAL_SOLUCION, ROLES.ADMINISTRADOR),
+  validate(markAttendedValidation),
+  solutionController.markAttended,
+);
+
+/** HU13 — Cerrar un incidente atendido (CERRADO). */
+router.post(
+  '/:id/close',
+  authenticate,
+  requireRole(ROLES.PERSONAL_SOLUCION, ROLES.ADMINISTRADOR),
+  validate(closeIncidentValidation),
+  solutionController.closeIncident,
+);
+
 /** Transición de estado (transiciones autorizadas por rol). */
 router.patch(
   '/:id/status',
@@ -187,7 +238,12 @@ router.get(
 router.post(
   '/:id/evidence',
   authenticate,
-  requireRole(ROLES.CIUDADANO, ROLES.VERIFICADOR, ROLES.ADMINISTRADOR),
+  requireRole(
+    ROLES.CIUDADANO,
+    ROLES.VERIFICADOR,
+    ROLES.PERSONAL_SOLUCION,
+    ROLES.ADMINISTRADOR,
+  ),
   uploadSingleEvidenceImage,
   evidenceController.addEvidence,
 );

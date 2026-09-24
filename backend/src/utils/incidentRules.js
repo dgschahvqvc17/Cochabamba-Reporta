@@ -21,6 +21,9 @@ const MAX_LIST_PAGE_SIZE = 50;
 const MAX_OBSERVATIONS_LENGTH = 500;
 const MAX_REJECTED_REASON_LENGTH = 500;
 
+/** Longitud máxima de las acciones realizadas por el personal de solución (HU13). */
+const MAX_ACTIONS_LENGTH = 1000;
+
 const MIN_CATEGORY_ID = 1;
 
 /** Único estado en el que el ciudadano puede editar o eliminar su reporte. */
@@ -35,6 +38,7 @@ module.exports = {
   MAX_LIST_PAGE_SIZE,
   MAX_OBSERVATIONS_LENGTH,
   MAX_REJECTED_REASON_LENGTH,
+  MAX_ACTIONS_LENGTH,
   MIN_CATEGORY_ID,
   EDITABLE_STATUS,
 };

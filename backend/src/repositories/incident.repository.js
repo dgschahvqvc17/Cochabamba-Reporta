@@ -171,6 +171,53 @@ const findAssignedForVerification = async ({
   return { incidents: data ?? [], total: count ?? data?.length ?? 0 };
 };
 
+/**
+ * HU13 — Incidentes asignados activamente a un usuario para su atención
+ * (assignments tipo SOLUCION, active). El propio service limita el uso a
+ * los roles PERSONAL_SOLUCION/ADMINISTRADOR. Con búsqueda y paginación.
+ */
+const findAssignedForSolution = async ({
+  userId,
+  page = 1,
+  limit = 10,
+  search = '',
+  status = null,
+} = {}) => {
+  let query = supabaseAdmin
+    .from('incidents')
+    .select(
+      '*, category:categories(id, name), citizen:users(id, first_name, last_name, identity_number, phone, email), assignments!inner(assignment_type)',
+      { count: 'exact' },
+    )
+    .eq('assignments.assignment_type', 'SOLUCION')
+    .eq('assignments.active', true)
+    .eq('assignments.assigned_to', userId);
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const term = sanitizeSearchTerm(search);
+  if (term) {
+    query = query.or(
+      `code.ilike.%${term}%,title.ilike.%${term}%,description.ilike.%${term}%`,
+    );
+  }
+
+  const fromIndex = (page - 1) * limit;
+  const toIndex = fromIndex + limit - 1;
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(fromIndex, toIndex);
+
+  if (error) {
+    throw error;
+  }
+
+  return { incidents: data ?? [], total: count ?? data?.length ?? 0 };
+};
+
 const countToday = async () => {
   const localMidnight = new Date();
   localMidnight.setHours(0, 0, 0, 0);
@@ -244,6 +291,7 @@ module.exports = {
   findByUserId,
   findAllManaged,
   findAssignedForVerification,
+  findAssignedForSolution,
   countToday,
   update,
   updateStatus,

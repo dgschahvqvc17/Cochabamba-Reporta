@@ -8,6 +8,9 @@
  *   - Registra la referencia en la tabla `evidence`.
  * HU11 — El verificador adjunta la evidencia de la constatación en campo
  * mientras el incidente está en verificación.
+ * HU13 — El personal de solución adjunta la evidencia del trabajo
+ * realizado mientras el incidente le está asignado (ASIGNADO_PARA_SOLUCION /
+ * EN_ATENCION / ATENDIDO).
  *
  * @format
  */
@@ -24,7 +27,7 @@ const {
   MAX_EVIDENCE_COUNT,
   detectImageMime,
 } = require('../utils/evidence');
-const { INCIDENT_STATUS } = require('../utils/incidentStatus');
+const { INCIDENT_STATUS, SOLUTION_ATTACH_STATUSES } = require('../utils/incidentStatus');
 const { toPublicEvidence } = require('../utils/incidentMappers');
 const assignmentService = require('./assignment.service');
 
@@ -32,7 +35,9 @@ const evidenceService = {
   /**
    * Adjunta una imagen como evidencia de un incidente.
    * El ciudadano solo en sus reportes; el verificador (o administrador)
-   * mientras el incidente esté en verificación y le esté asignado.
+   * mientras el incidente esté en verificación y le esté asignado; el
+   * personal de solución (o administrador) mientras tenga una asignación
+   * de solución activa (evidencia del trabajo realizado, HU13).
    */
   async addEvidence(user, incidentId, file) {
     const userId = user && user.id;
@@ -55,28 +60,44 @@ const evidenceService = {
     const isVerificationStaff = user
       ? [ROLES.VERIFICADOR, ROLES.ADMINISTRADOR].includes(user.role)
       : false;
+    const isSolutionStaff = user
+      ? [ROLES.PERSONAL_SOLUCION, ROLES.ADMINISTRADOR].includes(user.role)
+      : false;
 
     if (!isOwner) {
-      if (!isVerificationStaff) {
-        throw buildError(
-          'Solo puedes adjuntar evidencia a tus propios incidentes.',
-          403,
-          'FORBIDDEN',
-        );
-      }
+      const isVerificationAssignee =
+        isVerificationStaff &&
+        incident.status === INCIDENT_STATUS.EN_VERIFICACION &&
+        (await assignmentService.isVerificationAssignee(user, incident.id));
+      const isSolutionAssignee =
+        isSolutionStaff &&
+        SOLUTION_ATTACH_STATUSES.includes(incident.status) &&
+        (await assignmentService.isSolutionAssignee(user, incident.id));
 
-      // HU11: el verificador adjunta evidencia de la constatación en campo.
-      if (incident.status !== INCIDENT_STATUS.EN_VERIFICACION) {
-        throw buildError(
-          'La evidencia de verificación solo puede adjuntarse mientras el incidente está en verificación.',
-          409,
-          'INVALID_TRANSITION',
-        );
-      }
+      if (!isVerificationAssignee && !isSolutionAssignee) {
+        if (!isVerificationStaff && !isSolutionStaff) {
+          throw buildError(
+            'Solo puedes adjuntar evidencia a tus propios incidentes.',
+            403,
+            'FORBIDDEN',
+          );
+        }
 
-      if (!(await assignmentService.isVerificationAssignee(user, incident.id))) {
+        if (
+          incident.status !== INCIDENT_STATUS.EN_VERIFICACION &&
+          !SOLUTION_ATTACH_STATUSES.includes(incident.status)
+        ) {
+          throw buildError(
+            'La evidencia solo puede adjuntarse mientras el incidente está en verificación o en atención.',
+            409,
+            'INVALID_TRANSITION',
+          );
+        }
+
         throw buildError(
-          'Este incidente no está asignado a ti para verificación.',
+          incident.status === INCIDENT_STATUS.EN_VERIFICACION
+            ? 'Este incidente no está asignado a ti para verificación.'
+            : 'Este incidente no está asignado a ti para su atención.',
           403,
           'FORBIDDEN',
         );

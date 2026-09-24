@@ -13,8 +13,9 @@
  *   - Asigna el incidente a un responsable, cambia el estado a
  *     ASIGNADO_PARA_SOLUCION y registra asignación, historial y
  *     notificaciones (responsable + ciudadano).
- * También expone `isVerificationAssignee` (HU11) para saber si el
- * usuario es el verificador asignado activo de un incidente.
+ * También expone `isVerificationAssignee` (HU11) e `isSolutionAssignee`
+ * (HU13) para saber si el usuario es el verificador / responsable de
+ * solución asignado activo de un incidente.
  *
  * @format
  */
@@ -127,6 +128,30 @@ const assignmentService = {
     const assignment = await assignmentRepository.findActiveByIncident(
       incidentId,
       'VERIFICACION',
+    );
+
+    return Boolean(
+      assignment && Number(assignment.assigned_to) === Number(user.id),
+    );
+  },
+
+  /**
+   * HU13 — true si el usuario es el responsable de solución asignado
+   * activo del incidente (o un administrador, que puede atender cualquier
+   * incidente).
+   */
+  async isSolutionAssignee(user, incidentId) {
+    if (!user || !user.id) {
+      return false;
+    }
+
+    if (user.role === ROLES.ADMINISTRADOR) {
+      return true;
+    }
+
+    const assignment = await assignmentRepository.findActiveByIncident(
+      incidentId,
+      'SOLUCION',
     );
 
     return Boolean(

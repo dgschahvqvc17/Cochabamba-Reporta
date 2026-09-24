@@ -18,8 +18,11 @@ import {
   attachEvidence as attachEvidenceRequest,
   attachEvidenceNative as attachEvidenceNativeRequest,
   attachLocation as attachLocationRequest,
+  attendIncident as attendIncidentRequest,
+  closeIncident as closeIncidentRequest,
   createIncident as createIncidentRequest,
   deleteIncident as deleteIncidentRequest,
+  getAssignedSolutionIncidents as getAssignedSolutionIncidentsRequest,
   getAssignedVerificationIncidents as getAssignedVerificationIncidentsRequest,
   getIncidentById as getIncidentByIdRequest,
   getIncidentHistory as getIncidentHistoryRequest,
@@ -29,6 +32,7 @@ import {
   getPendingVerificationIncidents as getPendingVerificationIncidentsRequest,
   getSolutionStaff as getSolutionStaffRequest,
   getVerifiers as getVerifiersRequest,
+  markIncidentAttended as markIncidentAttendedRequest,
   updateIncident as updateIncidentRequest,
   verifyIncident as verifyIncidentRequest,
   type IncidentListParams,
@@ -36,6 +40,8 @@ import {
 import type {
   AssignSolutionPayload,
   AssignVerificationPayload,
+  AttendIncidentPayload,
+  AttendIncidentResult,
   Evidence,
   Incident,
   IncidentAssignment,
@@ -346,6 +352,111 @@ export async function assignIncidentForSolution(
 ): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
   const accessToken = getAccessToken();
   const result = await assignSolutionRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: lista los incidentes asignados al responsable de solución (paginado). */
+export async function loadAssignedSolution(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getAssignedSolutionIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: inicia la atención de un incidente asignado (EN_ATENCION). */
+export async function attendIncidentById(
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ActionResult<AttendIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await attendIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: marca un incidente en atención como atendido (ATENDIDO). */
+export async function markIncidentAttendedById(
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ActionResult<AttendIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await markIncidentAttendedRequest(
+    accessToken,
+    incidentId,
+    payload,
+  );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: cierra un incidente atendido (CERRADO). */
+export async function closeIncidentById(
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ActionResult<AttendIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await closeIncidentRequest(accessToken, incidentId, payload);
 
   if (!result.success) {
     return {
