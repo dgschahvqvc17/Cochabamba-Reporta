@@ -240,8 +240,8 @@ function CalendarModal({
               </View>
 
               <View style={styles.weekRow}>
-                {WEEKDAYS.map((weekday) => (
-                  <Text key={weekday} style={styles.weekday}>
+                {WEEKDAYS.map((weekday, index) => (
+                  <Text key={`${weekday}-${index}`} style={styles.weekday}>
                     {weekday}
                   </Text>
                 ))}

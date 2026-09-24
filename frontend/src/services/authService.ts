@@ -80,3 +80,24 @@ export async function logout(accessToken: string): Promise<ApiResponse<null>> {
 
   return response.json();
 }
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export async function changePassword(
+  accessToken: string,
+  payload: ChangePasswordPayload,
+): Promise<ApiResponse<null>> {
+  const response = await fetch(`${BASE_URL}/auth/change-password`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(accessToken),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return response.json();
+}

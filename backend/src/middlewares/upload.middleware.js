@@ -4,7 +4,8 @@
  * HU07 — Adjuntar evidencia fotográfica.
  * Procesa la imagen enviada como multipart/form-data (campo "image")
  * con multer en memoria y valida:
- *   - Formato (MIME y extensión permitidos).
+ *   - Formato (por contenido: detección de magic bytes; si no se puede
+ *     detectar, valida mimetype + extensión reportados).
  *   - Tamaño máximo (MAX_IMAGE_SIZE).
  *   - Cantidad por solicitud (máx. 1).
  * Los errores de multer se traducen a la respuesta estándar
@@ -23,6 +24,7 @@ const {
   ALLOWED_MIME_TYPES,
   ALLOWED_EXTENSIONS,
   MAX_IMAGE_SIZE,
+  detectImageMime,
   formatFileSize,
 } = require('../utils/evidence');
 
@@ -40,21 +42,14 @@ const uploadImage = multer({
     files: 1,
   },
   fileFilter: (_req, file, cb) => {
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    const detectedMime = detectImageMime(file && file.buffer);
+    const matchesMetadata =
+      ALLOWED_MIME_TYPES.includes(file.mimetype) && hasAllowedExtension(file);
+
+    if (!detectedMime && !matchesMetadata) {
       return cb(
         buildError(
           'El formato de la imagen no es válido. Solo se permiten JPG, JFIF, PNG y WebP.',
-          422,
-          'INVALID_IMAGE_FORMAT',
-          'image',
-        ),
-      );
-    }
-
-    if (!hasAllowedExtension(file)) {
-      return cb(
-        buildError(
-          'La extensión de la imagen no es válida. Usa .jpg, .jpeg, .jfif, .png o .webp.',
           422,
           'INVALID_IMAGE_FORMAT',
           'image',

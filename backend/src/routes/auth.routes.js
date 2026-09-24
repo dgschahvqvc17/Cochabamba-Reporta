@@ -15,6 +15,7 @@ const { authenticate } = require('../middlewares/auth.middleware');
 const {
   loginValidation,
   registerValidation,
+  changePasswordValidation,
 } = require('../validators/user.validator');
 const { validate } = require('../middlewares/validation.middleware');
 
@@ -25,5 +26,11 @@ router.post('/login', validate(loginValidation), authController.login);
 
 router.get('/me', authenticate, authController.me);
 router.post('/logout', authenticate, authController.logout);
+router.patch(
+  '/change-password',
+  authenticate,
+  validate(changePasswordValidation),
+  authController.changePassword,
+);
 
 module.exports = router;

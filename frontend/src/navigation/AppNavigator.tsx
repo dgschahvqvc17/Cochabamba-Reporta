@@ -35,7 +35,10 @@ import VerifyIncidentScreen from '../screens/VerifyIncidentScreen';
 import PendingSolutionScreen from '../screens/PendingSolutionScreen';
 import AssignSolutionScreen from '../screens/AssignSolutionScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import AppNavBar from '../components/AppNavBar';
+import OfflineBanner from '../components/OfflineBanner';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import {
   clearSession,
   getStoredSession,
@@ -64,7 +67,8 @@ type CitizenRoute =
   | { name: 'incident-create' }
   | { name: 'incident-edit'; incidentId: number }
   | { name: 'my-reports' }
-  | { name: 'notifications' };
+  | { name: 'notifications' }
+  | { name: 'profile' };
 
 /** Roles municipales que usan el módulo de recepción/consulta (HU09). */
 type StaffRoute =
@@ -87,7 +91,7 @@ const STAFF_ROLES: string[] = [
 
 const SESSION_CHECK_INTERVAL_MS = 10000;
 
-function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
+function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
   const [session, setSession] = useState<StoredSession | null>(() =>
     getStoredSession(),
   );
@@ -95,6 +99,10 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
   const [adminRoute, setAdminRoute] = useState<AdminRoute>({ name: 'dashboard' });
   const [citizenRoute, setCitizenRoute] = useState<CitizenRoute>({ name: 'home' });
   const [staffRoute, setStaffRoute] = useState<StaffRoute>({ name: 'home' });
+  const isOnline = useNetworkStatus();
+  const offlineBanner = (
+    <OfflineBanner visible={!isOnline} topInset={safeAreaInsets.top} />
+  );
 
   useEffect(() => {
     if (!session) {
@@ -255,6 +263,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
             dimmed={isSubRoute}
             onLogout={handleLogout}
           />
+          {offlineBanner}
         </View>
       );
     }
@@ -366,6 +375,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
             dimmed={isStaffSubRoute}
             onLogout={handleLogout}
           />
+          {offlineBanner}
         </View>
       );
     }
@@ -402,6 +412,11 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
             <NotificationsScreen
               onBack={() => setCitizenRoute({ name: 'home' })}
             />
+          ) : citizenRoute.name === 'profile' ? (
+            <ProfileScreen
+              user={session.user}
+              onBack={() => setCitizenRoute({ name: 'home' })}
+            />
           ) : (
             <HomeScreen
               user={session.user}
@@ -410,6 +425,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
               onViewNotifications={() =>
                 setCitizenRoute({ name: 'notifications' })
               }
+              onViewProfile={() => setCitizenRoute({ name: 'profile' })}
             />
           )}
         </View>
@@ -432,6 +448,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
           dimmed={isCitizenSubRoute}
           onLogout={handleLogout}
         />
+        {offlineBanner}
       </View>
     );
   }
@@ -446,6 +463,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
       ) : (
         <RegisterScreen onGoToLogin={goToLogin} />
       )}
+      {offlineBanner}
     </View>
   );
 }

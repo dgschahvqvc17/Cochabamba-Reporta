@@ -160,6 +160,38 @@ const authService = {
 
     return true;
   },
+
+  async changePassword({ authId, email, currentPassword, newPassword }) {
+    // Verifica la contraseña actual contra el proveedor de identidad.
+    const { error: signInError } = await supabasePublic.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    });
+
+    if (signInError) {
+      throw buildError(
+        'La contraseña actual es incorrecta.',
+        400,
+        'INVALID_PASSWORD',
+        'currentPassword',
+      );
+    }
+
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      authId,
+      { password: newPassword },
+    );
+
+    if (updateError) {
+      throw buildError(
+        'No se pudo actualizar la contraseña. Intenta nuevamente.',
+        500,
+        'PASSWORD_UPDATE_FAILED',
+      );
+    }
+
+    return true;
+  },
 };
 
 module.exports = authService;

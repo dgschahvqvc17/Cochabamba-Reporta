@@ -59,6 +59,8 @@ export async function pickEvidence(source: PickerSource): Promise<PickerResult> 
     quality: 0.8,
     // En web `expo-image-picker` entrega la imagen como blob URL; se pide
     // el base64 para reconstruir una data URL y mantener el flujo de subida.
+    // En nativo NO se pide: RN Blob no se puede construir desde bytes y el
+    // multipart local se sube con XMLHttpRequest (lee el archivo de la URI).
     base64: Platform.OS === 'web',
   };
 

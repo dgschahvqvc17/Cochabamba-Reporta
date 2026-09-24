@@ -53,6 +53,21 @@ const authController = {
       return next(error);
     }
   },
+
+  async changePassword(req, res, next) {
+    try {
+      await authService.changePassword({
+        authId: req.user.authId,
+        email: req.user.email,
+        currentPassword: req.body.currentPassword,
+        newPassword: req.body.newPassword,
+      });
+
+      return ok(res, 200, 'Contraseña actualizada correctamente.');
+    } catch (error) {
+      return next(error);
+    }
+  },
 };
 
 module.exports = authController;

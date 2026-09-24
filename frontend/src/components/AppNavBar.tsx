@@ -4,13 +4,21 @@
  * Barra flotante clara con indicador activo azul, sombra sutil,
  * transiciones suaves, hover en web y logout estilizado.
  *
+ * En móviles la barra es más compacta y, al abrir el teclado, se desliza
+ * hacia abajo (queda oculta por el overflow del wrapper) para no tapar la
+ * zona de escritura; al cerrarse el teclado siempre vuelve a su tamaño
+ * natural, por lo que nunca queda oculta bajo la barra de navegación del
+ * dispositivo. Su padding inferior usa la zona segura del dispositivo para
+ * quedar siempre por encima de los botones del sistema.
+ *
  * @format
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Keyboard,
   Platform,
   Pressable,
   StyleSheet,
@@ -53,10 +61,12 @@ type AppNavBarProps = {
 function NavItem({
   item,
   isActive,
+  compact,
   onPress,
 }: {
   item: AppNavItem;
   isActive: boolean;
+  compact?: boolean;
   onPress: () => void;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -88,6 +98,7 @@ function NavItem({
       onHoverOut={() => setIsHovered(false)}
       style={[
         styles.item,
+        compact && styles.itemCompact,
         isHovered && !isActive && styles.itemHovered,
       ]}
       // @ts-ignore
@@ -97,6 +108,7 @@ function NavItem({
       <Animated.View
         style={[
           styles.iconSlot,
+          compact && styles.iconSlotCompact,
           isActive && styles.iconSlotActive,
           { transform: [{ scale: scaleAnim }] },
         ]}
@@ -104,7 +116,7 @@ function NavItem({
         {isActive ? <View style={styles.slotNotch} /> : null}
         <Icon
           name={item.icon}
-          size={22}
+          size={compact ? 20 : 22}
           color={
             isActive
               ? Colors.accentDim
@@ -117,6 +129,7 @@ function NavItem({
       <Text
         style={[
           styles.label,
+          compact && styles.labelCompact,
           isActive && styles.labelActive,
           isHovered && !isActive && styles.labelHovered,
         ]}
@@ -137,6 +150,31 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
   const [logoutHovered, setLogoutHovered] = useState(false);
 
   const isDesktop = width >= DESKTOP_BREAKPOINT;
+  const compact = !isDesktop;
+
+  // En móviles, al abrir el teclado toda la barra (fondo + iconos) se
+  // contrae a altura 0 para no tapar la zona de escritura y al cerrarlo
+  // vuelve a su tamaño natural. Se maneja con estado (no con Animated.Value)
+  // para evitar errores de valores congelados en la nueva arquitectura.
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (isDesktop) {
+      return undefined;
+    }
+
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setCollapsed(true);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setCollapsed(false);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [isDesktop]);
 
   const doLogout = async () => {
     if (loggingOutRef.current) return;
@@ -168,33 +206,49 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
     ? Math.max(insets.left, spacing.base)
     : Math.max(insets.left, spacing.sm);
 
-  // Bottom safe-area + visual padding so the bar sits above the home indicator
-  const bPad = Math.max(insets.bottom, spacing.sm);
+  // Zona segura inferior + holgura mínima para que la barra quede siempre
+  // por encima de los botones del dispositivo (barra de gestos/navegación).
+  // En web móvil env(safe-area-inset-bottom) suele ser 0, por eso sólo ahí
+  // se reserva una holgura explícita mayor.
+  const bPad = Math.max(
+    insets.bottom,
+    !isDesktop && Platform.OS === 'web' ? spacing.base : spacing.sm,
+  );
 
   return (
     <View
       style={[
         styles.wrapper,
+        compact && styles.wrapperCompact,
+        collapsed && styles.wrapperCollapsed,
         {
           paddingLeft: hPad,
           paddingRight: hPad,
           paddingBottom: bPad,
-          paddingTop: spacing.sm,
+          paddingTop: compact ? spacing.xs : spacing.sm,
         },
       ]}
     >
-      <View style={[styles.bar, isDesktop && styles.barDesktop, dimmed && styles.barDimmed]}>
+      <View
+        style={[
+          styles.bar,
+          compact && styles.barCompact,
+          isDesktop && styles.barDesktop,
+          dimmed && styles.barDimmed,
+        ]}
+      >
         <View style={styles.barAccent} />
         {items.map((item) => (
           <NavItem
             key={item.key}
             item={item}
             isActive={!dimmed && item.key === activeKey}
+            compact={compact}
             onPress={item.onPress}
           />
         ))}
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, compact && styles.dividerCompact]} />
 
         <Pressable
           onPress={handleLogoutPress}
@@ -202,18 +256,19 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
           onHoverOut={() => setLogoutHovered(false)}
           style={[
             styles.item,
+            compact && styles.itemCompact,
             logoutHovered && styles.itemLogoutHovered,
           ]}
           testID="nav-logout"
         >
-          <View style={[styles.iconSlot, styles.iconSlotLogout]}>
+          <View style={[styles.iconSlot, compact && styles.iconSlotCompact, styles.iconSlotLogout]}>
             {isLoggingOut ? (
               <ActivityIndicator size="small" color={Colors.danger} />
             ) : (
               <Icon name="logout" size={18} color={Colors.danger} />
             )}
           </View>
-          <Text style={styles.logoutLabel}>Salir</Text>
+          <Text style={[styles.logoutLabel, compact && styles.labelCompact]}>Salir</Text>
         </Pressable>
       </View>
 
@@ -226,11 +281,18 @@ const styles = StyleSheet.create({
   wrapper: {
     // Solid background so content behind doesn't bleed through
     backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
     // Premium hairline (soft gold) on top edge
     borderTopWidth: 1,
     borderTopColor: 'rgba(201, 162, 75, 0.35)',
     // @ts-ignore
     boxShadow: '0 -8px 30px -18px rgba(18, 38, 58, 0.35)',
+  },
+  wrapperCompact: {
+    borderTopColor: 'rgba(201, 162, 75, 0.28)',
+  },
+  wrapperCollapsed: {
+    maxHeight: 0,
   },
   bar: {
     flexDirection: 'row',
@@ -247,6 +309,12 @@ const styles = StyleSheet.create({
     width: '100%',
     // @ts-ignore
     boxShadow: '0 18px 42px -18px rgba(18, 38, 58, 0.45)',
+  },
+  barCompact: {
+    borderRadius: radius.card,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+    borderColor: 'rgba(201, 162, 75, 0.22)',
   },
   barAccent: {
     position: 'absolute',
@@ -274,6 +342,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.element,
     minWidth: 52,
   },
+  itemCompact: {
+    minWidth: 0,
+    paddingVertical: spacing.xs,
+  },
   itemHovered: {
     backgroundColor: Colors.accentSoft,
   },
@@ -286,6 +358,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconSlotCompact: {
+    width: 42,
+    height: 28,
   },
   iconSlotActive: {
     backgroundColor: Colors.accentSoft,
@@ -317,6 +393,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     textAlign: 'center',
   },
+  labelCompact: {
+    marginTop: 2,
+    fontSize: 12,
+  },
   labelActive: {
     color: Colors.accentDim,
     fontWeight: fontWeights.bold,
@@ -336,6 +416,9 @@ const styles = StyleSheet.create({
     height: 30,
     backgroundColor: Colors.borderSoft,
     marginHorizontal: spacing.xs,
+  },
+  dividerCompact: {
+    height: 24,
   },
 });
 

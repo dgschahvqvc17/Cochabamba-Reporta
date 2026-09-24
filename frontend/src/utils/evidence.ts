@@ -38,13 +38,21 @@ export interface PickedEvidence {
   height?: number;
 }
 
-export interface UploadImageFile {
-  kind: 'web-blob' | 'native-file';
-  /** Web: Blob; Nativo: objeto { uri, name, type }. */
-  object: Blob | { uri: string; name: string; type: string };
-  name: string;
-  type: string;
-}
+export type UploadImageFile =
+  | {
+      kind: 'blob';
+      /** Blob real (web y nativo cuando hay base64). */
+      object: Blob;
+      name: string;
+      type: string;
+    }
+  | {
+      kind: 'native-file';
+      /** Nativo de respaldo cuando el picker no entrega base64. */
+      object: { uri: string; name: string; type: string };
+      name: string;
+      type: string;
+    };
 
 const MIME_TO_EXTENSION: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -60,8 +68,21 @@ const EXTENSION_TO_MIME: Record<string, string> = {
   '.webp': 'image/webp',
 };
 
+/** Alias no estándar que algunos dispositivos/gestores reportan. */
+const MIME_ALIASES: Record<string, string> = {
+  'image/jpg': 'image/jpeg',
+  'image/pjpeg': 'image/jpeg',
+  'image/jfif': 'image/jpeg',
+  'image/x-png': 'image/png',
+};
+
+export function canonicalMimeType(mimeType: string): string {
+  const value = String(mimeType || '').trim().toLowerCase();
+  return MIME_ALIASES[value] ?? value;
+}
+
 export function extensionFromMime(mimeType: string): string {
-  return MIME_TO_EXTENSION[mimeType] ?? '.jpg';
+  return MIME_TO_EXTENSION[canonicalMimeType(mimeType)] ?? '.jpg';
 }
 
 export function mimeFromFileName(fileName: string): string | null {
@@ -120,9 +141,11 @@ export function normalizeEvidence(asset: {
 
   if (Platform.OS === 'web') {
     const parsed = parseDataUrl(uri);
-    const mimeType = (asset.type && asset.type.toLowerCase()) ||
-      (parsed && parsed.mimeType) ||
-      'image/jpeg';
+    const mimeType = canonicalMimeType(
+      (asset.type && asset.type.toLowerCase()) ||
+        (parsed && parsed.mimeType) ||
+        'image/jpeg',
+    );
     const base64 = asset.base64 || (parsed ? parsed.base64 : '');
 
     // expo-image-picker (web) entrega blob URLs: se reconstruye la data URL
@@ -147,10 +170,11 @@ export function normalizeEvidence(asset: {
     };
   }
 
-  const mimeType =
+  const mimeType = canonicalMimeType(
     (asset.type && asset.type.toLowerCase()) ||
-    mimeFromFileName(asset.fileName ?? '') ||
-    'image/jpeg';
+      mimeFromFileName(asset.fileName ?? '') ||
+      'image/jpeg',
+  );
   const fileName =
     asset.fileName || `evidencia-${Date.now()}${extensionFromMime(mimeType)}`;
 
@@ -172,7 +196,7 @@ export function normalizeEvidence(asset: {
 export function validateEvidence(
   evidence: PickedEvidence,
 ): { ok: boolean; message: string } {
-  const mimeType = evidence.mimeType.toLowerCase();
+  const mimeType = canonicalMimeType(evidence.mimeType);
 
   if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
     return {
@@ -194,31 +218,40 @@ export function validateEvidence(
   return { ok: true, message: '' };
 }
 
-export function dataUrlToBlob(dataUrl: string): Blob {
-  const parsed = parseDataUrl(dataUrl);
-  const mimeType = (parsed && parsed.mimeType) || 'image/jpeg';
-  const base64 = (parsed && parsed.base64) || '';
-
+/** Arma un Blob real a partir de base64 (seguro en web y nativo). */
+export function base64ToBlob(base64: string, mimeType: string): Blob {
   const binary = globalThis.atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) {
     bytes[index] = binary.charCodeAt(index);
   }
 
-  return new Blob([bytes], { type: mimeType });
+  // `bytes.buffer`: web y React Native aceptan un ArrayBuffer como parte.
+  return new Blob([bytes.buffer], { type: mimeType });
+}
+
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const parsed = parseDataUrl(dataUrl);
+  return base64ToBlob(
+    (parsed && parsed.base64) || '',
+    (parsed && parsed.mimeType) || 'image/jpeg',
+  );
 }
 
 /** Prepara la imagen para `FormData.append('image', …)` por plataforma. */
 export function toUploadImage(evidence: PickedEvidence): UploadImageFile {
   if (Platform.OS === 'web') {
     return {
-      kind: 'web-blob',
+      kind: 'blob',
       object: dataUrlToBlob(evidence.uri),
       name: evidence.fileName,
       type: evidence.mimeType,
     };
   }
 
+  // En nativo se envía el archivo local con XMLHttpRequest (RN lee la URI
+  // directamente). No se arma un Blob desde el base64: el constructor de
+  // Blob de React Native no acepta partes binarias (ArrayBuffer).
   return {
     kind: 'native-file',
     object: {

@@ -17,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -95,6 +96,8 @@ const SECTIONS: SectionConfig[] = [
 
 function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
   const { dialog, info, close } = useDialog();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= layout.breakpointMd;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -188,43 +191,45 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Navy hero band with curved bottom */}
-          <ImageBackground
-            source={cityBackground}
-            style={styles.hero}
-            resizeMode="cover"
-          >
-            <GradientOverlay
-              colors={[
-                'rgba(4, 12, 22, 0.97)',
-                'rgba(9, 24, 40, 0.92)',
-                'rgba(8, 20, 33, 0.94)',
-              ]}
-            />
-            <BrandHeader
-              title="Crear cuenta"
-              subtitle="Regístrate para reportar incidentes urbanos en Cochabamba"
-            />
+          {/* Navy hero band with curved bottom (solo escritorio) */}
+          {isDesktop ? (
+            <ImageBackground
+              source={cityBackground}
+              style={styles.hero}
+              resizeMode="cover"
+            >
+              <GradientOverlay
+                colors={[
+                  'rgba(4, 12, 22, 0.97)',
+                  'rgba(9, 24, 40, 0.92)',
+                  'rgba(8, 20, 33, 0.94)',
+                ]}
+              />
+              <BrandHeader
+                title="Crear cuenta"
+                subtitle="Regístrate para reportar incidentes urbanos en Cochabamba"
+              />
 
-            {/* Feature chips */}
-            <View style={styles.badgesRow}>
-              <View style={styles.badgeChip}>
-                <Icon name="person" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Sin costo</Text>
+              {/* Feature chips */}
+              <View style={styles.badgesRow}>
+                <View style={styles.badgeChip}>
+                  <Icon name="person" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Sin costo</Text>
+                </View>
+                <View style={styles.badgeChip}>
+                  <Icon name="shieldCheck" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Datos seguros</Text>
+                </View>
+                <View style={styles.badgeChip}>
+                  <Icon name="send" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Respuesta directa</Text>
+                </View>
               </View>
-              <View style={styles.badgeChip}>
-                <Icon name="shieldCheck" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Datos seguros</Text>
-              </View>
-              <View style={styles.badgeChip}>
-                <Icon name="send" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Respuesta directa</Text>
-              </View>
-            </View>
-          </ImageBackground>
+            </ImageBackground>
+          ) : null}
 
           {/* Floating white card */}
-          <View style={styles.cardWrap}>
+          <View style={[styles.cardWrap, !isDesktop && styles.cardWrapMobile]}>
             <View style={styles.formCard}>
               {/* Gold gradient top bar */}
               <GradientOverlay
@@ -354,15 +359,17 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               </View>
             </View>
 
-            {/* Golden medallion straddling the card top edge */}
-            <View style={styles.medallion}>
-              <GradientOverlay
-                colors={['#0E3D63', Colors.accentDim, '#0A243C']}
-                style={styles.medallionBg}
-              />
-              <View style={styles.medallionRing} />
-              <Icon name="person" size={26} color={Colors.gold} />
-            </View>
+            {/* Golden medallion straddling the card top edge (solo escritorio) */}
+            {isDesktop ? (
+              <View style={styles.medallion}>
+                <GradientOverlay
+                  colors={['#0E3D63', Colors.accentDim, '#0A243C']}
+                  style={styles.medallionBg}
+                />
+                <View style={styles.medallionRing} />
+                <Icon name="person" size={26} color={Colors.gold} />
+              </View>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -488,7 +495,7 @@ const styles = StyleSheet.create({
   // Navy hero band
   hero: {
     width: '100%',
-    minHeight: 398,
+    minHeight: 330,
     overflow: 'hidden',
     borderBottomLeftRadius: 44,
     borderBottomRightRadius: 44,
@@ -522,6 +529,10 @@ const styles = StyleSheet.create({
   // Floating white card
   cardWrap: {
     marginTop: -34,
+    paddingHorizontal: spacing.base,
+  },
+  cardWrapMobile: {
+    marginTop: spacing.xl,
     paddingHorizontal: spacing.base,
   },
   formCard: {

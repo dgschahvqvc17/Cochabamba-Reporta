@@ -20,9 +20,11 @@
 const incidentRepository = require('../repositories/incident.repository');
 const historyRepository = require('../repositories/history.repository');
 const notificationRepository = require('../repositories/notification.repository');
+const evidenceRepository = require('../repositories/evidence.repository');
 const { buildError } = require('../utils/errors');
 const { normalizeText } = require('../utils/text');
 const {
+  INCIDENT_STATUS,
   INCIDENT_STATUS_LABELS,
   ROLE_STATUS_TRANSITIONS,
 } = require('../utils/incidentStatus');
@@ -44,6 +46,20 @@ const statusService = {
     comment = null,
     extraFields = {},
   ) {
+    // Un reporte no puede salir de REPORTADO (comenzar el proceso de
+    // atención) sin al menos una evidencia fotográfica.
+    if (
+      incident.status === INCIDENT_STATUS.REPORTADO &&
+      (await evidenceRepository.countByIncident(incident.id)) < 1
+    ) {
+      throw buildError(
+        'El reporte debe incluir al menos una evidencia fotográfica.',
+        422,
+        'EVIDENCE_REQUIRED',
+        'evidence',
+      );
+    }
+
     const updated = await incidentRepository.updateStatus(
       incident.id,
       toStatus,

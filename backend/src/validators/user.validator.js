@@ -106,6 +106,28 @@ const validateConfirmPassword = body('confirmPassword').custom((value, { req }) 
   return true;
 });
 
+const validateCurrentPassword = body('currentPassword')
+  .notEmpty()
+  .withMessage('La contraseña actual es obligatoria.');
+
+const validateNewPassword = body('newPassword')
+  .notEmpty()
+  .withMessage('La nueva contraseña es obligatoria.')
+  .isLength({ min: MIN_PASSWORD_LENGTH })
+  .withMessage(
+    `La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+  );
+
+const validateConfirmNewPassword = body('confirmPassword').custom(
+  (value, { req }) => {
+    if (value !== req.body.newPassword) {
+      throw new Error('Las contraseñas no coinciden.');
+    }
+
+    return true;
+  },
+);
+
 const validateAddress = body('address')
   .optional({ values: 'falsy' })
   .trim()
@@ -217,6 +239,12 @@ const updateUserStatusValidation = [validateUserStatus];
 
 const updateUserRoleValidation = [validateRoleRequired];
 
+const changePasswordValidation = [
+  validateCurrentPassword,
+  validateNewPassword,
+  validateConfirmNewPassword,
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
@@ -224,5 +252,6 @@ module.exports = {
   updateUserValidation,
   updateUserStatusValidation,
   updateUserRoleValidation,
+  changePasswordValidation,
   MIN_PASSWORD_LENGTH,
 };

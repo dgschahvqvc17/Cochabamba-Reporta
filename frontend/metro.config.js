@@ -10,6 +10,10 @@ const { getDefaultConfig } = require('expo/metro-config');
  */
 const config = getDefaultConfig(__dirname);
 
-config.resolver.assetExts.push('jfif');
+// Asset de imágenes y fuentes web usadas por la aplicación. Metro por
+// defecto no reconoce `jfif` ni los formatos woff/woff2 (a diferencia de
+// webpack), por lo que hay que registrarlos explícitamente para que el
+// bundle web (`expo start` → web) resuelva las fuentes de @fontsource.
+config.resolver.assetExts.push('jfif', 'woff', 'woff2');
 
 module.exports = config;

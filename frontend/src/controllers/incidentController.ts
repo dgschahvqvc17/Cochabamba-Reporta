@@ -16,6 +16,7 @@ import {
   assignSolution as assignSolutionRequest,
   assignVerification as assignVerificationRequest,
   attachEvidence as attachEvidenceRequest,
+  attachEvidenceNative as attachEvidenceNativeRequest,
   attachLocation as attachLocationRequest,
   createIncident as createIncidentRequest,
   deleteIncident as deleteIncidentRequest,
@@ -410,7 +411,11 @@ export async function pickEvidence(
   return { ok: true, evidence: result.evidence };
 }
 
-/** HU07: sube una imagen ya seleccionada al incidente recién creado. */
+/**
+ * HU07: sube una imagen ya seleccionada al incidente recién creado.
+ * En nativo la subida se hace con XMLHttpRequest (el fetch de Expo no
+ * serializa el objeto {uri,name,type} de RN en FormData); en web con fetch.
+ */
 export async function attachEvidenceToIncident(
   incidentId: number,
   evidence: PickedEvidence,
@@ -418,12 +423,20 @@ export async function attachEvidenceToIncident(
   const accessToken = getAccessToken();
   const upload = toUploadImage(evidence);
 
-  const result = await attachEvidenceRequest(
-    accessToken,
-    incidentId,
-    upload.object,
-    upload.name,
-  );
+  const result =
+    upload.kind === 'native-file'
+      ? await attachEvidenceNativeRequest(
+          accessToken,
+          incidentId,
+          upload.object,
+          upload.name,
+        )
+      : await attachEvidenceRequest(
+          accessToken,
+          incidentId,
+          upload.object,
+          upload.name,
+        );
 
   if (!result.success) {
     return {

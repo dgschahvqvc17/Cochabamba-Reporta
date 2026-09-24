@@ -51,6 +51,7 @@ import {
 } from '../controllers/incidentController';
 import { loadCategories } from '../controllers/categoryController';
 import { useDialog } from '../hooks/useDialog';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import {
   Colors,
   fontSizes,
@@ -84,7 +85,8 @@ export default function IncidentFormScreen({
   incidentId,
 }: IncidentFormScreenProps) {
   const insets = useSafeAreaInsets();
-  const { dialog, error, success, close } = useDialog();
+  const { dialog, error, confirm, success, close } = useDialog();
+  const isOnline = useNetworkStatus();
   const isEdit = mode === 'edit';
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categories, setCategories] = useState<
@@ -160,6 +162,10 @@ export default function IncidentFormScreen({
     if (!isEdit && !position) {
       errs.location = 'Debes registrar la ubicación del incidente.';
     }
+    if (!isEdit && evidence.length === 0) {
+      errs.evidence =
+        'Debes adjuntar al menos una evidencia fotográfica para enviar el reporte.';
+    }
     return errs;
   };
 
@@ -191,6 +197,31 @@ export default function IncidentFormScreen({
     setAddress('');
   };
 
+  const hasDraft =
+    categoryId !== null ||
+    title.trim().length > 0 ||
+    description.trim().length > 0 ||
+    evidence.length > 0 ||
+    position !== null ||
+    address.trim().length > 0;
+
+  const handleBack = () => {
+    if (!isOnline && hasDraft) {
+      confirm({
+        title: 'Sin conexión a internet',
+        message:
+          'Estás elaborando un reporte sin conexión. Si sales ahora, los datos que ingresaste se perderán porque aún no se guardaron.',
+        confirmLabel: 'Salir de todos modos',
+        cancelLabel: 'Seguir en el formulario',
+        tone: 'warning',
+        onConfirm: onBack,
+      });
+      return;
+    }
+
+    onBack();
+  };
+
   const handleAddEvidence = async (source: 'camera' | 'gallery') => {
     if (isPicking) return;
 
@@ -211,6 +242,11 @@ export default function IncidentFormScreen({
     }
 
     setEvidence((current) => [...current, result.evidence as PickedEvidence]);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.evidence;
+      return next;
+    });
   };
 
   const handleRemoveEvidence = (index: number) => {
@@ -286,11 +322,15 @@ export default function IncidentFormScreen({
       }
 
       let failedCount = 0;
+      let firstEvidenceError = '';
 
       for (const image of evidence) {
         const attachResult = await attachEvidenceToIncident(incident.id, image);
         if (!attachResult.success) {
           failedCount += 1;
+          if (!firstEvidenceError) {
+            firstEvidenceError = attachResult.message;
+          }
         }
       }
 
@@ -311,7 +351,9 @@ export default function IncidentFormScreen({
       if (evidence.length > 0 && failedCount === evidence.length) {
         error({
           title: 'No se pudo adjuntar la evidencia',
-          message: 'El reporte se registró, pero ninguna imagen pudo subirse. Intenta adjuntarlas después.',
+          message: `El reporte se registró, pero ninguna imagen pudo subirse.${
+            firstEvidenceError ? ` Motivo: ${firstEvidenceError}` : ''
+          } Puedes intentar adjuntarlas nuevamente.`,
         });
         return;
       }
@@ -320,7 +362,9 @@ export default function IncidentFormScreen({
         title: 'Reporte registrado',
         message:
           failedCount > 0
-            ? `${evidence.length - failedCount} de ${evidence.length} imágenes se adjuntaron correctamente; ${failedCount} no pudieron subirse.`
+            ? `${evidence.length - failedCount} de ${evidence.length} imágenes se adjuntaron correctamente; ${failedCount} no pudieron subirse${
+                firstEvidenceError ? ` (${firstEvidenceError})` : '.'
+              }`
             : 'Tu incidente se registró correctamente y está en revisión.',
         onAccept: onSaved,
       });
@@ -372,7 +416,7 @@ export default function IncidentFormScreen({
                     ? 'Actualiza los datos de tu reporte. Solo puedes editarlo una vez.'
                     : 'Describe el problema y presiona enviar.'
                 }
-                onBack={onBack}
+                onBack={handleBack}
                 overlay
               />
 
@@ -468,6 +512,7 @@ export default function IncidentFormScreen({
                         onAdd={handleAddEvidence}
                         onRemove={handleRemoveEvidence}
                         picking={isPicking}
+                        error={errors.evidence}
                       />
 
                       <LocationPicker
@@ -494,6 +539,9 @@ export default function IncidentFormScreen({
                     }
                     onPress={handleSubmit}
                     loading={isSubmitting}
+                    disabled={
+                      !isEdit && evidence.length === 0 && !isSubmitting
+                    }
                   />
                 </View>
               </View>

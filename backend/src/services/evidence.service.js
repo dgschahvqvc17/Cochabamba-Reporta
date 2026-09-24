@@ -20,9 +20,9 @@ const storageRepository = require('../repositories/storage.repository');
 const ROLES = require('../utils/roles');
 const { buildError } = require('../utils/errors');
 const {
-  ALLOWED_MIME_TYPES,
   MAX_IMAGE_SIZE,
   MAX_EVIDENCE_COUNT,
+  detectImageMime,
 } = require('../utils/evidence');
 const { INCIDENT_STATUS } = require('../utils/incidentStatus');
 const { toPublicEvidence } = require('../utils/incidentMappers');
@@ -92,7 +92,11 @@ const evidenceService = {
       );
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+    // El formato se determina por el contenido real (magic bytes), no por
+    // el mimetype/extensión que reporte el cliente.
+    const detectedMime = detectImageMime(file.buffer);
+
+    if (!detectedMime) {
       throw buildError(
         'El formato de la imagen no es válido. Solo se permiten JPG, JFIF, PNG y WebP.',
         422,
@@ -125,7 +129,7 @@ const evidenceService = {
 
     const { storagePath, publicUrl } = await storageRepository.uploadEvidence({
       incidentId: incident.id,
-      mimeType: file.mimetype,
+      mimeType: detectedMime,
       buffer: file.buffer,
     });
 
@@ -133,7 +137,7 @@ const evidenceService = {
       incidentId: incident.id,
       url: publicUrl,
       storagePath,
-      mimeType: file.mimetype,
+      mimeType: detectedMime,
       sizeBytes: file.size,
       uploadedBy: userId,
     });
