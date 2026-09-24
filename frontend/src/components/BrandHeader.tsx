@@ -95,8 +95,8 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.base,
+    paddingBottom: spacing.sm,
     width: '100%',
     maxWidth: layout.cardMaxWidth,
     alignSelf: 'center',
@@ -123,7 +123,8 @@ const styles = StyleSheet.create({
     opacity: 0.1,
   },
   logo: {
-    width: '78%',
+    width: '70%',
+    maxWidth: 280,
     aspectRatio: LOGO_ASPECT_RATIO,
     // Tint to make it pop on very dark backgrounds (web only)
   },
@@ -157,8 +158,8 @@ const styles = StyleSheet.create({
   dotRow: {
     flexDirection: 'row',
     gap: 6,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
   dot: {
     width: 6,

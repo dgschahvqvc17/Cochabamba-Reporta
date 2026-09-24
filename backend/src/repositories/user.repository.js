@@ -189,12 +189,16 @@ const countActiveByRoleName = async (roleName) => {
   return count ?? 0;
 };
 
-const findVerifiers = async () => {
+/**
+ * Funcionarios activos de un rol municipal (HU10 verificación / HU12
+ * solución). Fuente única para no repetir la consulta por rol.
+ */
+const findStaffByRole = async (roleName) => {
   const { data, error } = await supabaseAdmin
     .from('users')
     .select('id, first_name, last_name, email, roles!inner(name)')
     .eq('active', true)
-    .eq('roles.name', 'VERIFICADOR')
+    .eq('roles.name', roleName)
     .order('first_name');
 
   if (error) {
@@ -203,6 +207,11 @@ const findVerifiers = async () => {
 
   return data ?? [];
 };
+
+const findVerifiers = async () => findStaffByRole('VERIFICADOR');
+
+/** HU12 — Personal de solución activo disponible para asignar. */
+const findSolutionStaff = async () => findStaffByRole('PERSONAL_SOLUCION');
 
 const update = async (id, fields) => {
   const { data, error } = await supabaseAdmin
@@ -283,4 +292,5 @@ module.exports = {
   updateRole,
   findUsersByIds,
   findVerifiers,
+  findSolutionStaff,
 };

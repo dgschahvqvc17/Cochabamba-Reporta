@@ -10,7 +10,6 @@ import { AppRegistry } from 'react-native';
 import { createRoot } from 'react-dom/client';
 
 import App from './App';
-import { name as appName } from './app.json';
 import poppinsLight from '@fontsource/poppins/files/poppins-latin-400-normal.woff2';
 import poppinsSemi from '@fontsource/poppins/files/poppins-latin-600-normal.woff2';
 import poppinsBold from '@fontsource/poppins/files/poppins-latin-700-normal.woff2';
@@ -46,5 +45,5 @@ function injectFonts() {
 
 injectFonts();
 
-AppRegistry.registerComponent(appName, () => App);
+AppRegistry.registerComponent('CochabambaReporta', () => App);
 createRoot(document.getElementById('root')).render(<App />);

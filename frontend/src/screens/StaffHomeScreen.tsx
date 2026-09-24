@@ -4,10 +4,11 @@
  * HU09 — Consultar y gestionar incidentes (Encargado de recepción).
  * HU10 — Asignar incidente para verificación (Encargado de recepción).
  * HU11 — Verificar incidentes asignados (Personal de verificación).
+ * HU12 — Asignar incidente para solución (Encargado de solución).
  * Dashboard del personal de atención (RECEPCION, VERIFICADOR,
  * ENCARGADO_SOLUCION, PERSONAL_SOLUCION): perfil del usuario y acceso
  * a los módulos de consulta de incidentes y, según el rol, de asignación
- * (recepción) o verificación (personal de verificación).
+ * (recepción o solución) o verificación (personal de verificación).
  *
  * @format
  */
@@ -47,6 +48,7 @@ type StaffHomeScreenProps = {
   onGoToIncidents: () => void;
   onGoToPendingVerification: () => void;
   onGoToVerificationQueue: () => void;
+  onGoToPendingSolution: () => void;
 };
 
 const ROLE_TONES: Partial<Record<Role, PillTone>> = {
@@ -70,6 +72,7 @@ function StaffHomeScreen({
   onGoToIncidents,
   onGoToPendingVerification,
   onGoToVerificationQueue,
+  onGoToPendingSolution,
 }: StaffHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -204,6 +207,16 @@ function StaffHomeScreen({
               description="Consulta los incidentes que te asignaron y verifica en campo si el problema reportado existe."
               color={Colors.warning}
               onPress={onGoToVerificationQueue}
+            />
+          ) : null}
+
+          {user.role === 'ENCARGADO_SOLUCION' ? (
+            <ModuleCard
+              icon="shieldCheck"
+              label="Asignar para solución"
+              description="Consulta los incidentes verificados y asígnalos a un responsable de solución para su atención."
+              color={Colors.info}
+              onPress={onGoToPendingSolution}
             />
           ) : null}
 

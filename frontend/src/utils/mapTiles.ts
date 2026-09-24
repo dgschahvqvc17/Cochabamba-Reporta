@@ -68,10 +68,22 @@ export function mercatorTile(
   };
 }
 
-/** URL de un tile CARTO dark (sin API key) para {z}/{x}/{y}. */
-export function tileUrl(x: number, y: number, zoom: number): string {
+/** Estilos de tiles CARTO disponibles (sin API key). */
+export type MapTileStyle = 'light_all' | 'dark_all' | 'rastertiles/voyager';
+
+/**
+ * URL de un tile CARTO para {z}/{x}/{y}.
+ * Por defecto usa `light_all`: un mapa claro y legible con calles
+ * etiquetadas, más intuitivo que los fondos oscuros.
+ */
+export function tileUrl(
+  x: number,
+  y: number,
+  zoom: number,
+  style: MapTileStyle = 'light_all',
+): string {
   const wrappedX = ((x % (2 ** zoom)) + 2 ** zoom) % (2 ** zoom);
   const wrappedY = Math.max(0, Math.min(2 ** zoom - 1, y));
   const server = 'abcdef'[Math.abs(x) % 6];
-  return `https://${server}.basemaps.cartocdn.com/dark_all/${zoom}/${wrappedX}/${wrappedY}.png`;
+  return `https://${server}.basemaps.cartocdn.com/${style}/${zoom}/${wrappedX}/${wrappedY}.png`;
 }

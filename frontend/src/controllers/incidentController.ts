@@ -13,30 +13,38 @@
  */
 
 import {
+  assignSolution as assignSolutionRequest,
   assignVerification as assignVerificationRequest,
   attachEvidence as attachEvidenceRequest,
+  attachEvidenceNative as attachEvidenceNativeRequest,
   attachLocation as attachLocationRequest,
   createIncident as createIncidentRequest,
   deleteIncident as deleteIncidentRequest,
   getAssignedVerificationIncidents as getAssignedVerificationIncidentsRequest,
   getIncidentById as getIncidentByIdRequest,
+  getIncidentHistory as getIncidentHistoryRequest,
   getIncidents as getIncidentsRequest,
   getMyIncidents as getMyIncidentsRequest,
+  getPendingSolutionIncidents as getPendingSolutionIncidentsRequest,
   getPendingVerificationIncidents as getPendingVerificationIncidentsRequest,
+  getSolutionStaff as getSolutionStaffRequest,
   getVerifiers as getVerifiersRequest,
   updateIncident as updateIncidentRequest,
   verifyIncident as verifyIncidentRequest,
   type IncidentListParams,
 } from '../services/incidentService';
 import type {
+  AssignSolutionPayload,
   AssignVerificationPayload,
   Evidence,
   Incident,
   IncidentAssignment,
+  IncidentHistoryEntry,
   IncidentListData,
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
+  SolutionUser,
   VerifierUser,
   VerifyIncidentPayload,
   VerifyIncidentResult,
@@ -287,6 +295,97 @@ export async function verifyIncidentById(
   };
 }
 
+/** HU12: lista el personal de solución disponible (encargado de solución). */
+export async function loadSolutionStaff(): Promise<
+  ActionResult<SolutionUser[]>
+> {
+  const accessToken = getAccessToken();
+  const result = await getSolutionStaffRequest(accessToken);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.staff,
+  };
+}
+
+/** HU12: lista los incidentes verificados pendientes de solución (paginado). */
+export async function loadPendingSolution(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getPendingSolutionIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU12: asigna un incidente verificado a un responsable de solución. */
+export async function assignIncidentForSolution(
+  incidentId: number,
+  payload: AssignSolutionPayload,
+): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
+  const accessToken = getAccessToken();
+  const result = await assignSolutionRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** Historial de cambios de estado de un incidente (trazabilidad, HU12). */
+export async function loadIncidentHistory(
+  incidentId: number,
+): Promise<ActionResult<IncidentHistoryEntry[]>> {
+  const accessToken = getAccessToken();
+  const result = await getIncidentHistoryRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.history,
+  };
+}
+
 /** HU07: abre la cámara o la galería y devuelve la imagen ya normalizada. */
 export async function pickEvidence(
   source: PickerSource,
@@ -312,7 +411,11 @@ export async function pickEvidence(
   return { ok: true, evidence: result.evidence };
 }
 
-/** HU07: sube una imagen ya seleccionada al incidente recién creado. */
+/**
+ * HU07: sube una imagen ya seleccionada al incidente recién creado.
+ * En nativo la subida se hace con XMLHttpRequest (el fetch de Expo no
+ * serializa el objeto {uri,name,type} de RN en FormData); en web con fetch.
+ */
 export async function attachEvidenceToIncident(
   incidentId: number,
   evidence: PickedEvidence,
@@ -320,12 +423,20 @@ export async function attachEvidenceToIncident(
   const accessToken = getAccessToken();
   const upload = toUploadImage(evidence);
 
-  const result = await attachEvidenceRequest(
-    accessToken,
-    incidentId,
-    upload.object,
-    upload.name,
-  );
+  const result =
+    upload.kind === 'native-file'
+      ? await attachEvidenceNativeRequest(
+          accessToken,
+          incidentId,
+          upload.object,
+          upload.name,
+        )
+      : await attachEvidenceRequest(
+          accessToken,
+          incidentId,
+          upload.object,
+          upload.name,
+        );
 
   if (!result.success) {
     return {

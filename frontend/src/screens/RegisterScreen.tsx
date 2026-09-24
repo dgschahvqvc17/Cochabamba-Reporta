@@ -17,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -25,6 +26,7 @@ import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import BrandHeader from '../components/BrandHeader';
 import CalendarModal from '../components/CalendarModal';
+import FloatingOrbs from '../components/FloatingOrbs';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon, { type IconName } from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
@@ -47,6 +49,8 @@ import {
   isValidIdentityNumber,
   isValidPassword,
   isValidPhone,
+  onlyDigits,
+  onlyLetters,
 } from '../utils/validators';
 
 type RegisterScreenProps = {
@@ -92,6 +96,8 @@ const SECTIONS: SectionConfig[] = [
 
 function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
   const { dialog, info, close } = useDialog();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= layout.breakpointMd;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -166,13 +172,16 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
   return (
     <ImageBackground source={fondoNew} style={styles.root} resizeMode="cover">
       {/* Deep institutional navy overlay so the photo reads as a premium backdrop */}
+      {/* Fondo inferior (azul oscuro) aplicado uniformemente a toda la imagen */}
       <GradientOverlay
         colors={[
-          'rgba(3, 10, 20, 0.94)',
-          'rgba(6, 24, 43, 0.9)',
-          'rgba(3, 15, 28, 0.96)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
         ]}
       />
+      {/* Esferas decorativas que se desplazan por todo el fondo */}
+      <FloatingOrbs />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -182,44 +191,45 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Navy hero band with curved bottom */}
-          <ImageBackground
-            source={cityBackground}
-            style={styles.hero}
-            resizeMode="cover"
-          >
-            <GradientOverlay
-              colors={[
-                'rgba(4, 12, 22, 0.97)',
-                'rgba(9, 24, 40, 0.92)',
-                'rgba(8, 20, 33, 0.94)',
-              ]}
-            />
-            <View style={styles.heroGlow} />
-            <BrandHeader
-              title="Crear cuenta"
-              subtitle="Regístrate para reportar incidentes urbanos en Cochabamba"
-            />
+          {/* Navy hero band with curved bottom (solo escritorio) */}
+          {isDesktop ? (
+            <ImageBackground
+              source={cityBackground}
+              style={styles.hero}
+              resizeMode="cover"
+            >
+              <GradientOverlay
+                colors={[
+                  'rgba(4, 12, 22, 0.97)',
+                  'rgba(9, 24, 40, 0.92)',
+                  'rgba(8, 20, 33, 0.94)',
+                ]}
+              />
+              <BrandHeader
+                title="Crear cuenta"
+                subtitle="Regístrate para reportar incidentes urbanos en Cochabamba"
+              />
 
-            {/* Feature chips */}
-            <View style={styles.badgesRow}>
-              <View style={styles.badgeChip}>
-                <Icon name="person" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Sin costo</Text>
+              {/* Feature chips */}
+              <View style={styles.badgesRow}>
+                <View style={styles.badgeChip}>
+                  <Icon name="person" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Sin costo</Text>
+                </View>
+                <View style={styles.badgeChip}>
+                  <Icon name="shieldCheck" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Datos seguros</Text>
+                </View>
+                <View style={styles.badgeChip}>
+                  <Icon name="send" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Respuesta directa</Text>
+                </View>
               </View>
-              <View style={styles.badgeChip}>
-                <Icon name="shieldCheck" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Datos seguros</Text>
-              </View>
-              <View style={styles.badgeChip}>
-                <Icon name="send" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Respuesta directa</Text>
-              </View>
-            </View>
-          </ImageBackground>
+            </ImageBackground>
+          ) : null}
 
           {/* Floating white card */}
-          <View style={styles.cardWrap}>
+          <View style={[styles.cardWrap, !isDesktop && styles.cardWrapMobile]}>
             <View style={styles.formCard}>
               {/* Gold gradient top bar */}
               <GradientOverlay
@@ -240,7 +250,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Nombres *"
                 value={form.firstName}
-                onChangeText={(v) => { onChangeField('firstName')(v); clearError('firstName'); }}
+                onChangeText={(v) => { onChangeField('firstName')(onlyLetters(v)); clearError('firstName'); }}
                 placeholder="Ej. Juan Carlos"
                 error={errors.firstName}
                 icon="person"
@@ -248,7 +258,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Apellidos *"
                 value={form.lastName}
-                onChangeText={(v) => { onChangeField('lastName')(v); clearError('lastName'); }}
+                onChangeText={(v) => { onChangeField('lastName')(onlyLetters(v)); clearError('lastName'); }}
                 placeholder="Ej. Pérez Mamani"
                 error={errors.lastName}
                 icon="person"
@@ -265,7 +275,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Documento de identidad *"
                 value={form.identityNumber}
-                onChangeText={(v) => { onChangeField('identityNumber')(v); clearError('identityNumber'); }}
+                onChangeText={(v) => { onChangeField('identityNumber')(onlyDigits(v)); clearError('identityNumber'); }}
                 placeholder="Ej. 7654321"
                 keyboardType="number-pad"
                 maxLength={8}
@@ -275,7 +285,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               <AppTextInput
                 label="Teléfono *"
                 value={form.phone}
-                onChangeText={(v) => { onChangeField('phone')(v); clearError('phone'); }}
+                onChangeText={(v) => { onChangeField('phone')(onlyDigits(v)); clearError('phone'); }}
                 placeholder="Ej. 78901234"
                 keyboardType="phone-pad"
                 maxLength={8}
@@ -349,15 +359,17 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               </View>
             </View>
 
-            {/* Golden medallion straddling the card top edge */}
-            <View style={styles.medallion}>
-              <GradientOverlay
-                colors={['#0E3D63', Colors.accentDim, '#0A243C']}
-                style={styles.medallionBg}
-              />
-              <View style={styles.medallionRing} />
-              <Icon name="person" size={26} color={Colors.gold} />
-            </View>
+            {/* Golden medallion straddling the card top edge (solo escritorio) */}
+            {isDesktop ? (
+              <View style={styles.medallion}>
+                <GradientOverlay
+                  colors={['#0E3D63', Colors.accentDim, '#0A243C']}
+                  style={styles.medallionBg}
+                />
+                <View style={styles.medallionRing} />
+                <Icon name="person" size={26} color={Colors.gold} />
+              </View>
+            ) : null}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -483,19 +495,10 @@ const styles = StyleSheet.create({
   // Navy hero band
   hero: {
     width: '100%',
-    minHeight: 398,
+    minHeight: 330,
     overflow: 'hidden',
     borderBottomLeftRadius: 44,
     borderBottomRightRadius: 44,
-  },
-  heroGlow: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(201, 162, 75, 0.14)',
-    top: -110,
-    right: -80,
   },
   badgesRow: {
     flexDirection: 'row',
@@ -526,6 +529,10 @@ const styles = StyleSheet.create({
   // Floating white card
   cardWrap: {
     marginTop: -34,
+    paddingHorizontal: spacing.base,
+  },
+  cardWrapMobile: {
+    marginTop: spacing.xl,
     paddingHorizontal: spacing.base,
   },
   formCard: {

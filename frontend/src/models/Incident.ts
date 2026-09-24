@@ -111,6 +111,18 @@ export interface AssignVerificationPayload {
 }
 
 /**
+ * Personal de solución disponible para asignar (HU12). Misma forma que
+ * `VerifierUser`, por lo que se reutiliza su estructura (DRY).
+ */
+export type SolutionUser = VerifierUser;
+
+/** Payload para asignar un incidente verificado para solución (HU12). */
+export interface AssignSolutionPayload {
+  assignedToId: number;
+  note?: string;
+}
+
+/**
  * Asignación de un incidente a un funcionario (HU10). `assignmentType`
  * puede ser 'VERIFICACION' (HU10) o 'SOLUCION' (HU12).
  */

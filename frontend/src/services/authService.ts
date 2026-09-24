@@ -11,8 +11,7 @@
 import type { Citizen, CitizenRegistration } from '../models/Citizen';
 import type { Session } from '../models/Session';
 import type { User } from '../models/User';
-
-const BASE_URL = 'http://localhost:3000/api/v1';
+import { API_BASE_URL as BASE_URL } from '../config/api';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -77,6 +76,27 @@ export async function logout(accessToken: string): Promise<ApiResponse<null>> {
   const response = await fetch(`${BASE_URL}/auth/logout`, {
     method: 'POST',
     headers: authHeaders(accessToken),
+  });
+
+  return response.json();
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export async function changePassword(
+  accessToken: string,
+  payload: ChangePasswordPayload,
+): Promise<ApiResponse<null>> {
+  const response = await fetch(`${BASE_URL}/auth/change-password`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(accessToken),
+    },
+    body: JSON.stringify(payload),
   });
 
   return response.json();

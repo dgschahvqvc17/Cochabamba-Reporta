@@ -50,6 +50,8 @@ import {
   isValidEmail,
   isValidIdentityNumber,
   isValidPhone,
+  onlyDigits,
+  onlyLetters,
   parseBirthDate,
 } from '../utils/validators';
 
@@ -257,8 +259,8 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
         >
           {/* Datos personales */}
           <DarkSectionCard title="Datos personales" icon="person" color={Colors.accent}>
-            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={field('firstName')} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" />
-            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={field('lastName')} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" />
+            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={(v) => field('firstName')(onlyLetters(v))} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" />
+            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={(v) => field('lastName')(onlyLetters(v))} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" />
           </DarkSectionCard>
 
           {/* Acceso */}
@@ -285,8 +287,8 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
 
           {/* Contacto */}
           <DarkSectionCard title="Contacto e identificación" icon="badge" color={Colors.success}>
-            <AppTextInput label="Teléfono" value={form.phone} onChangeText={field('phone')} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" />
-            <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={field('identityNumber')} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" />
+            <AppTextInput label="Teléfono" value={form.phone} onChangeText={(v) => field('phone')(onlyDigits(v))} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" />
+            <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={(v) => field('identityNumber')(onlyDigits(v))} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" />
             <AppDateField label="Fecha de nacimiento" value={form.birthDate} onPress={() => setIsCalendarOpen(true)} error={errors.birthDate} />
             <AppTextInput label="Dirección o referencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." icon="pin" />
           </DarkSectionCard>
@@ -304,7 +306,10 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
             </View>
           ) : (
             <DarkSectionCard title="Rol del usuario *" icon="badge" color={Colors.info}>
-              <View style={styles.roleGrid}>
+              <Text style={styles.roleHint}>
+                Selecciona un único rol para la cuenta nueva.
+              </Text>
+              <View style={styles.roleList}>
                 {ROLES.map((role) => {
                   const active = form.role === role;
                   const rc = ROLE_COLORS[role];
@@ -313,20 +318,24 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
                       key={role}
                       onPress={() => field('role')(role)}
                       style={[
-                        styles.roleChip,
-                        active && { borderColor: rc, backgroundColor: rc + '1A' },
+                        styles.roleOption,
+                        active && { borderColor: rc, backgroundColor: rc + '12' },
                       ]}
                     >
-                      {active && <View style={[styles.roleChipDot, { backgroundColor: rc }]} />}
+                      <View style={[styles.roleRadio, active && { borderColor: rc }]}>
+                        {active ? (
+                          <View style={[styles.roleRadioDot, { backgroundColor: rc }]} />
+                        ) : null}
+                      </View>
                       <Text
                         style={[
-                          styles.roleChipText,
+                          styles.roleOptionText,
                           active && { color: rc, fontWeight: fontWeights.bold },
                         ]}
-                        numberOfLines={1}
                       >
                         {ROLE_LABELS[role]}
                       </Text>
+                      {active ? <Icon name="check" size={16} color={rc} /> : null}
                     </Pressable>
                   );
                 })}
@@ -442,26 +451,40 @@ const styles = StyleSheet.create({
     maxWidth: layout.contentMaxWidth,
     alignSelf: 'center',
   },
-  roleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  roleHint: {
+    color: 'rgba(232,240,248,0.5)',
+    fontSize: fontSizes.caption,
+    marginBottom: spacing.sm,
+  },
+  roleList: {
     gap: spacing.sm,
   },
-  roleChip: {
+  roleOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.pill,
+    gap: spacing.sm,
+    borderRadius: radius.card,
     borderWidth: 1.5,
-    borderColor: Colors.borderSoft,
-    backgroundColor: Colors.surface,
+    borderColor: Colors.border,
+    backgroundColor: 'rgba(232,240,248,0.04)',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm - 1,
-    gap: 5,
+    paddingVertical: spacing.md,
   },
-  roleChipDot: { width: 6, height: 6, borderRadius: 3 },
-  roleChipText: {
-    color: 'rgba(232,240,248,0.65)',
-    fontSize: fontSizes.caption,
+  roleRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(232,240,248,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(232,240,248,0.06)',
+  },
+  roleRadioDot: { width: 12, height: 12, borderRadius: 6 },
+  roleOptionText: {
+    flex: 1,
+    color: 'rgba(232,240,248,0.85)',
+    fontSize: fontSizes.small,
     fontWeight: fontWeights.medium,
   },
   roleErrorRow: {

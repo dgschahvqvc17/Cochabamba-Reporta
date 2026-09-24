@@ -32,8 +32,13 @@ import PendingVerificationScreen from '../screens/PendingVerificationScreen';
 import AssignVerificationScreen from '../screens/AssignVerificationScreen';
 import VerificationQueueScreen from '../screens/VerificationQueueScreen';
 import VerifyIncidentScreen from '../screens/VerifyIncidentScreen';
+import PendingSolutionScreen from '../screens/PendingSolutionScreen';
+import AssignSolutionScreen from '../screens/AssignSolutionScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import AppNavBar from '../components/AppNavBar';
+import OfflineBanner from '../components/OfflineBanner';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import {
   clearSession,
   getStoredSession,
@@ -62,7 +67,8 @@ type CitizenRoute =
   | { name: 'incident-create' }
   | { name: 'incident-edit'; incidentId: number }
   | { name: 'my-reports' }
-  | { name: 'notifications' };
+  | { name: 'notifications' }
+  | { name: 'profile' };
 
 /** Roles municipales que usan el módulo de recepción/consulta (HU09). */
 type StaffRoute =
@@ -72,7 +78,9 @@ type StaffRoute =
   | { name: 'pending-verification' }
   | { name: 'assign-verification'; incidentId: number }
   | { name: 'verification-queue' }
-  | { name: 'verify-incident'; incidentId: number };
+  | { name: 'verify-incident'; incidentId: number }
+  | { name: 'pending-solution' }
+  | { name: 'assign-solution'; incidentId: number };
 
 const STAFF_ROLES: string[] = [
   'RECEPCION',
@@ -83,7 +91,7 @@ const STAFF_ROLES: string[] = [
 
 const SESSION_CHECK_INTERVAL_MS = 10000;
 
-function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
+function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
   const [session, setSession] = useState<StoredSession | null>(() =>
     getStoredSession(),
   );
@@ -91,6 +99,10 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
   const [adminRoute, setAdminRoute] = useState<AdminRoute>({ name: 'dashboard' });
   const [citizenRoute, setCitizenRoute] = useState<CitizenRoute>({ name: 'home' });
   const [staffRoute, setStaffRoute] = useState<StaffRoute>({ name: 'home' });
+  const isOnline = useNetworkStatus();
+  const offlineBanner = (
+    <OfflineBanner visible={!isOnline} topInset={safeAreaInsets.top} />
+  );
 
   useEffect(() => {
     if (!session) {
@@ -251,6 +263,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
             dimmed={isSubRoute}
             onLogout={handleLogout}
           />
+          {offlineBanner}
         </View>
       );
     }
@@ -263,7 +276,9 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
         staffRoute.name === 'pending-verification' ||
         staffRoute.name === 'assign-verification' ||
         staffRoute.name === 'verification-queue' ||
-        staffRoute.name === 'verify-incident';
+        staffRoute.name === 'verify-incident' ||
+        staffRoute.name === 'pending-solution' ||
+        staffRoute.name === 'assign-solution';
 
       const staffNavActiveKey =
         staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
@@ -311,6 +326,19 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 onBack={() => setStaffRoute({ name: 'verification-queue' })}
                 onVerified={() => setStaffRoute({ name: 'verification-queue' })}
               />
+            ) : staffRoute.name === 'pending-solution' ? (
+              <PendingSolutionScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'assign-solution', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'assign-solution' ? (
+              <AssignSolutionScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'pending-solution' })}
+                onAssigned={() => setStaffRoute({ name: 'pending-solution' })}
+              />
             ) : (
               <StaffHomeScreen
                 user={session.user}
@@ -320,6 +348,9 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
                 }
                 onGoToVerificationQueue={() =>
                   setStaffRoute({ name: 'verification-queue' })
+                }
+                onGoToPendingSolution={() =>
+                  setStaffRoute({ name: 'pending-solution' })
                 }
               />
             )}
@@ -344,6 +375,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
             dimmed={isStaffSubRoute}
             onLogout={handleLogout}
           />
+          {offlineBanner}
         </View>
       );
     }
@@ -380,6 +412,11 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
             <NotificationsScreen
               onBack={() => setCitizenRoute({ name: 'home' })}
             />
+          ) : citizenRoute.name === 'profile' ? (
+            <ProfileScreen
+              user={session.user}
+              onBack={() => setCitizenRoute({ name: 'home' })}
+            />
           ) : (
             <HomeScreen
               user={session.user}
@@ -388,6 +425,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
               onViewNotifications={() =>
                 setCitizenRoute({ name: 'notifications' })
               }
+              onViewProfile={() => setCitizenRoute({ name: 'profile' })}
             />
           )}
         </View>
@@ -410,6 +448,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
           dimmed={isCitizenSubRoute}
           onLogout={handleLogout}
         />
+        {offlineBanner}
       </View>
     );
   }
@@ -424,6 +463,7 @@ function AppNavigator({ safeAreaInsets: _safeAreaInsets }: AppNavigatorProps) {
       ) : (
         <RegisterScreen onGoToLogin={goToLogin} />
       )}
+      {offlineBanner}
     </View>
   );
 }

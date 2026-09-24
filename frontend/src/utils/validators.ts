@@ -21,6 +21,20 @@ export const isValidIdentityNumber = (identityNumber: string): boolean =>
 export const isValidPassword = (password: string): boolean =>
   password.length >= MIN_PASSWORD_LENGTH;
 
+/**
+ * Deja únicamente dígitos en el texto (útil para teléfono y carnet).
+ * Evita que el usuario escriba letras o símbolos en campos numéricos.
+ */
+export const onlyDigits = (value: string): string =>
+  value.replace(/\D/g, '');
+
+/**
+ * Deja únicamente letras (incluye acentos y ñ), espacios, apóstrofos y
+ * guiones (útil para nombres y apellidos compuestos).
+ */
+export const onlyLetters = (value: string): string =>
+  value.replace(/[^\p{L}\p{M}\s'’-]/gu, '');
+
 /** Convierte DD/MM/AAAA a AAAA-MM-DD y valida que la fecha sea real. */
 export const parseBirthDate = (value: string): string | null => {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());

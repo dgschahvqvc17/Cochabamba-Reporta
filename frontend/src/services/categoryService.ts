@@ -15,8 +15,7 @@ import type {
   CategoryPayload,
 } from '../models/Category';
 import { clearSession } from '../utils/session';
-
-const BASE_URL = 'http://localhost:3000/api/v1';
+import { API_BASE_URL as BASE_URL } from '../config/api';
 
 export interface ApiResponse<T> {
   success: boolean;

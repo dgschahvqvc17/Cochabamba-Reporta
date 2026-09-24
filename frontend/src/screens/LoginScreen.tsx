@@ -19,12 +19,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
 import AppDialog from '../components/AppDialog';
 import AppTextInput from '../components/AppTextInput';
 import BrandHeader from '../components/BrandHeader';
+import FloatingOrbs from '../components/FloatingOrbs';
 import GradientOverlay from '../components/GradientOverlay';
 import Icon from '../components/Icon';
 import PrimaryButton from '../components/PrimaryButton';
@@ -51,6 +53,8 @@ type LoginScreenProps = {
 
 function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
   const { dialog, error, close } = useDialog();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= layout.breakpointMd;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
@@ -125,13 +129,16 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
   return (
     <ImageBackground source={fondoNew} style={styles.root} resizeMode="cover">
       {/* Deep institutional navy overlay so the photo reads as a premium backdrop */}
+      {/* Fondo inferior (azul oscuro) aplicado uniformemente a toda la imagen */}
       <GradientOverlay
         colors={[
-          'rgba(3, 10, 20, 0.94)',
-          'rgba(6, 24, 43, 0.9)',
-          'rgba(3, 15, 28, 0.96)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
+          'rgba(3, 15, 28, 0.97)',
         ]}
       />
+      {/* Esferas decorativas que se desplazan por todo el fondo */}
+      <FloatingOrbs />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -141,73 +148,75 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Navy hero band with curved bottom + animated gold rings */}
-          <ImageBackground
-            source={cityBackground}
-            style={styles.hero}
-            resizeMode="cover"
-          >
-            <GradientOverlay
-              colors={[
-                'rgba(4, 12, 22, 0.97)',
-                'rgba(9, 24, 40, 0.92)',
-                'rgba(8, 20, 33, 0.94)',
-              ]}
-            />
-            <View style={styles.heroGlow} />
+          {/* Navy hero band with curved bottom + animated gold rings (solo escritorio) */}
+          {isDesktop ? (
+            <ImageBackground
+              source={cityBackground}
+              style={styles.hero}
+              resizeMode="cover"
+            >
+              <GradientOverlay
+                colors={[
+                  'rgba(4, 12, 22, 0.97)',
+                  'rgba(9, 24, 40, 0.92)',
+                  'rgba(8, 20, 33, 0.94)',
+                ]}
+              />
 
-            {/* Breathing decorative rings */}
-            <Animated.View
-              style={[
-                styles.ring,
-                styles.ringOuter,
-                {
-                  opacity: ringAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.5, 0.12],
-                  }),
-                },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.ring,
-                styles.ringInner,
-                {
-                  opacity: ringAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.2, 0.55],
-                  }),
-                },
-              ]}
-            />
+              {/* Breathing decorative rings */}
+              <Animated.View
+                style={[
+                  styles.ring,
+                  styles.ringOuter,
+                  {
+                    opacity: ringAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.5, 0.12],
+                    }),
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.ring,
+                  styles.ringInner,
+                  {
+                    opacity: ringAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.2, 0.55],
+                    }),
+                  },
+                ]}
+              />
 
-            <BrandHeader
-              title="Bienvenido de nuevo"
-              subtitle="Ingresa para reportar y dar seguimiento a los incidentes de tu ciudad"
-            />
+              <BrandHeader
+                title="Bienvenido de nuevo"
+                subtitle="Ingresa para reportar y dar seguimiento a los incidentes de tu ciudad"
+              />
 
-            {/* Feature chips */}
-            <View style={styles.badgesRow}>
-              <View style={styles.badgeChip}>
-                <Icon name="report" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Reporta</Text>
+              {/* Feature chips */}
+              <View style={styles.badgesRow}>
+                <View style={styles.badgeChip}>
+                  <Icon name="report" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Reporta</Text>
+                </View>
+                <View style={styles.badgeChip}>
+                  <Icon name="clock" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Seguimiento</Text>
+                </View>
+                <View style={styles.badgeChip}>
+                  <Icon name="shieldCheck" size={14} color={Colors.gold} />
+                  <Text style={styles.badgeText}>Colabora</Text>
+                </View>
               </View>
-              <View style={styles.badgeChip}>
-                <Icon name="clock" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Seguimiento</Text>
-              </View>
-              <View style={styles.badgeChip}>
-                <Icon name="shieldCheck" size={14} color={Colors.gold} />
-                <Text style={styles.badgeText}>Colabora</Text>
-              </View>
-            </View>
-          </ImageBackground>
+            </ImageBackground>
+          ) : null}
 
           {/* Floating white card with brand medallion */}
           <Animated.View
             style={[
               styles.cardWrap,
+              !isDesktop && styles.cardWrapMobile,
               {
                 opacity: cardAnim,
                 transform: [
@@ -314,15 +323,17 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
               </View>
             </View>
 
-            {/* Golden medallion straddling the card top edge */}
-            <View style={styles.medallion}>
-              <GradientOverlay
-                colors={['#0E3D63', Colors.accentDim, '#0A243C']}
-                style={styles.medallionBg}
-              />
-              <View style={styles.medallionRing} />
-              <Icon name="shieldCheck" size={26} color={Colors.gold} />
-            </View>
+            {/* Golden medallion straddling the card top edge (solo escritorio) */}
+            {isDesktop ? (
+              <View style={styles.medallion}>
+                <GradientOverlay
+                  colors={['#0E3D63', Colors.accentDim, '#0A243C']}
+                  style={styles.medallionBg}
+                />
+                <View style={styles.medallionRing} />
+                <Icon name="shieldCheck" size={26} color={Colors.gold} />
+              </View>
+            ) : null}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -343,19 +354,10 @@ const styles = StyleSheet.create({
   // Navy hero band
   hero: {
     width: '100%',
-    minHeight: 398,
+    minHeight: 330,
     overflow: 'hidden',
     borderBottomLeftRadius: 44,
     borderBottomRightRadius: 44,
-  },
-  heroGlow: {
-    position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(201, 162, 75, 0.14)',
-    top: -110,
-    right: -80,
   },
   ring: {
     position: 'absolute',
@@ -375,7 +377,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.accent,
     bottom: -70,
-    left: -45,
+    right: -50,
   },
   badgesRow: {
     flexDirection: 'row',
@@ -383,7 +385,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     marginTop: spacing.sm,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.lg,
+    // Los chips van por encima de los círculos decorativos (anillo azul y
+    // medallón) para que nunca queden tapados.
+    position: 'relative',
+    zIndex: 3,
   },
   badgeChip: {
     flexDirection: 'row',
@@ -392,9 +398,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(8, 20, 33, 0.72)',
     borderWidth: 1,
-    borderColor: 'rgba(201, 162, 75, 0.35)',
+    borderColor: 'rgba(201, 162, 75, 0.4)',
   },
   badgeText: {
     color: Colors.textOnDark,
@@ -406,6 +412,10 @@ const styles = StyleSheet.create({
   // Floating white card
   cardWrap: {
     marginTop: -34,
+    paddingHorizontal: spacing.base,
+  },
+  cardWrapMobile: {
+    marginTop: spacing.xl,
     paddingHorizontal: spacing.base,
   },
   card: {

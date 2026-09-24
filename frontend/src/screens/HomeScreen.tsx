@@ -17,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,6 +43,7 @@ type HomeScreenProps = {
   onNewIncident?: () => void;
   onViewReports?: () => void;
   onViewNotifications?: () => void;
+  onViewProfile?: () => void;
 };
 
 type QuickAction = {
@@ -64,8 +66,11 @@ function HomeScreen({
   onNewIncident,
   onViewReports,
   onViewNotifications,
+  onViewProfile,
 }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= layout.breakpointMd;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -166,12 +171,18 @@ function HomeScreen({
 
           {/* Quick actions */}
           <Text style={styles.sectionTitle}>Acciones rápidas</Text>
-          <View style={styles.actionsGrid}>
+          <View
+            style={[
+              styles.actionsGrid,
+              !isDesktop && styles.actionsGridVertical,
+            ]}
+          >
             {ACTIONS.map((action, i) => (
               <ActionCard
                 key={i}
                 action={action}
                 delay={i * 80}
+                vertical={!isDesktop}
                 onPress={
                   i === 0
                     ? onNewIncident
@@ -179,23 +190,12 @@ function HomeScreen({
                     ? onViewReports
                     : i === 2
                     ? onViewNotifications
+                    : i === 3
+                    ? onViewProfile
                     : undefined
                 }
               />
             ))}
-          </View>
-
-          {/* Coming soon */}
-          <View style={styles.comingSoonCard}>
-            <View style={styles.comingSoonIcon}>
-              <Icon name="clock" size={22} color={Colors.warning} />
-            </View>
-            <View style={styles.comingSoonText}>
-              <Text style={styles.comingSoonTitle}>Sprint 2 en camino</Text>
-              <Text style={styles.comingSoonSub}>
-                Gestión completa de incidentes, geolocalización y notificaciones.
-              </Text>
-            </View>
           </View>
         </ScrollView>
       </ImageBackground>
@@ -247,10 +247,12 @@ function ActionCard({
   action,
   delay,
   onPress,
+  vertical = false,
 }: {
   action: QuickAction;
   delay: number;
   onPress?: () => void;
+  vertical?: boolean;
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(15)).current;
@@ -263,11 +265,17 @@ function ActionCard({
   }, [fadeAnim, slideAnim, delay]);
 
   return (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], flex: 1 }}>
+    <Animated.View
+      style={[
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+        vertical ? actionStyles.wrapperVertical : actionStyles.wrapperGrid,
+      ]}
+    >
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
           actionStyles.card,
+          vertical && actionStyles.cardVertical,
           { borderColor: action.color + '30' },
           pressed && actionStyles.pressed,
         ]}
@@ -275,8 +283,15 @@ function ActionCard({
         <View style={[actionStyles.iconWrap, { backgroundColor: action.bg, borderColor: action.color + '40' }]}>
           <Icon name={action.icon} size={22} color={action.color} />
         </View>
-        <Text style={actionStyles.label}>{action.label}</Text>
-        <Text style={actionStyles.sub}>{action.sub}</Text>
+        <View
+          style={[
+            actionStyles.textWrap,
+            vertical && actionStyles.textWrapVertical,
+          ]}
+        >
+          <Text style={actionStyles.label}>{action.label}</Text>
+          <Text style={actionStyles.sub}>{action.sub}</Text>
+        </View>
         <View style={[actionStyles.dot, { backgroundColor: action.color }]} />
       </Pressable>
     </Animated.View>
@@ -284,6 +299,12 @@ function ActionCard({
 }
 
 const actionStyles = StyleSheet.create({
+  wrapperGrid: {
+    flex: 1,
+  },
+  wrapperVertical: {
+    width: '100%',
+  },
   card: {
     backgroundColor: 'rgba(10, 30, 48, 0.75)',
     borderRadius: radius.card,
@@ -294,6 +315,12 @@ const actionStyles = StyleSheet.create({
     // @ts-ignore
     boxShadow: '0 14px 28px -16px rgba(2, 10, 18, 0.8)',
     overflow: 'hidden',
+  },
+  cardVertical: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.base,
+    minHeight: 88,
   },
   pressed: {
     transform: [{ scale: 0.96 }],
@@ -308,11 +335,17 @@ const actionStyles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'flex-start',
   },
+  textWrap: {
+    flex: 1,
+    marginTop: spacing.sm,
+  },
+  textWrapVertical: {
+    marginTop: 0,
+  },
   label: {
     color: Colors.textOnDark,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.bold,
-    marginTop: spacing.sm,
     letterSpacing: 0.2,
   },
   sub: {
@@ -474,39 +507,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  comingSoonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(217, 164, 65, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(217, 164, 65, 0.25)',
-    borderRadius: radius.card,
-    padding: spacing.base,
-    marginTop: spacing.lg,
-    gap: spacing.base,
-  },
-  comingSoonIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.element,
-    backgroundColor: 'rgba(217, 164, 65, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(217, 164, 65, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  comingSoonText: { flex: 1 },
-  comingSoonTitle: {
-    color: Colors.warning,
-    fontSize: fontSizes.caption,
-    fontWeight: fontWeights.bold,
-    letterSpacing: 0.3,
-  },
-  comingSoonSub: {
-    color: Colors.textMuted,
-    fontSize: fontSizes.caption,
-    marginTop: 3,
-    lineHeight: 17,
+  actionsGridVertical: {
+    flexDirection: 'column',
+    flexWrap: 'nowrap',
   },
 });
 

@@ -5,15 +5,14 @@
  * Centraliza los límites geográficos (consistentes con el backend
  * utils/location.js y location.validator.js), los helpers de validación
  * y formato de coordenadas, y la obtención de la posición actual del
- * dispositivo/navegador vía @react-native-community/geolocation
- * (en web usa `navigator.geolocation`, en móvil el módulo nativo).
+ * dispositivo vía `expo-location` (compatible con Expo Go). En web usa
+ * directamente `navigator.geolocation`.
  *
  * @format
  */
 
 import { Platform } from 'react-native';
-
-import Geolocation from '@react-native-community/geolocation';
+import * as Location from 'expo-location';
 
 export const MIN_LATITUDE = -90;
 export const MAX_LATITUDE = 90;
@@ -83,7 +82,54 @@ export function formatCoordinates(
  * resultado comprensible para la interfaz (HU08: solicitar permiso,
  * obtener ubicación, alertar si no se puede obtener).
  */
-export function getCurrentPosition(): Promise<LocationResult> {
+export async function getCurrentPosition(): Promise<LocationResult> {
+  if (Platform.OS === 'web') {
+    return getWebPosition();
+  }
+
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status !== 'granted') {
+      return {
+        ok: false,
+        permissionDenied: true,
+        message:
+          'No se pudo acceder a tu ubicación porque el permiso fue denegado. Actívalo en los ajustes e inténtalo de nuevo.',
+      };
+    }
+
+    const position = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+    const { latitude, longitude } = position.coords;
+
+    if (!isValidLatitude(latitude) || !isValidLongitude(longitude)) {
+      return {
+        ok: false,
+        message: 'Las coordenadas obtenidas no son válidas.',
+      };
+    }
+
+    return {
+      ok: true,
+      position: {
+        latitude,
+        longitude,
+        capturedAt: new Date().toISOString(),
+      },
+    };
+  } catch {
+    return {
+      ok: false,
+      message:
+        'La ubicación no está disponible en este dispositivo. Inténtalo de nuevo.',
+    };
+  }
+}
+
+function getWebPosition(): Promise<LocationResult> {
   return new Promise((resolve) => {
     if (!isGeolocationSupported()) {
       resolve({
@@ -94,7 +140,7 @@ export function getCurrentPosition(): Promise<LocationResult> {
       return;
     }
 
-    // Timeout manual: el shim web puede no invocar callbacks si no hay
+    // Timeout manual: el navegador puede no invocar callbacks si no hay
     // contexto seguro, así la pantalla nunca queda "localizando" sin fin.
     const TIMEOUT_MS = 20000;
 
@@ -155,7 +201,7 @@ export function getCurrentPosition(): Promise<LocationResult> {
     };
 
     try {
-      Geolocation.getCurrentPosition(onSuccess, onError, {
+      navigator.geolocation.getCurrentPosition(onSuccess, onError, {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 0,

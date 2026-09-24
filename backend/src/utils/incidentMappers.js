@@ -87,6 +87,12 @@ const toPublicVerifier = (verifier) => ({
   email: verifier.email,
 });
 
+/**
+ * HU12 — Personal de solución disponible para asignar (misma forma que
+ * toPublicVerifier; fuente única compartida).
+ */
+const toPublicSolutionStaff = (staff) => toPublicVerifier(staff);
+
 const toPublicAssignment = (assignment) => ({
   id: assignment.id,
   incidentId: assignment.incident_id,
@@ -122,6 +128,7 @@ module.exports = {
   toPublicIncidentListItem,
   toPublicEvidence,
   toPublicVerifier,
+  toPublicSolutionStaff,
   toPublicAssignment,
   toPublicHistoryEntry,
 };

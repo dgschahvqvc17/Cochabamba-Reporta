@@ -8,6 +8,7 @@
  */
 
 import {
+  changePassword,
   login,
   logout,
   registerCitizen,
@@ -41,6 +42,13 @@ export interface LoginResult {
 
 export interface LogoutResult {
   success: boolean;
+  error?: string;
+}
+
+export interface ChangePasswordResult {
+  success: boolean;
+  message?: string;
+  fieldErrors?: FieldErrors;
   error?: string;
 }
 
@@ -121,4 +129,36 @@ export async function handleLogout(): Promise<LogoutResult> {
   }
 
   return { success: true };
+}
+
+export async function handleChangePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResult> {
+  const storedSession = getStoredSession();
+
+  if (!storedSession?.accessToken) {
+    return { success: false, error: 'No hay una sesión activa.' };
+  }
+
+  const result = await changePassword(storedSession.accessToken, {
+    currentPassword,
+    newPassword,
+  });
+
+  if (!result.success) {
+    const fieldErrors: FieldErrors = {};
+
+    result.error?.details?.forEach((detail) => {
+      fieldErrors[detail.field] = detail.message;
+    });
+
+    return {
+      success: false,
+      error: result.message,
+      ...(Object.keys(fieldErrors).length > 0 ? { fieldErrors } : {}),
+    };
+  }
+
+  return { success: true, message: result.message };
 }

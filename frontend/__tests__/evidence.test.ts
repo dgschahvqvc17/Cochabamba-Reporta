@@ -122,8 +122,42 @@ describe('evidence utils (HU07)', () => {
       sizeBytes: 16,
     });
 
-    expect(upload.kind).toBe('web-blob');
+    expect(upload.kind).toBe('blob');
     expect(upload.object).toBeInstanceOf(Blob);
+  });
+
+  test('en nativo siempre usa {uri,name,type} (RN Blob no admite bytes)', () => {
+    withPlatformOS('ios');
+
+    const upload = toUploadImage({
+      uri: 'file:///tmp/foto.jpg',
+      base64: TINY_PNG_B64,
+      fileName: 'foto.jpg',
+      mimeType: 'image/png',
+      sizeBytes: 16,
+    });
+
+    expect(upload.kind).toBe('native-file');
+    expect(upload.object).toEqual({
+      uri: 'file:///tmp/foto.jpg',
+      name: 'foto.jpg',
+      type: 'image/png',
+    });
+  });
+
+  test('en nativo sin base64 cae al respaldo {uri,name,type}', () => {
+    withPlatformOS('android');
+
+    const upload = toUploadImage(
+      makeEvidence({ mimeType: 'image/jpeg' }),
+    );
+
+    expect(upload.kind).toBe('native-file');
+    expect(upload.object).toEqual({
+      uri: 'file:///tmp/placeholder.png',
+      name: 'placeholder.png',
+      type: 'image/jpeg',
+    });
   });
 
   test('las constantes coinciden con el límite de la HU07', () => {

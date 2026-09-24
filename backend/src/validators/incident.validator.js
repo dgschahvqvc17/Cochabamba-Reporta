@@ -8,6 +8,9 @@
  *   - La descripción es obligatoria.
  *   - Se validan las longitudes de título y descripción.
  *
+ * HU10 — Asignación para verificación (assignedToId + nota).
+ * HU12 — Asignación para solución (assignedToId + nota).
+ *
  * (La evidencia fotográfica es HU07 y la ubicación es HU08,
  *  historias independientes fuera del alcance de esta validación.)
  *
@@ -122,6 +125,17 @@ const assignVerificationValidation = [
   validateAssignNote,
 ];
 
+/** HU12: asignar un incidente verificado a un responsable de solución. */
+const validateSolutionAssignedToId = body('assignedToId')
+  .isInt({ min: 1 })
+  .withMessage('Debe seleccionar un responsable de solución.')
+  .toInt();
+
+const assignSolutionValidation = [
+  validateSolutionAssignedToId,
+  validateAssignNote,
+];
+
 /** Transición genérica de estado (PATCH /:id/status). */
 const validateStatus = body('status')
   .isIn(INCIDENT_STATUSES)
@@ -168,6 +182,7 @@ module.exports = {
   createIncidentValidation,
   listIncidentsValidation,
   assignVerificationValidation,
+  assignSolutionValidation,
   changeStatusValidation,
   verifyIncidentValidation,
   INCIDENT_STATUSES,

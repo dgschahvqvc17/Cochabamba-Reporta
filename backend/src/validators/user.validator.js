@@ -21,19 +21,25 @@ const ROLES = require('../utils/roles');
 const MIN_PASSWORD_LENGTH = 8;
 const ROLE_VALUES = Object.values(ROLES);
 
+const LETTERS_ONLY = /^[\p{L}\p{M}\s'’-]+$/u;
+
 const validateFirstName = body('firstName')
   .trim()
   .notEmpty()
   .withMessage('El nombre es obligatorio.')
   .isLength({ max: 100 })
-  .withMessage('El nombre no debe superar los 100 caracteres.');
+  .withMessage('El nombre no debe superar los 100 caracteres.')
+  .matches(LETTERS_ONLY)
+  .withMessage('El nombre solo puede contener letras.');
 
 const validateLastName = body('lastName')
   .trim()
   .notEmpty()
   .withMessage('El apellido es obligatorio.')
   .isLength({ max: 100 })
-  .withMessage('El apellido no debe superar los 100 caracteres.');
+  .withMessage('El apellido no debe superar los 100 caracteres.')
+  .matches(LETTERS_ONLY)
+  .withMessage('El apellido solo puede contener letras.');
 
 const validateBirthDate = body('birthDate')
   .trim()
@@ -99,6 +105,28 @@ const validateConfirmPassword = body('confirmPassword').custom((value, { req }) 
 
   return true;
 });
+
+const validateCurrentPassword = body('currentPassword')
+  .notEmpty()
+  .withMessage('La contraseña actual es obligatoria.');
+
+const validateNewPassword = body('newPassword')
+  .notEmpty()
+  .withMessage('La nueva contraseña es obligatoria.')
+  .isLength({ min: MIN_PASSWORD_LENGTH })
+  .withMessage(
+    `La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+  );
+
+const validateConfirmNewPassword = body('confirmPassword').custom(
+  (value, { req }) => {
+    if (value !== req.body.newPassword) {
+      throw new Error('Las contraseñas no coinciden.');
+    }
+
+    return true;
+  },
+);
 
 const validateAddress = body('address')
   .optional({ values: 'falsy' })
@@ -211,6 +239,12 @@ const updateUserStatusValidation = [validateUserStatus];
 
 const updateUserRoleValidation = [validateRoleRequired];
 
+const changePasswordValidation = [
+  validateCurrentPassword,
+  validateNewPassword,
+  validateConfirmNewPassword,
+];
+
 module.exports = {
   registerValidation,
   loginValidation,
@@ -218,5 +252,6 @@ module.exports = {
   updateUserValidation,
   updateUserStatusValidation,
   updateUserRoleValidation,
+  changePasswordValidation,
   MIN_PASSWORD_LENGTH,
 };

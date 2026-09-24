@@ -1,4 +1,38 @@
 {
-  "name": "frontend",
-  "displayName": "frontend"
+  "expo": {
+    "name": "Cochabamba Reporta",
+    "slug": "cochabamba-reporta",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "cbba-reporta",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cochabamba.reporta",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Usamos tu ubicación para registrar dónde ocurre el incidente reportado.",
+        "NSCameraUsageDescription": "Se usa la cámara para adjuntar evidencias fotográficas al reporte.",
+        "NSPhotoLibraryUsageDescription": "Se accede a la galería para adjuntar evidencias fotográficas al reporte."
+      }
+    },
+    "android": {
+      "package": "com.cochabamba.reporta",
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-location",
+      "expo-image-picker"
+    ],
+    "web": {
+      "bundler": "metro"
+    }
+  }
 }

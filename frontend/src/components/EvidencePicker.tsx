@@ -33,6 +33,8 @@ type EvidencePickerProps = {
   onRemove: (index: number) => void;
   /** true mientras hay una captura/adjunto en curso. */
   picking?: boolean;
+  /** Mensaje de error de validación del formulario (evidencia obligatoria). */
+  error?: string;
 };
 
 export default function EvidencePicker({
@@ -40,6 +42,7 @@ export default function EvidencePicker({
   onAdd,
   onRemove,
   picking = false,
+  error,
 }: EvidencePickerProps) {
   const limitReached = evidence.length >= MAX_EVIDENCE_COUNT;
 
@@ -49,7 +52,7 @@ export default function EvidencePicker({
         <View style={styles.headerText}>
           <Text style={styles.label}>Evidencia fotográfica</Text>
           <Text style={styles.hint}>
-            JPG, JFIF, PNG o WebP · máx. 5 MB por imagen
+            Obligatoria (mín. 1 imagen) · JPG, JFIF, PNG o WebP · máx. 5 MB
           </Text>
         </View>
         <View style={styles.counter}>
@@ -116,6 +119,8 @@ export default function EvidencePicker({
           imágenes.
         </Text>
       ) : null}
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
@@ -245,6 +250,11 @@ const styles = StyleSheet.create({
   },
   limitText: {
     color: Colors.warningDim,
+    fontSize: fontSizes.caption,
+    marginTop: spacing.sm,
+  },
+  errorText: {
+    color: Colors.danger,
     fontSize: fontSizes.caption,
     marginTop: spacing.sm,
   },

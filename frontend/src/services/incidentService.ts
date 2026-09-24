@@ -18,6 +18,7 @@
  */
 
 import type {
+  AssignSolutionPayload,
   AssignVerificationPayload,
   Evidence,
   Incident,
@@ -28,16 +29,17 @@ import type {
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
+  SolutionUser,
   VerifierUser,
   VerifyIncidentPayload,
   VerifyIncidentResult,
 } from '../models/Incident';
 import { clearSession } from '../utils/session';
+import { API_BASE_URL as BASE_URL } from '../config/api';
 
-const BASE_URL = 'http://localhost:3000/api/v1';
-
-/** Timeout de cada petición para que la UI nunca quede "cargando" sin fin. */
-const REQUEST_TIMEOUT_MS = 20000;
+/** Timeout de cada petición para que la UI nunca quede "cargando" sin fin.
+ *  Generoso para la subida multipart de fotos desde el móvil (HU07). */
+const REQUEST_TIMEOUT_MS = 60000;
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -72,7 +74,7 @@ const api = async <T>(
   }
 
   if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
   const controller = new AbortController();
@@ -219,6 +221,90 @@ export async function attachEvidence(
   );
 }
 
+/**
+ * Subida nativa de evidencia vía XMLHttpRequest (HU07).
+ *
+ * El `fetch` de Expo (winter, default en SDK 57) no serializa el objeto
+ * nativo `{uri,name,type}` de React Native dentro de FormData, y el
+ * constructor de Blob de RN no admite partes binarias (ArrayBuffer).
+ * XMLHttpRequest sí lee el archivo local de forma nativa, por lo que es el
+ * camino determinista en móvil. Replica el contrato de `api`.
+ */
+export function attachEvidenceNative(
+  accessToken: string,
+  incidentId: number,
+  file: { uri: string; name: string; type: string },
+  fileName: string,
+): Promise<ApiResponse<{ evidence: Evidence }>> {
+  return new Promise((resolve) => {
+    const body = new FormData();
+    body.append('image', file as unknown as Blob, fileName);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${BASE_URL}/incidents/${incidentId}/evidence`);
+    if (accessToken) {
+      xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+    }
+    // No se fija Content-Type: React Native genera el boundary del multipart.
+    xhr.responseType = 'text';
+    xhr.timeout = REQUEST_TIMEOUT_MS;
+
+    const invalid = (code: string, message: string) => ({
+      success: false,
+      message,
+      error: { code },
+    });
+
+    xhr.onload = () => {
+      if (xhr.status === 401) {
+        clearSession();
+      }
+
+      const text = xhr.responseText ?? '';
+      if (!text) {
+        resolve(
+          invalid(
+            'EMPTY_RESPONSE',
+            xhr.status >= 200 && xhr.status < 300
+              ? 'El servidor no devolvió una respuesta válida.'
+              : `El servidor respondió con un error (${xhr.status}).`,
+          ),
+        );
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(text) as ApiResponse<{ evidence: Evidence }>);
+      } catch {
+        resolve(
+          invalid(
+            'INVALID_RESPONSE',
+            `El servidor respondió con un formato inesperado. Verifica que el backend esté actualizado y reinícialo. (HTTP ${xhr.status})`,
+          ),
+        );
+      }
+    };
+
+    xhr.onerror = () =>
+      resolve(
+        invalid(
+          'NETWORK_ERROR',
+          'No se pudo conectar con el servidor. Verifica que el backend esté encendido e inténtalo de nuevo.',
+        ),
+      );
+
+    xhr.ontimeout = () =>
+      resolve(
+        invalid(
+          'NETWORK_ERROR',
+          'La solicitud tardó demasiado. Verifica que el backend esté encendido e inténtalo de nuevo.',
+        ),
+      );
+
+    xhr.send(body);
+  });
+}
+
 export async function attachLocation(
   accessToken: string,
   incidentId: number,
@@ -332,6 +418,57 @@ export async function verifyIncident(
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+/** HU12: lista el personal de solución disponible (encargado de solución). */
+export async function getSolutionStaff(
+  accessToken: string,
+): Promise<ApiResponse<{ staff: SolutionUser[] }>> {
+  return api<{ staff: SolutionUser[] }>(
+    '/incidents/solution-staff',
+    accessToken,
+  );
+}
+
+/** HU12: lista los incidentes verificados pendientes de solución. */
+export async function getPendingSolutionIncidents(
+  accessToken: string,
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<ApiResponse<IncidentListData>> {
+  const query = new URLSearchParams();
+
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<IncidentListData>(
+    `/incidents/pending-solution${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
+}
+
+/**
+ * HU12: asigna un incidente verificado a un responsable de solución.
+ * Cambia el estado a ASIGNADO_PARA_SOLUCION, registra la asignación y
+ * las notificaciones en el backend.
+ */
+export async function assignSolution(
+  accessToken: string,
+  incidentId: number,
+  payload: AssignSolutionPayload,
+): Promise<
+  ApiResponse<{ assignment: IncidentAssignment; incident: Incident }>
+> {
+  return api<{ assignment: IncidentAssignment; incident: Incident }>(
+    `/incidents/${incidentId}/assign-solution`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function updateIncident(
