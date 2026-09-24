@@ -50,6 +50,22 @@ const ASSIGNABLE_TO_SOLUTION = [INCIDENT_STATUS.VERIFICADO];
 /** Estados que se muestran como "pendientes de asignación para solución". */
 const PENDING_SOLUTION_STATUSES = [...ASSIGNABLE_TO_SOLUTION];
 
+/**
+ * HU13 — Estados en los que el personal de solución tiene trabajo
+ * pendiente: asignado, en atención y atendido (a la espera de cerrar).
+ */
+const SOLUTION_QUEUE_STATUSES = [
+  INCIDENT_STATUS.ASIGNADO_PARA_SOLUCION,
+  INCIDENT_STATUS.EN_ATENCION,
+  INCIDENT_STATUS.ATENDIDO,
+];
+
+/**
+ * HU13 — Estados en los que el personal de solución puede adjuntar
+ * evidencia del trabajo realizado (asignado, en atención y atendido).
+ */
+const SOLUTION_ATTACH_STATUSES = [...SOLUTION_QUEUE_STATUSES];
+
 /** Etiquetas legibles en español para mensajes y notificaciones. */
 const INCIDENT_STATUS_LABELS = {
   [INCIDENT_STATUS.REPORTADO]: 'Reportado',
@@ -112,6 +128,8 @@ module.exports = {
   PENDING_VERIFICATION_STATUSES,
   ASSIGNABLE_TO_SOLUTION,
   PENDING_SOLUTION_STATUSES,
+  SOLUTION_QUEUE_STATUSES,
+  SOLUTION_ATTACH_STATUSES,
   ALLOWED_TRANSITIONS,
   ROLE_STATUS_TRANSITIONS,
   isTransitionAllowed,

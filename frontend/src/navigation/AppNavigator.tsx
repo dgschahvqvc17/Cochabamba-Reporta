@@ -34,6 +34,8 @@ import VerificationQueueScreen from '../screens/VerificationQueueScreen';
 import VerifyIncidentScreen from '../screens/VerifyIncidentScreen';
 import PendingSolutionScreen from '../screens/PendingSolutionScreen';
 import AssignSolutionScreen from '../screens/AssignSolutionScreen';
+import SolutionQueueScreen from '../screens/SolutionQueueScreen';
+import AttendIncidentScreen from '../screens/AttendIncidentScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AppNavBar from '../components/AppNavBar';
@@ -80,7 +82,9 @@ type StaffRoute =
   | { name: 'verification-queue' }
   | { name: 'verify-incident'; incidentId: number }
   | { name: 'pending-solution' }
-  | { name: 'assign-solution'; incidentId: number };
+  | { name: 'assign-solution'; incidentId: number }
+  | { name: 'solution-queue' }
+  | { name: 'attend-incident'; incidentId: number };
 
 const STAFF_ROLES: string[] = [
   'RECEPCION',
@@ -278,7 +282,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
         staffRoute.name === 'verification-queue' ||
         staffRoute.name === 'verify-incident' ||
         staffRoute.name === 'pending-solution' ||
-        staffRoute.name === 'assign-solution';
+        staffRoute.name === 'assign-solution' ||
+        staffRoute.name === 'solution-queue' ||
+        staffRoute.name === 'attend-incident';
 
       const staffNavActiveKey =
         staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
@@ -339,6 +345,19 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 onBack={() => setStaffRoute({ name: 'pending-solution' })}
                 onAssigned={() => setStaffRoute({ name: 'pending-solution' })}
               />
+            ) : staffRoute.name === 'solution-queue' ? (
+              <SolutionQueueScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'attend-incident', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'attend-incident' ? (
+              <AttendIncidentScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'solution-queue' })}
+                onProcessed={() => setStaffRoute({ name: 'solution-queue' })}
+              />
             ) : (
               <StaffHomeScreen
                 user={session.user}
@@ -351,6 +370,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 }
                 onGoToPendingSolution={() =>
                   setStaffRoute({ name: 'pending-solution' })
+                }
+                onGoToSolutionQueue={() =>
+                  setStaffRoute({ name: 'solution-queue' })
                 }
               />
             )}

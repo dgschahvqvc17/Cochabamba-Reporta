@@ -10,6 +10,7 @@
  *
  * HU10 — Asignación para verificación (assignedToId + nota).
  * HU12 — Asignación para solución (assignedToId + nota).
+ * HU13 — Atención de solución (acciones realizadas + observaciones).
  *
  * (La evidencia fotográfica es HU07 y la ubicación es HU08,
  *  historias independientes fuera del alcance de esta validación.)
@@ -30,6 +31,7 @@ const {
   MAX_LIST_PAGE_SIZE,
   MAX_OBSERVATIONS_LENGTH,
   MAX_REJECTED_REASON_LENGTH,
+  MAX_ACTIONS_LENGTH,
 } = require('../utils/incidentRules');
 
 const validateCategoryId = body('categoryId')
@@ -178,6 +180,31 @@ const verifyIncidentValidation = [
   validateRejectedReason,
 ];
 
+/** HU13: acciones realizadas obligatorias al iniciar la atención. */
+const validateActionsRequired = body('actions')
+  .trim()
+  .notEmpty()
+  .withMessage('Debe registrar las acciones realizadas.')
+  .isLength({ max: MAX_ACTIONS_LENGTH })
+  .withMessage(
+    `Las acciones no deben superar los ${MAX_ACTIONS_LENGTH} caracteres.`,
+  );
+
+/** HU13: acciones realizadas opcionales (marcar atendido / cerrar). */
+const validateActionsOptional = body('actions')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: MAX_ACTIONS_LENGTH })
+  .withMessage(
+    `Las acciones no deben superar los ${MAX_ACTIONS_LENGTH} caracteres.`,
+  );
+
+const attendIncidentValidation = [validateActionsRequired, validateObservations];
+
+const markAttendedValidation = [validateActionsOptional, validateObservations];
+
+const closeIncidentValidation = [validateActionsOptional, validateObservations];
+
 module.exports = {
   createIncidentValidation,
   listIncidentsValidation,
@@ -185,6 +212,9 @@ module.exports = {
   assignSolutionValidation,
   changeStatusValidation,
   verifyIncidentValidation,
+  attendIncidentValidation,
+  markAttendedValidation,
+  closeIncidentValidation,
   INCIDENT_STATUSES,
   DEFAULT_LIST_PAGE_SIZE,
   MAX_LIST_PAGE_SIZE,
@@ -194,4 +224,5 @@ module.exports = {
   MAX_DESCRIPTION_LENGTH,
   MAX_OBSERVATIONS_LENGTH,
   MAX_REJECTED_REASON_LENGTH,
+  MAX_ACTIONS_LENGTH,
 };

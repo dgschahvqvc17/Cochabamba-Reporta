@@ -20,6 +20,8 @@
 import type {
   AssignSolutionPayload,
   AssignVerificationPayload,
+  AttendIncidentPayload,
+  AttendIncidentResult,
   Evidence,
   Incident,
   IncidentAssignment,
@@ -469,6 +471,77 @@ export async function assignSolution(
       body: JSON.stringify(payload),
     },
   );
+}
+
+/**
+ * HU13: lista los incidentes asignados activamente al responsable de
+ * solución autenticado (cola de atención), con búsqueda y paginación.
+ */
+export async function getAssignedSolutionIncidents(
+  accessToken: string,
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<ApiResponse<IncidentListData>> {
+  const query = new URLSearchParams();
+
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<IncidentListData>(
+    `/incidents/assigned-solution${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
+}
+
+/**
+ * HU13: inicia la atención de un incidente asignado (ASIGNADO_PARA_SOLUCION
+ * → EN_ATENCION). Registra las acciones realizadas y notifica al ciudadano.
+ */
+export async function attendIncident(
+  accessToken: string,
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ApiResponse<AttendIncidentResult>> {
+  return api<AttendIncidentResult>(`/incidents/${incidentId}/attend`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * HU13: marca un incidente en atención como atendido (EN_ATENCION →
+ * ATENDIDO), con acciones y observaciones opcionales.
+ */
+export async function markIncidentAttended(
+  accessToken: string,
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ApiResponse<AttendIncidentResult>> {
+  return api<AttendIncidentResult>(
+    `/incidents/${incidentId}/mark-attended`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+/**
+ * HU13: cierra un incidente atendido (ATENDIDO → CERRADO). Completa la
+ * asignación de solución y notifica al ciudadano.
+ */
+export async function closeIncident(
+  accessToken: string,
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ApiResponse<AttendIncidentResult>> {
+  return api<AttendIncidentResult>(`/incidents/${incidentId}/close`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function updateIncident(

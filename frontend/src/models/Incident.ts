@@ -196,3 +196,24 @@ export interface VerifyIncidentResult {
   };
   assignment: IncidentAssignment;
 }
+
+/**
+ * Payload de una acción del personal de solución (HU13): acciones
+ * realizadas obligatorias al iniciar la atención; observaciones opcionales.
+ */
+export interface AttendIncidentPayload {
+  actions?: string;
+  observations?: string;
+}
+
+/**
+ * Respuesta de una acción de solución (HU13): incidente actualizado con
+ * las acciones/observaciones registradas y la asignación (solo al cerrar).
+ */
+export interface AttendIncidentResult {
+  incident: Incident & {
+    actions?: string | null;
+    observations?: string | null;
+  };
+  assignment?: IncidentAssignment | null;
+}
