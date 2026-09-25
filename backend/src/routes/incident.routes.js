@@ -221,11 +221,12 @@ router.patch(
   statusController.changeIncidentStatus,
 );
 
-/** Historial de cambios de estado del incidente. */
+/** Historial de cambios de estado del incidente (staff + dueño, HU14). */
 router.get(
   '/:id/history',
   authenticate,
   requireRole(
+    ROLES.CIUDADANO,
     ROLES.RECEPCION,
     ROLES.VERIFICADOR,
     ROLES.ENCARGADO_SOLUCION,

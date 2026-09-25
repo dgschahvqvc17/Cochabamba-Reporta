@@ -22,11 +22,16 @@ const categoryRepository = require('../repositories/category.repository');
 const evidenceRepository = require('../repositories/evidence.repository');
 const locationRepository = require('../repositories/location.repository');
 const storageRepository = require('../repositories/storage.repository');
+const historyRepository = require('../repositories/history.repository');
+const notificationRepository = require('../repositories/notification.repository');
 const ROLES = require('../utils/roles');
 const { buildError } = require('../utils/errors');
 const { normalizeText } = require('../utils/text');
 const { parsePositiveInt, buildPaginationResponse } = require('../utils/pagination');
-const { INCIDENT_STATUSES } = require('../utils/incidentStatus');
+const {
+  INCIDENT_STATUSES,
+  INCIDENT_STATUS_LABELS,
+} = require('../utils/incidentStatus');
 const {
   MIN_TITLE_LENGTH,
   MAX_TITLE_LENGTH,
@@ -164,6 +169,24 @@ const incidentService = {
       categoryId,
       title,
       description,
+    });
+
+    // HU14 — El ciudadano recibe notificación y registra el primer estado
+    // (REPORTADO) en el historial, con él como responsable del cambio.
+    await historyRepository.create({
+      incidentId: created.id,
+      fromStatus: null,
+      toStatus: created.status,
+      changedBy: userId,
+      comment: 'Reporte registrado por el ciudadano.',
+    });
+
+    await notificationRepository.create({
+      incidentId: created.id,
+      userId,
+      message: `Su reporte ${code} fue registrado correctamente y su estado actual es ${
+        INCIDENT_STATUS_LABELS[created.status] ?? created.status
+      }.`,
     });
 
     return toPublicIncident(created);

@@ -23,6 +23,7 @@ const notificationRepository = require('../repositories/notification.repository'
 const evidenceRepository = require('../repositories/evidence.repository');
 const { buildError } = require('../utils/errors');
 const { normalizeText } = require('../utils/text');
+const ROLES = require('../utils/roles');
 const {
   INCIDENT_STATUS,
   INCIDENT_STATUS_LABELS,
@@ -144,12 +145,24 @@ const statusService = {
   /**
    * Historial completo de cambios de estado de un incidente.
    * Muestra la trazabilidad registrada por cada transición (HU10+).
+   * HU14 — Un ciudadano solo puede consultar el seguimiento de sus
+   * propios reportes (quién realizó cada cambio cuando corresponda).
    */
   async getIncidentHistory(user, incidentId) {
     const incident = await incidentRepository.findById(incidentId);
 
     if (!incident) {
       throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (user && user.role === ROLES.CIUDADANO) {
+      if (Number(incident.user_id) !== Number(user.id)) {
+        throw buildError(
+          'Solo puedes consultar el seguimiento de tus propios reportes.',
+          403,
+          'FORBIDDEN',
+        );
+      }
     }
 
     const history = await historyRepository.findByIncident(incident.id);

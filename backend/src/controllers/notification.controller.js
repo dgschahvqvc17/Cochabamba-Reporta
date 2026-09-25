@@ -23,6 +23,29 @@ const notificationController = {
       return next(error);
     }
   },
+
+  async getNotification(req, res, next) {
+    try {
+      const data = await notificationService.getNotificationById(
+        req.user,
+        req.params.id,
+      );
+
+      return ok(res, 200, 'Notificación consultada correctamente.', data);
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async markNotificationAsRead(req, res, next) {
+    try {
+      const data = await notificationService.markAsRead(req.user, req.params.id);
+
+      return ok(res, 200, 'Notificación marcada como leída.', data);
+    } catch (error) {
+      return next(error);
+    }
+  },
 };
 
 module.exports = notificationController;

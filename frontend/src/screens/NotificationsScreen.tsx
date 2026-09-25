@@ -1,10 +1,11 @@
 /**
  * Pantalla: Notificaciones del ciudadano (MVC - View).
  *
- * Lista las alertas del ciudadano autenticado (GET
+ * HU14 — Lista las alertas del ciudadano autenticado (GET
  * /api/v1/notifications), ordenadas de la más reciente a la más
- * antigua, con el código del incidente asociado, actualización por
- * pull-to-refresh y estado vacío.
+ * antigua, con el código del incidente asociado. Cada tarjeta se puede
+ * expandir para consultar el detalle, marcarla como leída o ir al
+ * seguimiento del incidente. Incluye pull-to-refresh y estado vacío.
  *
  * @format
  */
@@ -22,29 +23,40 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AdminImageHeader from '../components/AdminImageHeader';
+import AppDialog from '../components/AppDialog';
 import Icon from '../components/Icon';
+import PrimaryButton from '../components/PrimaryButton';
 import { fondo3 } from '../assets/images';
-import { loadMyNotifications } from '../controllers/notificationController';
+import {
+  loadMyNotifications,
+  markNotificationAsRead,
+} from '../controllers/notificationController';
+import { useDialog } from '../hooks/useDialog';
 import type { Notification } from '../models/Notification';
 import {
   Colors,
   fontSizes,
   fontWeights,
+  radius,
   spacing,
 } from '../theme';
 import { formatDateTime } from '../utils/format';
 
 type NotificationsScreenProps = {
   onBack: () => void;
+  onOpenFollowUp?: (incidentId: number) => void;
 };
 
-function NotificationsScreen({ onBack }: NotificationsScreenProps) {
+function NotificationsScreen({ onBack, onOpenFollowUp }: NotificationsScreenProps) {
   const insets = useSafeAreaInsets();
+  const { dialog, error: showError, close } = useDialog();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshingKey, setRefreshingKey] = useState(0);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [markingReadId, setMarkingReadId] = useState<number | null>(null);
 
   const load = useCallback(async (refreshing = false) => {
     refreshing ? setIsRefreshing(true) : setIsLoading(true);
@@ -65,6 +77,36 @@ function NotificationsScreen({ onBack }: NotificationsScreenProps) {
   useEffect(() => {
     load();
   }, [load, refreshingKey]);
+
+  const handleMarkRead = async (notification: Notification) => {
+    if (markingReadId) return;
+
+    setMarkingReadId(notification.id);
+
+    const result = await markNotificationAsRead(notification.id);
+
+    setMarkingReadId(null);
+
+    if (!result.success || !result.data) {
+      showError({
+        title: 'No se pudo marcar como leída',
+        message: result.message,
+      });
+      return;
+    }
+
+    setNotifications((current) =>
+      current.map((item) =>
+        item.id === result.data!.id ? { ...item, read: true } : item,
+      ),
+    );
+  };
+
+  const handleOpenFollowUp = (notification: Notification) => {
+    if (notification.incidentId && onOpenFollowUp) {
+      onOpenFollowUp(notification.incidentId);
+    }
+  };
 
   const unreadCount = notifications.filter((item) => !item.read).length;
 
@@ -132,64 +174,124 @@ function NotificationsScreen({ onBack }: NotificationsScreenProps) {
               </Text>
             ) : null}
 
-            {notifications.map((notification) => (
-              <View
-                key={notification.id}
-                style={[
-                  styles.card,
-                  !notification.read && styles.cardUnread,
-                ]}
-              >
-                <View style={styles.cardTop}>
-                  <View
-                    style={[
-                      styles.cardIcon,
-                      !notification.read && styles.cardIconUnread,
-                    ]}
-                  >
-                    <Icon
-                      name={notification.read ? 'checkCircle' : 'bell'}
-                      size={18}
-                      color={notification.read ? Colors.textSecondary : Colors.accent}
-                    />
-                  </View>
-                  {notification.incidentCode ? (
-                    <Text style={styles.cardCode}>
-                      {notification.incidentCode}
-                    </Text>
-                  ) : null}
-                  {!notification.read ? (
-                    <View style={styles.unreadDot} />
-                  ) : null}
-                </View>
+            {notifications.map((notification) => {
+              const isExpanded = expandedId === notification.id;
+              const isMarking = markingReadId === notification.id;
+              const canOpenFollowUp = Boolean(
+                notification.incidentId && onOpenFollowUp,
+              );
 
-                <Text
-                  style={[
-                    styles.cardMessage,
-                    notification.read && styles.cardMessageRead,
+              return (
+                <Pressable
+                  key={notification.id}
+                  disabled={isMarking}
+                  onPress={() =>
+                    setExpandedId((current) =>
+                      current === notification.id ? null : notification.id,
+                    )
+                  }
+                  style={({ pressed }) => [
+                    styles.card,
+                    !notification.read && styles.cardUnread,
+                    pressed && styles.cardPressed,
                   ]}
                 >
-                  {notification.message}
-                </Text>
+                  <View style={styles.cardTop}>
+                    <View
+                      style={[
+                        styles.cardIcon,
+                        !notification.read && styles.cardIconUnread,
+                      ]}
+                    >
+                      <Icon
+                        name={notification.read ? 'checkCircle' : 'bell'}
+                        size={18}
+                        color={notification.read ? Colors.textSecondary : Colors.accent}
+                      />
+                    </View>
+                    {notification.incidentCode ? (
+                      <Text style={styles.cardCode}>
+                        {notification.incidentCode}
+                      </Text>
+                    ) : null}
+                    {!notification.read ? (
+                      <View style={styles.unreadDot} />
+                    ) : null}
+                    <Icon
+                      name={isExpanded ? 'chevronDown' : 'chevronRight'}
+                      size={18}
+                      color={Colors.textSecondary}
+                    />
+                  </View>
 
-                <View style={styles.cardFoot}>
-                  <Text style={styles.cardDate}>
-                    {formatDateTime(notification.createdAt)}
-                  </Text>
                   <Text
+                    numberOfLines={isExpanded ? undefined : 2}
                     style={[
-                      styles.cardState,
-                      !notification.read && styles.cardStateUnread,
+                      styles.cardMessage,
+                      notification.read && styles.cardMessageRead,
                     ]}
                   >
-                    {notification.read ? 'Leída' : 'No leída'}
+                    {notification.message}
                   </Text>
-                </View>
-              </View>
-            ))}
+
+                  {isExpanded ? (
+                    <View style={styles.expandedBox}>
+                      <View style={styles.cardFoot}>
+                        <Text style={styles.cardDate}>
+                          Recibida: {formatDateTime(notification.createdAt)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.cardState,
+                            !notification.read && styles.cardStateUnread,
+                          ]}
+                        >
+                          {notification.read ? 'Leída' : 'No leída'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.expandedActions}>
+                        {!notification.read ? (
+                          <Pressable
+                            onPress={() => handleMarkRead(notification)}
+                            disabled={isMarking}
+                            style={({ pressed }) => [
+                              styles.readBtn,
+                              pressed && styles.actionPressed,
+                            ]}
+                          >
+                            {isMarking ? (
+                              <ActivityIndicator color={Colors.accent} size="small" />
+                            ) : (
+                              <>
+                                <Icon name="check" size={16} color={Colors.accent} />
+                                <Text style={styles.readBtnText}>
+                                  Marcar como leída
+                                </Text>
+                              </>
+                            )}
+                          </Pressable>
+                        ) : null}
+
+                        {canOpenFollowUp ? (
+                          <PrimaryButton
+                            label="Ver seguimiento del incidente"
+                            variant="ghost"
+                            fullWidth={false}
+                            onPress={() => handleOpenFollowUp(notification)}
+                          />
+                        ) : null}
+                      </View>
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
           </>
         )}
       </ScrollView>
+
+      <AppDialog dialog={dialog} onCancel={close} />
     </View>
   );
 }
@@ -270,6 +372,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.base,
     overflow: 'hidden',
   },
+  cardPressed: {
+    opacity: 0.9,
+  },
   cardUnread: {
     borderColor: 'rgba(217,164,65,0.5)',
   },
@@ -313,6 +418,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontWeight: fontWeights.regular,
   },
+  expandedBox: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderSoft,
+  },
   cardFoot: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -331,6 +442,34 @@ const styles = StyleSheet.create({
   cardStateUnread: {
     color: Colors.warning,
     fontWeight: fontWeights.bold,
+  },
+  expandedActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  readBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.base,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,184,0.4)',
+    backgroundColor: 'rgba(59,130,184,0.08)',
+    alignSelf: 'flex-start',
+    minHeight: 40,
+  },
+  readBtnText: {
+    color: Colors.accent,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.bold,
+  },
+  actionPressed: {
+    opacity: 0.7,
   },
 });
 
