@@ -18,6 +18,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AdminScreen from '../screens/AdminScreen';
+import DashboardScreen from '../screens/DashboardScreen';
 import StaffHomeScreen from '../screens/StaffHomeScreen';
 import UsersScreen from '../screens/UsersScreen';
 import UserFormScreen from '../screens/UserFormScreen';
@@ -57,6 +58,7 @@ type AuthScreen = 'register' | 'login';
 
 type AdminRoute =
   | { name: 'dashboard' }
+  | { name: 'dashboard-kpi' }
   | { name: 'users' }
   | { name: 'user-create' }
   | { name: 'user-edit'; userId: number }
@@ -177,7 +179,12 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 user={session.user}
                 onGoToUsers={() => setAdminRoute({ name: 'users' })}
                 onGoToCategories={() => setAdminRoute({ name: 'categories' })}
+                onGoToDashboard={() => setAdminRoute({ name: 'dashboard-kpi' })}
               />
+            ) : null}
+
+            {adminRoute.name === 'dashboard-kpi' ? (
+              <DashboardScreen onBack={() => setAdminRoute({ name: 'dashboard' })} />
             ) : null}
 
             {adminRoute.name === 'users' ? (

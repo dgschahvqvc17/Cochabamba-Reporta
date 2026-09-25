@@ -40,6 +40,7 @@ type AdminScreenProps = {
   user: User;
   onGoToUsers: () => void;
   onGoToCategories: () => void;
+  onGoToDashboard: () => void;
 };
 
 type ModuleCard = {
@@ -50,7 +51,12 @@ type ModuleCard = {
   onPress: () => void;
 };
 
-function AdminScreen({ user, onGoToUsers, onGoToCategories }: AdminScreenProps) {
+function AdminScreen({
+  user,
+  onGoToUsers,
+  onGoToCategories,
+  onGoToDashboard,
+}: AdminScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -88,6 +94,13 @@ function AdminScreen({ user, onGoToUsers, onGoToCategories }: AdminScreenProps) 
       description: 'Registrar, consultar, editar y activar o desactivar categorías de incidentes.',
       color: Colors.success,
       onPress: onGoToCategories,
+    },
+    {
+      icon: 'dashboard',
+      label: 'Indicadores del sistema',
+      description: 'Supervisar KPIs, alertas de gestión e incidentes recientes.',
+      color: Colors.warning,
+      onPress: onGoToDashboard,
     },
   ];
 
