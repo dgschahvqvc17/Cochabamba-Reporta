@@ -144,7 +144,7 @@ const findById = async (id) => {
 const findAll = async ({ page, limit, search, role, active }) => {
   let query = supabaseAdmin
     .from('users')
-    .select('*, roles(id, name)', { count: 'exact' });
+    .select('*, roles!inner(id, name)', { count: 'exact' });
 
   if (role) {
     query = query.eq('roles.name', role);

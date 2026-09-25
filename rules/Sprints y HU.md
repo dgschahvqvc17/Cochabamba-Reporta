@@ -993,3 +993,32 @@ El **Sprint 2** implementará la funcionalidad principal de reporte de incidente
 El **Sprint 3** completará el proceso de atención mediante verificación, asignación, solución, seguimiento, notificaciones y administración.
 
 Todas las historias deberán implementar **validaciones de campos, manejo de errores, alertas y control de permisos**, garantizando una experiencia clara para los ciudadanos y funcionarios.
+
+
+---
+
+## HU14 — Estado: IMPLEMENTADA y VERIFICADA
+
+La notificación llega **EN EL DISPOSITIVO** como un **banner local**
+("como otras apps"), no por email. No requiere push externo ni credenciales
+de FCM/APNs: se usa `expo-notifications` con un canal/permiso local.
+El banner se presenta SOLO cuando el contador de no leídas SUBE
+(delta > 0, controlado por `prevUnreadRef` en HomeScreen); no se dispara
+en la carga inicial ni en refrescos sin novedades.
+
+- **Frontend:** `src/services/localPushService.ts` (`initializeLocalNotifications`
+  / `presentDeviceNotification`) cableado en `HomeScreen` (badge + banner).
+- **Backend (cableado ciudadano HU14):**
+  - `GET /api/v1/notifications` — listado con total de no leídas.
+  - `GET /api/v1/notifications/:id` — detalle de una notificación.
+  - `PATCH /api/v1/notifications/:id/read` — marcar como leída.
+  - `GET /api/v1/incidents/:id/history` — seguimiento/historial del incidente,
+    accesible al ciudadano DUEÑO del reporte (no solo al personal municipal).
+- **Backend:** al crear un incidente ya se registra el historial inicial y la
+  notificación "Reportado"; en cada transición de estado se inserta historial
+  y notificación dirigida al dueño.
+- **Mantenimiento:** `backend/scripts/backfill-notifications.js` (idempotente;
+  `--dry-run` para probar) genera retroactivamente historial/notificaciones
+  de los incidentes creados antes de HU14.
+- **Verificación (todo en verde):** `tsc`, `eslint`, `jest` (21 tests),
+  `webpack` (producción) y require-graph del backend.
