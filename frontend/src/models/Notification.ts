@@ -23,4 +23,6 @@ export interface Notification {
 
 export interface NotificationListData {
   notifications: Notification[];
+  /** Total de notificaciones no leídas del usuario (alertas, HU14). */
+  unreadCount: number;
 }

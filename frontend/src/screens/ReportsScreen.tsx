@@ -30,7 +30,6 @@ import PrimaryButton from '../components/PrimaryButton';
 import { fondo3 } from '../assets/images';
 import {
   deleteIncidentById,
-  loadIncidentById,
   loadMyIncidents,
 } from '../controllers/incidentController';
 import { useDialog } from '../hooks/useDialog';
@@ -44,12 +43,12 @@ import {
   spacing,
 } from '../theme';
 import { formatDateTime } from '../utils/format';
-import { formatCoordinates } from '../utils/location';
 
 type ReportsScreenProps = {
   onBack: () => void;
   onNewReport: () => void;
   onEdit: (incidentId: number) => void;
+  onOpenFollowUp: (incidentId: number) => void;
 };
 
 const STATUS_OPTIONS: {
@@ -88,12 +87,16 @@ const statusMeta = (status: IncidentStatus) =>
     tone: 'neutral' as PillTone,
   };
 
-function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
+function ReportsScreen({
+  onBack,
+  onNewReport,
+  onEdit,
+  onOpenFollowUp,
+}: ReportsScreenProps) {
   const insets = useSafeAreaInsets();
   const {
     dialog,
     confirm,
-    info,
     success,
     error: showError,
     close,
@@ -104,7 +107,6 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const load = useCallback(
@@ -129,50 +131,6 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
   useEffect(() => {
     load();
   }, [load]);
-
-  const openDetail = async (incident: Incident) => {
-    setDetailLoadingId(incident.id);
-
-    const result = await loadIncidentById(incident.id);
-
-    setDetailLoadingId(null);
-
-    if (!result.success || !result.data) {
-      showError({
-        title: 'No se pudo consultar el reporte',
-        message: result.message,
-      });
-      return;
-    }
-
-    const detail = result.data;
-    const location = detail.location
-      ? detail.location.address && detail.location.address.trim()
-        ? `${detail.location.address} — ${formatCoordinates(
-            detail.location.latitude,
-            detail.location.longitude,
-          )}`
-        : formatCoordinates(detail.location.latitude, detail.location.longitude)
-      : 'Sin ubicación registrada.';
-
-    const evidenceCount = detail.evidence?.length ?? 0;
-
-    info({
-      title: `${detail.code} · ${statusMeta(detail.status).label}`,
-      tone: 'info',
-      message: [
-        detail.description,
-        `Categoría: ${detail.category?.name ?? 'Sin categoría'}`,
-        `Ubicación: ${location}`,
-        `Evidencias: ${
-          evidenceCount > 0
-            ? `${evidenceCount} foto${evidenceCount !== 1 ? 's' : ''}`
-            : 'Sin evidencias'
-        }`,
-        `Registrado: ${formatDateTime(detail.createdAt)}`,
-      ].join('\n\n'),
-    });
-  };
 
   const confirmDelete = (incident: Incident) => {
     confirm({
@@ -333,7 +291,7 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
                   style={[styles.card, { borderLeftColor: statusColor }]}
                 >
                   <Pressable
-                    onPress={() => openDetail(incident)}
+                    onPress={() => onOpenFollowUp(incident.id)}
                     style={({ pressed }) => [
                       styles.cardMain,
                       pressed && styles.cardMainPressed,
@@ -374,24 +332,18 @@ function ReportsScreen({ onBack, onNewReport, onEdit }: ReportsScreenProps) {
 
                   <View style={styles.cardFoot}>
                     <Pressable
-                      onPress={() => openDetail(incident)}
+                      onPress={() => onOpenFollowUp(incident.id)}
                       style={({ pressed }) => [
                         styles.footLink,
                         pressed && styles.footLinkPressed,
                       ]}
                     >
-                      {detailLoadingId === incident.id ? (
-                        <ActivityIndicator color={Colors.accent} size="small" />
-                      ) : (
-                        <>
-                          <Text style={styles.footLinkText}>Ver seguimiento</Text>
-                          <Icon
-                            name="chevronRight"
-                            size={18}
-                            color={Colors.accent}
-                          />
-                        </>
-                      )}
+                      <Text style={styles.footLinkText}>Ver seguimiento</Text>
+                      <Icon
+                        name="chevronRight"
+                        size={18}
+                        color={Colors.accent}
+                      />
                     </Pressable>
 
                     {canEdit || canDelete ? (

@@ -8,7 +8,7 @@
  * @format
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -26,6 +26,7 @@ import GradientOverlay from '../components/GradientOverlay';
 import Icon, { type IconName } from '../components/Icon';
 import PillBadge from '../components/PillBadge';
 import { cityBackground } from '../assets/images';
+import { loadUnreadNotificationCount } from '../controllers/notificationController';
 import type { User } from '../models/User';
 import {
   Colors,
@@ -74,10 +75,26 @@ function HomeScreen({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
     .toUpperCase()
     .slice(0, 2);
+
+  useEffect(() => {
+    let mounted = true;
+
+    // HU14 — Alerta de nuevos cambios: badge con las no leídas.
+    loadUnreadNotificationCount().then((result) => {
+      if (mounted && result.success) {
+        setUnreadCount(result.data ?? 0);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -183,6 +200,7 @@ function HomeScreen({
                 action={action}
                 delay={i * 80}
                 vertical={!isDesktop}
+                badge={i === 2 ? unreadCount : undefined}
                 onPress={
                   i === 0
                     ? onNewIncident
@@ -248,11 +266,13 @@ function ActionCard({
   delay,
   onPress,
   vertical = false,
+  badge,
 }: {
   action: QuickAction;
   delay: number;
   onPress?: () => void;
   vertical?: boolean;
+  badge?: number;
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(15)).current;
@@ -293,6 +313,13 @@ function ActionCard({
           <Text style={actionStyles.sub}>{action.sub}</Text>
         </View>
         <View style={[actionStyles.dot, { backgroundColor: action.color }]} />
+        {badge && badge > 0 ? (
+          <View style={actionStyles.notifBadge}>
+            <Text style={actionStyles.notifBadgeText}>
+              {badge > 99 ? '99+' : badge}
+            </Text>
+          </View>
+        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -360,6 +387,26 @@ const actionStyles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  notifBadgeText: {
+    color: Colors.textOnPrimary,
+    fontSize: 10,
+    fontWeight: fontWeights.bold,
+    lineHeight: 14,
   },
 });
 

@@ -45,7 +45,53 @@ const findByUser = async ({ userId, limit = 50 }) => {
   return data ?? [];
 };
 
+const findById = async (id) => {
+  const { data, error } = await supabaseAdmin
+    .from('notifications')
+    .select('*, incident:incidents(code)')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const countUnreadByUser = async (userId) => {
+  const { count, error } = await supabaseAdmin
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('read', false);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+};
+
+const markAsRead = async (id) => {
+  const { data, error } = await supabaseAdmin
+    .from('notifications')
+    .update({ read: true })
+    .eq('id', id)
+    .select('*, incident:incidents(code)')
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 module.exports = {
   create,
   findByUser,
+  findById,
+  countUnreadByUser,
+  markAsRead,
 };

@@ -37,6 +37,7 @@ import AssignSolutionScreen from '../screens/AssignSolutionScreen';
 import SolutionQueueScreen from '../screens/SolutionQueueScreen';
 import AttendIncidentScreen from '../screens/AttendIncidentScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import SeguimientoScreen from '../screens/SeguimientoScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AppNavBar from '../components/AppNavBar';
 import OfflineBanner from '../components/OfflineBanner';
@@ -69,6 +70,7 @@ type CitizenRoute =
   | { name: 'incident-create' }
   | { name: 'incident-edit'; incidentId: number }
   | { name: 'my-reports' }
+  | { name: 'incident-follow-up'; incidentId: number }
   | { name: 'notifications' }
   | { name: 'profile' };
 
@@ -405,7 +407,10 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
     // Citizen home — navbar always visible
     const isCitizenSubRoute = citizenRoute.name !== 'home';
     const citizenNavActiveKey =
-      citizenRoute.name === 'my-reports' ? 'reports' : 'home';
+      citizenRoute.name === 'my-reports' ||
+      citizenRoute.name === 'incident-follow-up'
+        ? 'reports'
+        : 'home';
     return (
       <View style={styles.container}>
         <View style={styles.screenSlot}>
@@ -429,10 +434,21 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               onEdit={(incidentId) =>
                 setCitizenRoute({ name: 'incident-edit', incidentId })
               }
+              onOpenFollowUp={(incidentId) =>
+                setCitizenRoute({ name: 'incident-follow-up', incidentId })
+              }
+            />
+          ) : citizenRoute.name === 'incident-follow-up' ? (
+            <SeguimientoScreen
+              incidentId={citizenRoute.incidentId}
+              onBack={() => setCitizenRoute({ name: 'my-reports' })}
             />
           ) : citizenRoute.name === 'notifications' ? (
             <NotificationsScreen
               onBack={() => setCitizenRoute({ name: 'home' })}
+              onOpenFollowUp={(incidentId) =>
+                setCitizenRoute({ name: 'incident-follow-up', incidentId })
+              }
             />
           ) : citizenRoute.name === 'profile' ? (
             <ProfileScreen
