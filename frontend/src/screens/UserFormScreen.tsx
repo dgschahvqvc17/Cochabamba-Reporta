@@ -45,7 +45,7 @@ import {
   spacing,
 } from '../theme';
 import { formatDate } from '../utils/format';
-import { ROLE_LABELS, ROLES } from '../utils/roles';
+import { ADMIN_CREATABLE_ROLES, ROLE_LABELS } from '../utils/roles';
 import {
   isValidEmail,
   isValidIdentityNumber,
@@ -95,6 +95,16 @@ const ROLE_COLORS: Record<Role, string> = {
   ENCARGADO_SOLUCION: Colors.info,
   PERSONAL_SOLUCION: Colors.success,
   ADMINISTRADOR: Colors.danger,
+};
+
+// Tonos oscuros y legibles sobre el fondo claro (contraste WCAG).
+const ROLE_TEXT: Record<Role, string> = {
+  CIUDADANO: Colors.accentDim,
+  RECEPCION: '#43556A',
+  VERIFICADOR: Colors.warningDim,
+  ENCARGADO_SOLUCION: '#574596',
+  PERSONAL_SOLUCION: Colors.successDim,
+  ADMINISTRADOR: Colors.dangerDim,
 };
 
 function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) {
@@ -307,10 +317,11 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
           ) : (
             <DarkSectionCard title="Rol del usuario *" icon="badge" color={Colors.info}>
               <Text style={styles.roleHint}>
-                Selecciona un único rol para la cuenta nueva.
+                Los ciudadanos se registran desde la app. Selecciona un rol
+                municipal para la cuenta nueva.
               </Text>
               <View style={styles.roleList}>
-                {ROLES.map((role) => {
+                {ADMIN_CREATABLE_ROLES.map((role) => {
                   const active = form.role === role;
                   const rc = ROLE_COLORS[role];
                   return (
@@ -330,7 +341,7 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
                       <Text
                         style={[
                           styles.roleOptionText,
-                          active && { color: rc, fontWeight: fontWeights.bold },
+                          active && { color: ROLE_TEXT[role], fontWeight: fontWeights.bold },
                         ]}
                       >
                         {ROLE_LABELS[role]}
@@ -452,9 +463,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   roleHint: {
-    color: 'rgba(232,240,248,0.5)',
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginBottom: spacing.sm,
+    lineHeight: 18,
   },
   roleList: {
     gap: spacing.sm,
@@ -465,8 +477,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: radius.card,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: 'rgba(232,240,248,0.04)',
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surfaceSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
@@ -475,15 +487,15 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(232,240,248,0.35)',
+    borderColor: '#9FB0C2',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(232,240,248,0.06)',
+    backgroundColor: '#FFFFFF',
   },
   roleRadioDot: { width: 12, height: 12, borderRadius: 6 },
   roleOptionText: {
     flex: 1,
-    color: 'rgba(232,240,248,0.85)',
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.medium,
   },

@@ -83,7 +83,14 @@ function PrimaryButton({
         <Animated.View
           style={[styles.ghostBtn, { transform: [{ scale: scaleAnim }] }]}
         >
-          <Text style={styles.ghostLabel}>{label}</Text>
+          {loading ? (
+            <View style={styles.loadingContent}>
+              <ActivityIndicator color={Colors.accent} size="small" />
+              <Text style={styles.ghostLabel}>{label}</Text>
+            </View>
+          ) : (
+            <Text style={styles.ghostLabel}>{label}</Text>
+          )}
         </Animated.View>
       </Pressable>
     );
@@ -110,7 +117,10 @@ function PrimaryButton({
           ]}
         >
           {loading ? (
-            <ActivityIndicator color={Colors.textOnPrimary} />
+            <View style={styles.loadingContent}>
+              <ActivityIndicator color={Colors.textOnPrimary} size="small" />
+              <Text style={styles.label}>{label}</Text>
+            </View>
           ) : (
             <Text style={styles.label}>{label}</Text>
           )}
@@ -143,7 +153,10 @@ function PrimaryButton({
           />
           <View style={styles.shimmer} />
           {loading ? (
-            <ActivityIndicator color={Colors.textOnPrimary} />
+            <View style={styles.loadingContent}>
+              <ActivityIndicator color={Colors.textOnPrimary} size="small" />
+              <Text style={styles.label}>{label}</Text>
+            </View>
           ) : (
             <Text style={styles.label}>{label}</Text>
           )}
@@ -196,6 +209,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: Colors.accent,
     backgroundColor: Colors.accentSoft,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   gradient: {
     borderRadius: radius.pill,

@@ -176,10 +176,14 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
     success({ title: 'Operación exitosa', message: result.message });
   };
 
-  const roleOptions: RoleOption[] =
+  const roleOptions: RoleOption[] = (
     roles.length > 0
       ? [...roles].sort((a, b) => (a.name < b.name ? -1 : 1))
-      : ROLES.map((r, i) => ({ id: i + 1, name: r, description: null, active: true }));
+      : ROLES.map((r, i) => ({ id: i + 1, name: r, description: null, active: true }))
+  ).filter(
+    (option) =>
+      option.name !== 'CIUDADANO' || option.name === user.role,
+  );
 
   const proposeRole = (role: Role) => {
     setIsRoleModalOpen(false);
@@ -551,7 +555,10 @@ function RolePickerModal({
             </View>
             <View>
               <Text style={modalStyles.title}>Seleccionar rol</Text>
-              <Text style={modalStyles.subtitle}>El usuario adoptará este nuevo rol.</Text>
+              <Text style={modalStyles.subtitle}>
+                El usuario adoptará este nuevo rol. Los ciudadanos se registran
+                desde la app.
+              </Text>
             </View>
           </View>
 

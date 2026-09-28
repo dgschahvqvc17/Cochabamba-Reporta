@@ -113,6 +113,14 @@ const userService = {
       throw buildError('El rol seleccionado no es válido.', 422, 'INVALID_ROLE');
     }
 
+    if (roleName === ROLES.CIUDADANO) {
+      throw buildError(
+        'Un administrador no puede crear cuentas de ciudadano; los ciudadanos se registran desde la aplicación.',
+        400,
+        'ROLE_NOT_ALLOWED',
+      );
+    }
+
     const existingByEmail = await userRepository.findByEmail(email);
     if (existingByEmail) {
       throw buildError(
@@ -307,6 +315,14 @@ const userService = {
     const normalized = normalizeRoleName(roleName);
     if (!ROLES[normalized]) {
       throw buildError('El rol seleccionado no es válido.', 422, 'INVALID_ROLE');
+    }
+
+    if (normalized === ROLES.CIUDADANO) {
+      throw buildError(
+        'No se puede asignar el rol de ciudadano; los ciudadanos se registran desde la aplicación.',
+        400,
+        'ROLE_NOT_ALLOWED',
+      );
     }
 
     if (current.roles.name === normalized) {

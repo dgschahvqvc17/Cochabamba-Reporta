@@ -20,6 +20,7 @@
 
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 
 let nativeNotifications: typeof import('expo-notifications') | null = null;
 let ready = false;
@@ -33,12 +34,18 @@ let channelReady = false;
  * nativo de notificaciones). Por eso, en Expo Go NUNCA llegamos a importar el
  * módulo: el ciudadano ve el badge in-app y el aviso, y el banner de sistema
  * ("como otras apps") se activa solo en un development build / build nativo.
+ *
+ * La detección usa `isRunningInExpoGo()` (el módulo nativo `ExpoGo` solo
+ * existe dentro de Expo Go), la misma señal que expone `expo-notifications`
+ * para decidir si lanza el error. `Constants.executionEnvironment` no sirve
+ * aquí porque devuelve `storeClient` tanto en Expo Go como en development
+ * builds (e incluso `bare` en algunos casos), por lo que no distingue ambos.
  */
 function isExpoGo(): boolean {
   try {
     return (
       Platform.OS !== 'web' &&
-      Constants.executionEnvironment === Constants.ExecutionEnvironment.StoreClient
+      (isRunningInExpoGo() || Constants.appOwnership === 'expo')
     );
   } catch {
     return false;

@@ -78,6 +78,22 @@ const MAX_DESCRIPTION_LENGTH = 2000;
 
 type FieldErrors = Record<string, string>;
 
+type SubmitProgress =
+  | { phase: 'register' }
+  | { phase: 'location' }
+  | { phase: 'evidence'; done: number; total: number };
+
+function submitProgressText(progress: SubmitProgress): string {
+  switch (progress.phase) {
+    case 'register':
+      return 'Registrando el reporte…';
+    case 'location':
+      return 'Guardando tu ubicación…';
+    case 'evidence':
+      return `Subiendo evidencia ${progress.done + 1} de ${progress.total}…`;
+  }
+}
+
 export default function IncidentFormScreen({
   onBack,
   onSaved,
@@ -97,6 +113,9 @@ export default function IncidentFormScreen({
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState<SubmitProgress | null>(
+    null,
+  );
   const [evidence, setEvidence] = useState<PickedEvidence[]>([]);
   const [isPicking, setIsPicking] = useState(false);
   const [position, setPosition] = useState<CurrentPosition | null>(null);
@@ -253,10 +272,7 @@ export default function IncidentFormScreen({
     setEvidence((current) => current.filter((_, itemIndex) => itemIndex !== index));
   };
 
-  const handleSubmit = async () => {
-    const errs = validateForm();
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+  const performSubmit = async () => {
     if (categoryId === null) return;
 
     setIsSubmitting(true);
@@ -277,6 +293,7 @@ export default function IncidentFormScreen({
           return;
         }
 
+        setSubmitProgress({ phase: 'register' });
         const result = await editIncident(incidentId, payload);
 
         if (!result.success) {
@@ -297,6 +314,7 @@ export default function IncidentFormScreen({
         return;
       }
 
+      setSubmitProgress({ phase: 'register' });
       const result = await registerIncident(payload);
 
       if (!result.success || !result.data) {
@@ -312,6 +330,7 @@ export default function IncidentFormScreen({
       let locationFailed = false;
 
       if (position) {
+        setSubmitProgress({ phase: 'location' });
         const locationResult = await attachLocationToIncident(incident.id, {
           latitude: position.latitude,
           longitude: position.longitude,
@@ -324,7 +343,9 @@ export default function IncidentFormScreen({
       let failedCount = 0;
       let firstEvidenceError = '';
 
-      for (const image of evidence) {
+      for (let i = 0; i < evidence.length; i += 1) {
+        const image = evidence[i];
+        setSubmitProgress({ phase: 'evidence', done: i, total: evidence.length });
         const attachResult = await attachEvidenceToIncident(incident.id, image);
         if (!attachResult.success) {
           failedCount += 1;
@@ -378,7 +399,32 @@ export default function IncidentFormScreen({
       });
     } finally {
       setIsSubmitting(false);
+      setSubmitProgress(null);
     }
+  };
+
+  const handleSubmit = () => {
+    // Antebloqueo: el botón solo debe disparar UNA vez por envío.
+    if (isSubmitting) return;
+
+    const errs = validateForm();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    if (categoryId === null) return;
+
+    confirm({
+      title: isEdit ? '¿Guardar los cambios?' : '¿Enviar el reporte?',
+      message: isEdit
+        ? 'Tu reporte se actualizará. Recuerda que solo se permite una edición.'
+        : 'El reporte quedará en revisión para su atención. Se guardarán la ubicación y las evidencias adjuntas.',
+      confirmLabel: isEdit ? 'Sí, guardar' : 'Sí, enviar',
+      cancelLabel: 'No, revisar',
+      tone: 'accent',
+      onConfirm: async () => {
+        close();
+        await performSubmit();
+      },
+    });
   };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
@@ -532,7 +578,7 @@ export default function IncidentFormScreen({
                       isSubmitting
                         ? isEdit
                           ? 'Guardando…'
-                          : 'Registrando…'
+                          : 'Enviando…'
                         : isEdit
                         ? 'Guardar cambios'
                         : 'Enviar reporte'
@@ -543,6 +589,18 @@ export default function IncidentFormScreen({
                       !isEdit && evidence.length === 0 && !isSubmitting
                     }
                   />
+
+                  {isSubmitting && submitProgress ? (
+                    <View style={styles.progressRow}>
+                      <ActivityIndicator
+                        size="small"
+                        color={Colors.accent}
+                      />
+                      <Text style={styles.progressText}>
+                        {submitProgressText(submitProgress)}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
               )}
@@ -731,6 +789,18 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm - spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  progressText: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.caption,
   },
   loadingEditBox: {
     alignItems: 'center',
