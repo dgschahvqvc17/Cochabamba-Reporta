@@ -76,6 +76,43 @@ const assignmentController = {
     }
   },
 
+  async listInVerification(req, res, next) {
+    try {
+      const data = await assignmentService.listInVerification(
+        req.user,
+        req.query,
+      );
+
+      return ok(
+        res,
+        200,
+        'Incidentes en verificación consultados correctamente.',
+        data,
+      );
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async reassignVerification(req, res, next) {
+    try {
+      const data = await assignmentService.reassignForVerification(
+        req.user,
+        req.params.id,
+        req.body,
+      );
+
+      return ok(
+        res,
+        200,
+        'Verificador reasignado correctamente.',
+        data,
+      );
+    } catch (error) {
+      return next(error);
+    }
+  },
+
   async listSolutionStaff(req, res, next) {
     try {
       const data = await assignmentService.listSolutionStaff(req.user);

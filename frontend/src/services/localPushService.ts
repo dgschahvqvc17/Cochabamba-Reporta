@@ -1,0 +1,201 @@
+/**
+ * Servicio de alerta local en el dispositivo (MVC - Service).
+ *
+ * HU14 — "Recibir notificaciones y consultar seguimiento".
+ *
+ * Muestra una notificación en el dispositivo (banner/línea de estado del
+ * sistema, como hacen otras apps) cuando el ciudadano tiene un cambio de
+ * estado nuevo SIN leer en su reporte. No depende de email ni de correo.
+ *
+ * Se implementa con `expo-notifications` (notificación LOCAL):
+ *   - No requiere credenciales FCM/APNs ni servidor de push externo.
+ *   - Funciona en Android/iOS con Expo Go y en builds nativos.
+ *   - En web es un no-op controlado (se conserva el badge en-app).
+ *
+ * Las llamadas a expo-notifications NO se importan a nivel de módulo para no
+ * romper la compilación web ni los tests (solo requieren módulos nativos).
+ *
+ * @format
+ */
+
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
+
+let nativeNotifications: typeof import('expo-notifications') | null = null;
+let loadingPromise: Promise<typeof import('expo-notifications') | null> | null =
+  null;
+let channelReady = false;
+
+/**
+ * Devuelve `true` cuando la app corre dentro de **Expo Go**.
+ *
+ * Con SDK 53+, `expo-notifications` lanza `warnOfExpoGoPushUsage` al ser
+ * importado dentro de Expo Go (el bundle de Expo Go ya no incluye el módulo
+ * nativo de notificaciones). Por eso, en Expo Go NUNCA llegamos a importar el
+ * módulo: el ciudadano ve el badge in-app y el aviso, y el banner de sistema
+ * ("como otras apps") se activa solo en un development build / build nativo.
+ *
+ * La detección usa `isRunningInExpoGo()` (el módulo nativo `ExpoGo` solo
+ * existe dentro de Expo Go), la misma señal que expone `expo-notifications`
+ * para decidir si lanza el error. `Constants.executionEnvironment` no sirve
+ * aquí porque devuelve `storeClient` tanto en Expo Go como en development
+ * builds (e incluso `bare` en algunos casos), por lo que no distingue ambos.
+ */
+function isExpoGo(): boolean {
+  try {
+    return (
+      Platform.OS !== 'web' &&
+      (isRunningInExpoGo() || Constants.appOwnership === 'expo')
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Carga dinámica de expo-notifications, solo en plataformas nativas.
+ *
+ * Se cachea la promesa de carga: si varias llamadas llegan mientras el
+ * `import()` está en vuelo (p. ej. `initializeLocalNotifications` y un
+ * `presentDeviceNotification` simultáneos), todas comparten el mismo
+ * resultado en lugar de devolver `null` por error de temporización.
+ */
+async function getNative(): Promise<typeof import('expo-notifications') | null> {
+  if (loadingPromise) {
+    return loadingPromise;
+  }
+
+  loadingPromise = (async () => {
+    if (Platform.OS === 'web' || isExpoGo()) {
+      return null;
+    }
+
+    try {
+      // Carga diferida: evita romper web (Metro resuelve el módulo nativo solo
+      // fuera de web; en CI/web la rama inferior devuelve null antes).
+      const mod = await import('expo-notifications');
+      nativeNotifications = mod;
+    } catch {
+      nativeNotifications = null;
+    }
+
+    return nativeNotifications;
+  })();
+
+  return loadingPromise;
+}
+
+/** Configura el canal de notificación Android + el handler del banner. */
+async function ensureChannelAndHandler(notifications: typeof import('expo-notifications')): Promise<void> {
+  if (channelReady) {
+    return;
+  }
+
+  channelReady = true;
+
+  try {
+    if (Platform.OS === 'android') {
+      await notifications.setNotificationChannelAsync('incidentes', {
+        name: 'Cambios de incidentes',
+        importance: notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 120, 60, 120],
+        lightColor: '#3B82A0',
+      });
+    }
+
+    // Banner mientras la app está en primer plano (HU14: "mostrar alertas
+    // de nuevos cambios" dentro de la pantalla como otras apps).
+    notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch {
+    // El handler/channel falla silenciosamente en entornos sin módulos nativos.
+  }
+}
+
+/**
+ * Pide permiso para mostrar notificaciones en el dispositivo.
+ * Devuelve `false` sin lanzar error cuando no hay soporte nativo.
+ */
+export async function requestNotificationPermission(): Promise<boolean> {
+  const notifications = await getNative();
+  if (!notifications) {
+    return false;
+  }
+
+  try {
+    await ensureChannelAndHandler(notifications);
+
+    const current = await notifications.getPermissionsAsync();
+    if (current.granted) {
+      return true;
+    }
+
+    const requested = await notifications.requestPermissionsAsync();
+    return requested.granted;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Prepara el servicio (canal + handler + permiso). Idempotente y seguro
+ * de llamar en cada montaje de la pantalla principal.
+ */
+export async function initializeLocalNotifications(): Promise<boolean> {
+  const notifications = await getNative();
+  if (!notifications) {
+    return false;
+  }
+
+  try {
+    await ensureChannelAndHandler(notifications);
+    return await requestNotificationPermission();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Presenta una notificación local en el dispositivo.
+ *
+ * @param title Título corto (p. ej. "Cambio de estado").
+ * @param body  Mensaje (p. ej. "Tu reporte #INC-0001 pasó a En atención").
+ * @returns `true` si se mostró en el dispositivo.
+ */
+export async function presentDeviceNotification(
+  title: string,
+  body: string,
+): Promise<boolean> {
+  const notifications = await getNative();
+  if (!notifications) {
+    return false;
+  }
+
+  try {
+    await ensureChannelAndHandler(notifications);
+    await notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: 'default' as unknown as boolean,
+      },
+      trigger: null,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export default {
+  initializeLocalNotifications,
+  requestNotificationPermission,
+  presentDeviceNotification,
+};

@@ -40,6 +40,9 @@ type AdminScreenProps = {
   user: User;
   onGoToUsers: () => void;
   onGoToCategories: () => void;
+  onGoToDashboard: () => void;
+  onViewNotifications: () => void;
+  onViewProfile: () => void;
 };
 
 type ModuleCard = {
@@ -50,7 +53,14 @@ type ModuleCard = {
   onPress: () => void;
 };
 
-function AdminScreen({ user, onGoToUsers, onGoToCategories }: AdminScreenProps) {
+function AdminScreen({
+  user,
+  onGoToUsers,
+  onGoToCategories,
+  onGoToDashboard,
+  onViewNotifications,
+  onViewProfile,
+}: AdminScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -88,6 +98,13 @@ function AdminScreen({ user, onGoToUsers, onGoToCategories }: AdminScreenProps) 
       description: 'Registrar, consultar, editar y activar o desactivar categorías de incidentes.',
       color: Colors.success,
       onPress: onGoToCategories,
+    },
+    {
+      icon: 'dashboard',
+      label: 'Indicadores del sistema',
+      description: 'Supervisar KPIs, alertas de gestión e incidentes recientes.',
+      color: Colors.warning,
+      onPress: onGoToDashboard,
     },
   ];
 
@@ -158,6 +175,22 @@ function AdminScreen({ user, onGoToUsers, onGoToCategories }: AdminScreenProps) 
             </View>
           </Animated.View>
 
+          {/* Accesos rápidos */}
+          <View style={styles.quickRow}>
+            <QuickAccessCard
+              icon="bell"
+              label="Notificaciones"
+              color={Colors.accent}
+              onPress={onViewNotifications}
+            />
+            <QuickAccessCard
+              icon="settings"
+              label="Configuración"
+              color={Colors.info}
+              onPress={onViewProfile}
+            />
+          </View>
+
           {/* Section label */}
           <Text style={styles.sectionLabel}>MÓDULOS DEL SISTEMA</Text>
 
@@ -193,6 +226,42 @@ const statStyles = StyleSheet.create({
   value: { fontSize: fontSizes.h3, fontWeight: fontWeights.extraBold },
   label: { color: Colors.textMuted, fontSize: fontSizes.micro, marginTop: 2, letterSpacing: 0.5 },
 });
+
+function QuickAccessCard({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.quickCard,
+        { borderColor: color + '30' },
+        pressed && modStyles.cardPressed,
+      ]}
+    >
+      <View
+        style={[
+          styles.quickIconWrap,
+          { backgroundColor: color + '14', borderColor: color + '35' },
+        ]}
+      >
+        <Icon name={icon} size={20} color={color} />
+      </View>
+      <View style={styles.quickTextWrap}>
+        <Text style={styles.quickLabel}>{label}</Text>
+        <Text style={styles.quickSub}>Bandeja y ajustes</Text>
+      </View>
+    </Pressable>
+  );
+}
 
 function ModuleCardView({ module: mod, delay }: { module: ModuleCard; delay: number }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -265,6 +334,10 @@ const modStyles = StyleSheet.create({
     width: 4,
     borderTopRightRadius: 0,
     borderBottomRightRadius: 0,
+  },
+  cardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.99 }],
   },
   iconWrap: {
     width: 56,
@@ -459,6 +532,53 @@ const styles = StyleSheet.create({
     letterSpacing: letterSpacings.widest,
     marginTop: spacing.xl,
     marginBottom: spacing.base,
+  },
+  quickRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
+    gap: spacing.base,
+    marginTop: spacing.base,
+    width: '100%',
+  },
+  quickCard: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(10, 30, 48, 0.8)',
+    borderRadius: radius.card,
+    borderWidth: 1,
+    padding: spacing.base,
+    // @ts-ignore
+    boxShadow: '0 14px 28px -16px rgba(2, 10, 18, 0.8)',
+    overflow: 'hidden',
+  },
+  quickIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.element,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  quickLabel: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.small,
+    fontWeight: fontWeights.bold,
+    letterSpacing: -0.2,
+    flexShrink: 1,
+  },
+  quickSub: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.caption,
+    marginTop: 1,
   },
   sysInfoCard: {
     flexDirection: 'row',

@@ -27,6 +27,10 @@ import Icon, { type IconName } from '../components/Icon';
 import PillBadge from '../components/PillBadge';
 import { cityBackground } from '../assets/images';
 import { loadUnreadNotificationCount } from '../controllers/notificationController';
+import {
+  initializeLocalNotifications,
+  presentDeviceNotification,
+} from '../services/localPushService';
 import type { User } from '../models/User';
 import {
   Colors,
@@ -76,6 +80,9 @@ function HomeScreen({
   const slideAnim = useRef(new Animated.Value(20)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const [unreadCount, setUnreadCount] = useState(0);
+  // HU14 — Guarda el último contador conocido para emitir el banner SOLO
+  // cuando sube (no en la carga inicial ni en refrescos sin novedades).
+  const prevUnreadRef = useRef<number | null>(null);
 
   const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
     .toUpperCase()
@@ -84,7 +91,11 @@ function HomeScreen({
   useEffect(() => {
     let mounted = true;
 
-    // HU14 — Alerta de nuevos cambios: badge con las no leídas.
+    // HU14 — Alerta de nuevos cambios en el dispositivo: activar el canal
+    // de notificación local ("como otras apps muestran el banner").
+    initializeLocalNotifications();
+
+    // HU14 — Badge con las no leídas en la tarjeta "Notificaciones".
     loadUnreadNotificationCount().then((result) => {
       if (mounted && result.success) {
         setUnreadCount(result.data ?? 0);
@@ -95,6 +106,21 @@ function HomeScreen({
       mounted = false;
     };
   }, []);
+
+  // HU14 — Banner en el dispositivo cuando hay UNA NUEVA no leída que antes
+  // no existía (delta > 0). No dispara en la primera carga (previo=null) para
+  // no bombardear al ciudadano con el total histórico.
+  useEffect(() => {
+    const prev = prevUnreadRef.current;
+    prevUnreadRef.current = unreadCount;
+
+    if (prev !== null && unreadCount > prev) {
+      presentDeviceNotification(
+        'Cambios en tu reporte',
+        `Tienes ${unreadCount - prev} alerta${unreadCount - prev > 1 ? 's' : ''} nueva${unreadCount - prev > 1 ? 's' : ''} sin leer.`,
+      );
+    }
+  }, [unreadCount]);
 
   useEffect(() => {
     Animated.parallel([

@@ -2,8 +2,9 @@
  * Servicio de autenticación (MVC - Service).
  *
  * Contiene la lógica de negocio de autenticación:
- *   - HU01: Registro de ciudadano (detecta duplicados, crea la
- *     identidad en Supabase Auth y el registro en la tabla `users`).
+ *   - HU01: Registro de ciudadano (detecta duplicados de correo, documento
+ *     y datos personales, crea la identidad en Supabase Auth y el registro
+ *     en la tabla `users`).
  *   - HU02: Inicio de sesión (valida credenciales contra Supabase
  *     Auth, devuelve sesión y datos del usuario).
  *
@@ -18,6 +19,7 @@
 const { supabaseAdmin, supabasePublic } = require('../config/supabase');
 const userRepository = require('../repositories/user.repository');
 const roleRepository = require('../repositories/role.repository');
+const userDuplicatesService = require('./userDuplicates.service');
 const { toPublicUser } = require('../utils/userMapper');
 const ROLES = require('../utils/roles');
 const { buildError } = require('../utils/errors');
@@ -49,6 +51,13 @@ const authService = {
         'identityNumber',
       );
     }
+
+    await userDuplicatesService.assertNotDuplicatePerson({
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      phone: payload.phone,
+      identityNumber,
+    });
 
     const role = await roleRepository.findByRoleName(ROLE_CIUDADANO);
     if (!role) {

@@ -79,6 +79,19 @@ const incidentController = {
     }
   },
 
+  async reopenIncident(req, res, next) {
+    try {
+      const incident = await incidentService.reopenIncident(
+        req.user,
+        req.params.id,
+      );
+
+      return ok(res, 200, 'Reporte reabierto correctamente.', { incident });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
   async deleteIncident(req, res, next) {
     try {
       const deleted = await incidentService.deleteIncident(
@@ -87,6 +100,24 @@ const incidentController = {
       );
 
       return ok(res, 200, 'Reporte eliminado correctamente.', deleted);
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async getMapIncidents(req, res, next) {
+    try {
+      const { incidents, truncated } = await incidentService.getMapIncidents(
+        req.user,
+        req.query,
+      );
+
+      return ok(
+        res,
+        200,
+        'Mapa de incidentes consultado correctamente.',
+        { incidents, truncated },
+      );
     } catch (error) {
       return next(error);
     }

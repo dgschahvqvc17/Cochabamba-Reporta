@@ -4,6 +4,7 @@
  * Consumo de la API REST del backend para la gestión de categorías de
  * incidentes (HU04). La creación, edición y activación/desactivación
  * requieren el token del administrador autenticado.
+ * Usa el cliente HTTP compartido (services/apiClient).
  *
  * @format
  */
@@ -14,44 +15,9 @@ import type {
   CategoryListParams,
   CategoryPayload,
 } from '../models/Category';
-import { clearSession } from '../utils/session';
-import { API_BASE_URL as BASE_URL } from '../config/api';
+import { api, type ApiResponse } from './apiClient';
 
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-  error?: {
-    code?: string;
-    details?: { field: string; message: string }[];
-  };
-}
-
-const api = async <T>(
-  path: string,
-  accessToken: string,
-  options: RequestInit = {},
-): Promise<ApiResponse<T>> => {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> | undefined),
-  };
-
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
-
-  if (response.status === 401) {
-    clearSession();
-  }
-
-  return response.json();
-};
+export type { ApiResponse };
 
 export async function getCategories(
   accessToken: string,

@@ -18,6 +18,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AdminScreen from '../screens/AdminScreen';
+import DashboardScreen from '../screens/DashboardScreen';
 import StaffHomeScreen from '../screens/StaffHomeScreen';
 import UsersScreen from '../screens/UsersScreen';
 import UserFormScreen from '../screens/UserFormScreen';
@@ -39,14 +40,16 @@ import AttendIncidentScreen from '../screens/AttendIncidentScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SeguimientoScreen from '../screens/SeguimientoScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import MapScreen from '../screens/MapScreen';
 import AppNavBar from '../components/AppNavBar';
 import OfflineBanner from '../components/OfflineBanner';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import {
-  clearSession,
-  getStoredSession,
+  isSessionValid,
+  peekStoredSession,
   type StoredSession,
 } from '../utils/session';
+import { SESSION_CLOSED_MESSAGE } from '../utils/errorMessages';
 import { Colors } from '../theme';
 
 type AppNavigatorProps = {
@@ -57,13 +60,17 @@ type AuthScreen = 'register' | 'login';
 
 type AdminRoute =
   | { name: 'dashboard' }
+  | { name: 'dashboard-kpi' }
   | { name: 'users' }
   | { name: 'user-create' }
   | { name: 'user-edit'; userId: number }
   | { name: 'user-detail'; userId: number }
   | { name: 'categories' }
   | { name: 'category-create' }
-  | { name: 'category-edit'; categoryId: number };
+  | { name: 'category-edit'; categoryId: number }
+  | { name: 'notifications' }
+  | { name: 'profile' }
+  | { name: 'map' };
 
 type CitizenRoute =
   | { name: 'home' }
@@ -72,7 +79,8 @@ type CitizenRoute =
   | { name: 'my-reports' }
   | { name: 'incident-follow-up'; incidentId: number }
   | { name: 'notifications' }
-  | { name: 'profile' };
+  | { name: 'profile' }
+  | { name: 'map' };
 
 /** Roles municipales que usan el módulo de recepción/consulta (HU09). */
 type StaffRoute =
@@ -81,12 +89,16 @@ type StaffRoute =
   | { name: 'incident-detail'; incidentId: number }
   | { name: 'pending-verification' }
   | { name: 'assign-verification'; incidentId: number }
+  | { name: 'reassign-verification'; incidentId: number; currentVerifier?: { id: number; firstName: string; lastName: string; email?: string } | null }
   | { name: 'verification-queue' }
   | { name: 'verify-incident'; incidentId: number }
   | { name: 'pending-solution' }
   | { name: 'assign-solution'; incidentId: number }
   | { name: 'solution-queue' }
-  | { name: 'attend-incident'; incidentId: number };
+  | { name: 'attend-incident'; incidentId: number }
+  | { name: 'notifications' }
+  | { name: 'profile' }
+  | { name: 'map' };
 
 const STAFF_ROLES: string[] = [
   'RECEPCION',
@@ -98,12 +110,23 @@ const STAFF_ROLES: string[] = [
 const SESSION_CHECK_INTERVAL_MS = 10000;
 
 function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
+  // `peekStoredSession` a propósito: al abrir la app sin internet la sesión
+  // se conserva y solo se evalúa su vigencia cuando hay conexión.
   const [session, setSession] = useState<StoredSession | null>(() =>
-    getStoredSession(),
+    peekStoredSession(),
   );
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
   const [adminRoute, setAdminRoute] = useState<AdminRoute>({ name: 'dashboard' });
   const [citizenRoute, setCitizenRoute] = useState<CitizenRoute>({ name: 'home' });
+  /**
+   * A dónde vuelve el mapa del ciudadano: al inicio si se abrió desde la
+   * barra de navegación, o al formulario si se abrió para revisar si el
+   * reporte ya existe (y así no perder lo ya escrito).
+   */
+  const [citizenMapReturn, setCitizenMapReturn] = useState<'home' | 'incident-create'>(
+    'home',
+  );
   const [staffRoute, setStaffRoute] = useState<StaffRoute>({ name: 'home' });
   const isOnline = useNetworkStatus();
   const offlineBanner = (
@@ -116,25 +139,59 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
     }
 
     const interval = setInterval(() => {
-      if (!getStoredSession()) {
-        clearSession();
+      // Sin internet no se puede comprobar la sesión: no se cierra la sesión
+      // del usuario ni se le informa de que "caducó", porque el cierre real
+      // se evaluará apenas vuelva la conexión.
+      if (!isOnline) {
+        return;
+      }
+
+      if (!isSessionValid()) {
+        setSession(null);
         setAdminRoute({ name: 'dashboard' });
         setStaffRoute({ name: 'home' });
-        setSession(null);
+        setCitizenRoute({ name: 'home' });
         setAuthScreen('login');
+        setSessionNotice(SESSION_CLOSED_MESSAGE);
       }
     }, SESSION_CHECK_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [session]);
+  }, [session, isOnline]);
 
-  const goToLogin = () => setAuthScreen('login');
-  const goToRegister = () => setAuthScreen('register');
+  /**
+   * Al volver la conexión, si la sesión ya no es válida, se cierra con un
+   * aviso claro (nunca con un mensaje técnico sobre el token).
+   */
+  useEffect(() => {
+    if (!session || !isOnline) {
+      return;
+    }
+
+    if (!isSessionValid()) {
+      setSession(null);
+      setAdminRoute({ name: 'dashboard' });
+      setStaffRoute({ name: 'home' });
+      setCitizenRoute({ name: 'home' });
+      setAuthScreen('login');
+      setSessionNotice(SESSION_CLOSED_MESSAGE);
+    }
+  }, [session, isOnline]);
+
+  const goToLogin = () => {
+    setAuthScreen('login');
+    setSessionNotice(null);
+  };
+  const goToRegister = () => {
+    setAuthScreen('register');
+    setSessionNotice(null);
+  };
 
   const handleLoginSuccess = (newSession: StoredSession) => {
     setAdminRoute({ name: 'dashboard' });
     setStaffRoute({ name: 'home' });
     setCitizenRoute({ name: 'home' });
+    setSessionNotice(null);
     setSession(newSession);
   };
 
@@ -142,6 +199,7 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
     setSession(null);
     setAdminRoute({ name: 'dashboard' });
     setStaffRoute({ name: 'home' });
+    setSessionNotice(null);
     setAuthScreen('login');
   };
 
@@ -153,7 +211,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
         adminRoute.name === 'user-edit' ||
         adminRoute.name === 'user-detail' ||
         adminRoute.name === 'category-create' ||
-        adminRoute.name === 'category-edit';
+        adminRoute.name === 'category-edit' ||
+        adminRoute.name === 'notifications' ||
+        adminRoute.name === 'profile';
 
       // Active key for the navbar
       const navActiveKey =
@@ -166,7 +226,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               adminRoute.name === 'category-create' ||
               adminRoute.name === 'category-edit'
             ? 'categories'
-            : 'panel';
+            : adminRoute.name === 'map'
+              ? 'map'
+              : 'panel';
 
       return (
         <View style={styles.container}>
@@ -177,7 +239,14 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 user={session.user}
                 onGoToUsers={() => setAdminRoute({ name: 'users' })}
                 onGoToCategories={() => setAdminRoute({ name: 'categories' })}
+                onGoToDashboard={() => setAdminRoute({ name: 'dashboard-kpi' })}
+                onViewNotifications={() => setAdminRoute({ name: 'notifications' })}
+                onViewProfile={() => setAdminRoute({ name: 'profile' })}
               />
+            ) : null}
+
+            {adminRoute.name === 'dashboard-kpi' ? (
+              <DashboardScreen onBack={() => setAdminRoute({ name: 'dashboard' })} />
             ) : null}
 
             {adminRoute.name === 'users' ? (
@@ -241,6 +310,27 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 onSaved={() => setAdminRoute({ name: 'categories' })}
               />
             ) : null}
+
+            {adminRoute.name === 'notifications' ? (
+              <NotificationsScreen
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'profile' ? (
+              <ProfileScreen
+                user={session.user}
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+                showRole
+              />
+            ) : null}
+
+            {adminRoute.name === 'map' ? (
+              <MapScreen
+                role={session.user.role}
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+              />
+            ) : null}
           </View>
 
           {/* Navbar always visible — dimmed on sub-routes */}
@@ -264,6 +354,12 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 icon: 'category',
                 onPress: () => !isSubRoute && setAdminRoute({ name: 'categories' }),
               },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => setAdminRoute({ name: 'map' }),
+              },
             ]}
             activeKey={navActiveKey}
             dimmed={isSubRoute}
@@ -286,12 +382,16 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
         staffRoute.name === 'pending-solution' ||
         staffRoute.name === 'assign-solution' ||
         staffRoute.name === 'solution-queue' ||
-        staffRoute.name === 'attend-incident';
+        staffRoute.name === 'attend-incident' ||
+        staffRoute.name === 'notifications' ||
+        staffRoute.name === 'profile';
 
       const staffNavActiveKey =
         staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
           ? 'incidents'
-          : 'home';
+          : staffRoute.name === 'map'
+            ? 'map'
+            : 'home';
 
       return (
         <View style={styles.container}>
@@ -314,10 +414,25 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 onOpenIncident={(incidentId) =>
                   setStaffRoute({ name: 'assign-verification', incidentId })
                 }
+                onReassign={(incident) =>
+                  setStaffRoute({
+                    name: 'reassign-verification',
+                    incidentId: incident.id,
+                    currentVerifier: incident.verifier ?? undefined,
+                  })
+                }
               />
             ) : staffRoute.name === 'assign-verification' ? (
               <AssignVerificationScreen
                 incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'pending-verification' })}
+                onAssigned={() => setStaffRoute({ name: 'pending-verification' })}
+              />
+            ) : staffRoute.name === 'reassign-verification' ? (
+              <AssignVerificationScreen
+                incidentId={staffRoute.incidentId}
+                reassign
+                currentVerifier={staffRoute.currentVerifier ?? null}
                 onBack={() => setStaffRoute({ name: 'pending-verification' })}
                 onAssigned={() => setStaffRoute({ name: 'pending-verification' })}
               />
@@ -360,6 +475,27 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 onBack={() => setStaffRoute({ name: 'solution-queue' })}
                 onProcessed={() => setStaffRoute({ name: 'solution-queue' })}
               />
+            ) : staffRoute.name === 'notifications' ? (
+              <NotificationsScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenFollowUp={(incidentId) =>
+                  setStaffRoute({ name: 'incident-detail', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'profile' ? (
+              <ProfileScreen
+                user={session.user}
+                onBack={() => setStaffRoute({ name: 'home' })}
+                showRole
+              />
+            ) : staffRoute.name === 'map' ? (
+              <MapScreen
+                role={session.user.role}
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'incident-detail', incidentId })
+                }
+              />
             ) : (
               <StaffHomeScreen
                 user={session.user}
@@ -376,6 +512,10 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 onGoToSolutionQueue={() =>
                   setStaffRoute({ name: 'solution-queue' })
                 }
+                onViewNotifications={() =>
+                  setStaffRoute({ name: 'notifications' })
+                }
+                onViewProfile={() => setStaffRoute({ name: 'profile' })}
               />
             )}
           </View>
@@ -392,7 +532,14 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 key: 'incidents',
                 label: 'Incidentes',
                 icon: 'report',
-                onPress: () => setStaffRoute({ name: 'incidents' }),
+                onPress: () =>
+                  setStaffRoute({ name: 'incidents' }),
+              },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => setStaffRoute({ name: 'map' }),
               },
             ]}
             activeKey={staffNavActiveKey}
@@ -410,7 +557,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
       citizenRoute.name === 'my-reports' ||
       citizenRoute.name === 'incident-follow-up'
         ? 'reports'
-        : 'home';
+        : citizenRoute.name === 'map'
+          ? 'map'
+          : 'home';
     return (
       <View style={styles.container}>
         <View style={styles.screenSlot}>
@@ -419,6 +568,10 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               mode="create"
               onBack={() => setCitizenRoute({ name: 'home' })}
               onSaved={() => setCitizenRoute({ name: 'home' })}
+              onOpenMap={() => {
+                setCitizenMapReturn('incident-create');
+                setCitizenRoute({ name: 'map' });
+              }}
             />
           ) : citizenRoute.name === 'incident-edit' ? (
             <IncidentFormScreen
@@ -442,6 +595,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
             <SeguimientoScreen
               incidentId={citizenRoute.incidentId}
               onBack={() => setCitizenRoute({ name: 'my-reports' })}
+              onEdit={(incidentId) =>
+                setCitizenRoute({ name: 'incident-edit', incidentId })
+              }
             />
           ) : citizenRoute.name === 'notifications' ? (
             <NotificationsScreen
@@ -455,6 +611,23 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               user={session.user}
               onBack={() => setCitizenRoute({ name: 'home' })}
             />
+          ) : citizenRoute.name === 'map' ? (
+            <MapScreen
+              role={session.user.role}
+              onBack={() =>
+                setCitizenRoute(
+                  citizenMapReturn === 'incident-create'
+                    ? { name: 'incident-create' }
+                    : { name: 'home' },
+                )
+              }
+              onOpenIncident={(incidentId) =>
+                setCitizenRoute({ name: 'incident-follow-up', incidentId })
+              }
+              canOpenSelected={(incident) =>
+                incident.userId === session.user.id
+              }
+            />
           ) : (
             <HomeScreen
               user={session.user}
@@ -467,22 +640,31 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
             />
           )}
         </View>
-        <AppNavBar
-          items={[
-            {
-              key: 'home',
-              label: 'Inicio',
-              icon: 'home',
-              onPress: () => setCitizenRoute({ name: 'home' }),
-            },
-            {
-              key: 'reports',
-              label: 'Reportes',
-              icon: 'report',
-              onPress: () => setCitizenRoute({ name: 'my-reports' }),
-            },
-          ]}
-          activeKey={citizenNavActiveKey}
+          <AppNavBar
+            items={[
+              {
+                key: 'home',
+                label: 'Inicio',
+                icon: 'home',
+                onPress: () => setCitizenRoute({ name: 'home' }),
+              },
+              {
+                key: 'reports',
+                label: 'Reportes',
+                icon: 'report',
+                onPress: () => setCitizenRoute({ name: 'my-reports' }),
+              },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => {
+                  setCitizenMapReturn('home');
+                  setCitizenRoute({ name: 'map' });
+                },
+              },
+            ]}
+            activeKey={citizenNavActiveKey}
           dimmed={isCitizenSubRoute}
           onLogout={handleLogout}
         />
@@ -495,6 +677,7 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
     <View style={styles.container}>
       {authScreen === 'login' ? (
         <LoginScreen
+          notice={sessionNotice}
           onGoToRegister={goToRegister}
           onLoginSuccess={handleLoginSuccess}
         />

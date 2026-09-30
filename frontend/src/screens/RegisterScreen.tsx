@@ -44,6 +44,9 @@ import {
   spacing,
 } from '../theme';
 import {
+  MAX_ADDRESS_LENGTH,
+  MAX_LAST_NAME_LENGTH,
+  MAX_NAME_LENGTH,
   isValidAdultBirthDate,
   isValidEmail,
   isValidIdentityNumber,
@@ -51,6 +54,8 @@ import {
   isValidPhone,
   onlyDigits,
   onlyLetters,
+  singleSpaced,
+  validatePersonName,
 } from '../utils/validators';
 
 type RegisterScreenProps = {
@@ -91,7 +96,7 @@ const SECTIONS: SectionConfig[] = [
   { title: 'Datos personales', icon: 'person', color: Colors.accent },
   { title: 'Identificación y contacto', icon: 'badge', color: Colors.warning },
   { title: 'Seguridad', icon: 'shield', color: Colors.success },
-  { title: 'Ubicación', icon: 'pin', color: Colors.info },
+  { title: 'Domicilio', icon: 'pin', color: Colors.info },
 ];
 
 function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
@@ -104,15 +109,17 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const onChangeField = (field: keyof FormState) => (value: string) =>
-    setForm((c) => ({ ...c, [field]: value }));
+    setForm((c) => ({ ...c, [field]: singleSpaced(value) }));
 
   const clearError = (field: string) =>
     setErrors((c) => { const n = { ...c }; delete n[field]; return n; });
 
   const validateForm = (): FieldErrors => {
     const errs: FieldErrors = {};
-    if (!form.firstName.trim()) errs.firstName = 'El nombre es obligatorio.';
-    if (!form.lastName.trim()) errs.lastName = 'El apellido es obligatorio.';
+    const firstNameError = validatePersonName(form.firstName, 'El nombre', MAX_NAME_LENGTH);
+    if (firstNameError) errs.firstName = firstNameError;
+    const lastNameError = validatePersonName(form.lastName, 'El apellido', MAX_LAST_NAME_LENGTH);
+    if (lastNameError) errs.lastName = lastNameError;
     if (!isValidAdultBirthDate(form.birthDate)) errs.birthDate = 'Elige una fecha válida siendo mayor de 18 años.';
     if (!form.identityNumber.trim()) errs.identityNumber = 'El documento de identidad es obligatorio.';
     else if (!isValidIdentityNumber(form.identityNumber)) errs.identityNumber = 'El documento debe contener entre 5 y 8 dígitos.';
@@ -252,6 +259,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 value={form.firstName}
                 onChangeText={(v) => { onChangeField('firstName')(onlyLetters(v)); clearError('firstName'); }}
                 placeholder="Ej. Juan Carlos"
+                maxLength={MAX_NAME_LENGTH}
                 error={errors.firstName}
                 icon="person"
               />
@@ -260,6 +268,7 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
                 value={form.lastName}
                 onChangeText={(v) => { onChangeField('lastName')(onlyLetters(v)); clearError('lastName'); }}
                 placeholder="Ej. Pérez Mamani"
+                maxLength={MAX_LAST_NAME_LENGTH}
                 error={errors.lastName}
                 icon="person"
               />
@@ -330,11 +339,13 @@ function RegisterScreen({ onGoToLogin }: RegisterScreenProps) {
               {/* Section 3: Ubicación */}
               <SectionHeader config={SECTIONS[3]} index={4} total={4} />
               <AppTextInput
-                label="Dirección o referencia (opcional)"
+                label="Dirección de residencia (opcional)"
                 value={form.address}
                 onChangeText={onChangeField('address')}
                 placeholder="Ej. Av. Heroínas, zona..."
+                maxLength={MAX_ADDRESS_LENGTH}
                 icon="pin"
+                hint="Es la dirección donde vives, no la del incidente que reportes."
               />
 
               <View style={styles.submitGap} />

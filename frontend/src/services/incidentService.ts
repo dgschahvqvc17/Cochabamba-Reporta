@@ -11,8 +11,8 @@
  *     (multipart/form-data — HU07).
  *   - `attachLocation(accessToken, id, payload)` → POST /incidents/:id/location
  *     (JSON — HU08).
- * Replica el patrón de categoryService.ts: helper `api` con manejo
- * de 401 (clearSession), ApiResponse genérico y BASE_URL compartido.
+ * Usa el cliente HTTP compartido (services/apiClient) y, para la evidencia
+ * en móvil, una subida nativa por XMLHttpRequest (ver attachEvidenceNative).
  *
  * @format
  */
@@ -29,108 +29,39 @@ import type {
   IncidentHistoryEntry,
   IncidentListData,
   IncidentLocation,
+  IncidentOrder,
   IncidentPayload,
   LocationPayload,
+  RejectIncidentPayload,
+  RejectIncidentResult,
   SolutionUser,
   VerifierUser,
   VerifyIncidentPayload,
   VerifyIncidentResult,
 } from '../models/Incident';
+import {
+  EMPTY_RESPONSE_MESSAGE,
+  NETWORK_ERROR_MESSAGE,
+  SLOW_CONNECTION_MESSAGE,
+  SYSTEM_ERROR_MESSAGE,
+  UNEXPECTED_RESPONSE_MESSAGE,
+} from '../utils/errorMessages';
 import { clearSession } from '../utils/session';
 import { API_BASE_URL as BASE_URL } from '../config/api';
+import {
+  REQUEST_TIMEOUT_MS,
+  api,
+  type ApiResponse,
+} from './apiClient';
 
-/** Timeout de cada petición para que la UI nunca quede "cargando" sin fin.
- *  Generoso para la subida multipart de fotos desde el móvil (HU07). */
-const REQUEST_TIMEOUT_MS = 60000;
+export type { ApiResponse };
 
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-  error?: {
-    code?: string;
-    details?: { field: string; message: string }[];
-  };
+/** Respuesta del mapa interactivo: incidentes del alcance del rol. */
+export interface MapIncidentData {
+  incidents: Incident[];
+  /** true si el alcance del rol tenía más reportes de los que se envían. */
+  truncated?: boolean;
 }
-
-/**
- * Helper HTTP con manejo robusto: el servidor puede responder HTML (404/error
- * del proxy), vacío, o no estar encendido; en todos esos casos devuelve una
- * `ApiResponse` con success:false en vez de lanzar un SyntaxError que dejaría
- * la interfaz cargando para siempre.
- */
-const api = async <T>(
-  path: string,
-  accessToken: string,
-  options: RequestInit = {},
-): Promise<ApiResponse<T>> => {
-  const headers: Record<string, string> = {
-    ...(options.headers as Record<string, string> | undefined),
-  };
-
-  const isFormData =
-    typeof FormData !== 'undefined' && options.body instanceof FormData;
-
-  if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (response.status === 401) {
-      clearSession();
-    }
-
-    const text = await response.text();
-
-    if (!text) {
-      return {
-        success: false,
-        message:
-          response.ok
-            ? 'El servidor no devolvió una respuesta válida.'
-            : `El servidor respondió con un error (${response.status}).`,
-        error: { code: 'EMPTY_RESPONSE' },
-      };
-    }
-
-    try {
-      return JSON.parse(text) as ApiResponse<T>;
-    } catch {
-      return {
-        success: false,
-        message: `El servidor respondió con un formato inesperado. Verifica que el backend esté actualizado y reinícialo. (HTTP ${response.status})`,
-        error: { code: 'INVALID_RESPONSE' },
-      };
-    }
-  } catch (error) {
-    clearTimeout(timeout);
-
-    const aborted =
-      error instanceof Error && error.name === 'AbortError';
-
-    return {
-      success: false,
-      message: aborted
-        ? 'La solicitud tardó demasiado. Verifica que el backend esté encendido e inténtalo de nuevo.'
-        : 'No se pudo conectar con el servidor. Verifica que el backend esté encendido e inténtalo de nuevo.',
-      error: { code: 'NETWORK_ERROR' },
-    };
-  }
-};
 
 export async function createIncident(
   accessToken: string,
@@ -173,6 +104,8 @@ export interface IncidentListParams {
   from?: string;
   to?: string;
   search?: string;
+  /** `asc` muestra primero los reportes más antiguos (más atrasados). */
+  order?: IncidentOrder;
 }
 
 /**
@@ -195,6 +128,7 @@ export async function getIncidents(
   if (params.from) query.set('from', params.from);
   if (params.to) query.set('to', params.to);
   if (params.search) query.set('search', params.search);
+  if (params.order) query.set('order', params.order);
 
   const qs = query.toString();
 
@@ -268,8 +202,8 @@ export function attachEvidenceNative(
           invalid(
             'EMPTY_RESPONSE',
             xhr.status >= 200 && xhr.status < 300
-              ? 'El servidor no devolvió una respuesta válida.'
-              : `El servidor respondió con un error (${xhr.status}).`,
+              ? EMPTY_RESPONSE_MESSAGE
+              : SYSTEM_ERROR_MESSAGE,
           ),
         );
         return;
@@ -278,30 +212,15 @@ export function attachEvidenceNative(
       try {
         resolve(JSON.parse(text) as ApiResponse<{ evidence: Evidence }>);
       } catch {
-        resolve(
-          invalid(
-            'INVALID_RESPONSE',
-            `El servidor respondió con un formato inesperado. Verifica que el backend esté actualizado y reinícialo. (HTTP ${xhr.status})`,
-          ),
-        );
+        resolve(invalid('INVALID_RESPONSE', UNEXPECTED_RESPONSE_MESSAGE));
       }
     };
 
     xhr.onerror = () =>
-      resolve(
-        invalid(
-          'NETWORK_ERROR',
-          'No se pudo conectar con el servidor. Verifica que el backend esté encendido e inténtalo de nuevo.',
-        ),
-      );
+      resolve(invalid('NETWORK_ERROR', NETWORK_ERROR_MESSAGE));
 
     xhr.ontimeout = () =>
-      resolve(
-        invalid(
-          'NETWORK_ERROR',
-          'La solicitud tardó demasiado. Verifica que el backend esté encendido e inténtalo de nuevo.',
-        ),
-      );
+      resolve(invalid('NETWORK_ERROR', SLOW_CONNECTION_MESSAGE));
 
     xhr.send(body);
   });
@@ -373,6 +292,50 @@ export async function assignVerification(
   );
 }
 
+/**
+ * HU — lista los incidentes actualmente en verificación (EN_VERIFICACION)
+ * con su verificador asignado, para que la recepción pueda reasignarlo.
+ */
+export async function getInVerificationIncidents(
+  accessToken: string,
+  params: { page?: number; limit?: number; search?: string } = {},
+): Promise<ApiResponse<IncidentListData>> {
+  const query = new URLSearchParams();
+
+  if (params.page !== undefined) query.set('page', String(params.page));
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<IncidentListData>(
+    `/incidents/in-verification${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
+}
+
+/**
+ * HU — reasigna el verificador de un incidente en verificación
+ * (EN_VERIFICACION). Completa la asignación actual y crea la nueva en
+ * el backend (el estado del incidente permanece EN_VERIFICACION).
+ */
+export async function reassignVerification(
+  accessToken: string,
+  incidentId: number,
+  payload: AssignVerificationPayload,
+): Promise<
+  ApiResponse<{ assignment: IncidentAssignment; incident: Incident }>
+> {
+  return api<{ assignment: IncidentAssignment; incident: Incident }>(
+    `/incidents/${incidentId}/reassign-verification`,
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
 /** Historial de cambios de estado de un incidente (trazabilidad). */
 export async function getIncidentHistory(
   accessToken: string,
@@ -417,6 +380,22 @@ export async function verifyIncident(
   payload: VerifyIncidentPayload,
 ): Promise<ApiResponse<VerifyIncidentResult>> {
   return api<VerifyIncidentResult>(`/incidents/${incidentId}/verify`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Rechazo del encargado de recepción (reporte no válido): solo desde
+ * REPORTADO/RECIBIDO, guarda el motivo, registra el historial y notifica
+ * al ciudadano en el backend.
+ */
+export async function rejectIncident(
+  accessToken: string,
+  incidentId: number,
+  payload: RejectIncidentPayload,
+): Promise<ApiResponse<RejectIncidentResult>> {
+  return api<RejectIncidentResult>(`/incidents/${incidentId}/reject`, accessToken, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -555,6 +534,21 @@ export async function updateIncident(
   });
 }
 
+/**
+ * Reabre un reporte rechazado por el ciudadano (solo una vez). Devuelve el
+ * reporte a REPORTADO y habilita una única edición para mejorarlo.
+ */
+export async function reopenIncident(
+  accessToken: string,
+  incidentId: number,
+): Promise<ApiResponse<{ incident: Incident }>> {
+  return api<{ incident: Incident }>(
+    `/incidents/${incidentId}/reopen`,
+    accessToken,
+    { method: 'POST' },
+  );
+}
+
 export async function deleteIncident(
   accessToken: string,
   incidentId: number,
@@ -563,5 +557,32 @@ export async function deleteIncident(
     `/incidents/${incidentId}`,
     accessToken,
     { method: 'DELETE' },
+  );
+}
+
+/**
+ * Mapa interactivo de incidentes con ubicación registrada.
+ * Devuelve los incidentes que tienen coordenadas GPS dentro del alcance del
+ * rol (el backend lo define: el ciudadano ve todos los reportes, el personal
+ * municipal solo lo que le corresponde). `truncated` indica que el alcance
+ * tenía más reportes de los que se envían.
+ */
+export async function getMapIncidents(
+  accessToken: string,
+  params: { categoryId?: number; status?: string; search?: string } = {},
+): Promise<ApiResponse<MapIncidentData>> {
+  const query = new URLSearchParams();
+
+  if (params.categoryId !== undefined) {
+    query.set('categoryId', String(params.categoryId));
+  }
+  if (params.status) query.set('status', params.status);
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<MapIncidentData>(
+    `/incidents/map-incidents${qs ? `?${qs}` : ''}`,
+    accessToken,
   );
 }

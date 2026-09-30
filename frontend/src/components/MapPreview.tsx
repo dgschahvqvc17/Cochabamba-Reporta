@@ -3,10 +3,12 @@
  *
  * HU08 — Registrar ubicación del incidente.
  *
- * Muestra una grilla de tiles Web Mercator (CARTO light) centrada en la
- * latitud/longitud capturada, con un marcador de precisión (punto central
- * + pin) en el centro. Usa un mapa claro, legible e intuitivo que funciona
- * en web y móvil usando solo <Image> remoto — sin SDKs nativos ni claves.
+ * Muestra una grilla de tiles Web Mercator de Esri "World Street Map"
+ * (estilo colorido tipo Google Maps: calles, manzanas, parques y agua)
+ * centrada en la latitud/longitud capturada, con un marcador tipo
+ * "punto azul" en el centro que indica exactamente dónde se está.
+ * Funciona en web y móvil usando solo <Image> remoto — sin SDKs nativos
+ * ni claves.
  *
  * @format
  */
@@ -23,13 +25,12 @@ import Icon from './Icon';
 import { Colors, fontSizes, fontWeights, radius, spacing } from '../theme';
 import {
   MAP_TILE_SIZE,
+  esriStreetUrl,
   mercatorTile,
-  tileUrl,
 } from '../utils/mapTiles';
 
-const MAP_ZOOM = 16;
-const NEIGHBOR_RANGE = 1;
-const MAP_HEIGHT = 200;
+const MAP_ZOOM = 18;
+const MAP_HEIGHT = 220;
 
 type MapPreviewProps = {
   latitude: number;
@@ -43,13 +44,17 @@ export default function MapPreview({ latitude, longitude }: MapPreviewProps) {
   const centerX = width / 2;
   const centerY = MAP_HEIGHT / 2;
 
+  // Cobertura mínima para que nunca queden bordes en blanco: por cada lado
+  // se necesitan tiles hasta cubrir la mitad del ancho del contenedor.
+  const range = Math.ceil(width / (MAP_TILE_SIZE * 2));
+
   const tiles: { key: string; uri: string; left: number; top: number }[] = [];
 
-  for (let dx = -NEIGHBOR_RANGE; dx <= NEIGHBOR_RANGE; dx += 1) {
-    for (let dy = -NEIGHBOR_RANGE; dy <= NEIGHBOR_RANGE; dy += 1) {
+  for (let dx = -range; dx <= range; dx += 1) {
+    for (let dy = -range; dy <= range; dy += 1) {
       tiles.push({
         key: `${dx}:${dy}`,
-        uri: tileUrl(tile.x + dx, tile.y + dy, tile.zoom),
+        uri: esriStreetUrl(tile.x + dx, tile.y + dy, tile.zoom),
         left: Math.round(centerX - tile.offsetX * MAP_TILE_SIZE + dx * MAP_TILE_SIZE),
         top: Math.round(centerY - tile.offsetY * MAP_TILE_SIZE + dy * MAP_TILE_SIZE),
       });
@@ -67,18 +72,16 @@ export default function MapPreview({ latitude, longitude }: MapPreviewProps) {
               key={item.key}
               source={{ uri: item.uri }}
               style={[styles.tile, { left: item.left, top: item.top }]}
+              resizeMode="cover"
             />
           ))
         : null}
 
-      {/* Marcador de precisión: punto de mira + pin */}
+      {/* Marcador de precisión: "punto azul" como Google Maps */}
       <View style={[styles.marker, styles.noPointer]}>
         <View style={styles.halo} />
-        <View style={styles.crosshair}>
-          <View style={styles.crosshairCenter} />
-        </View>
-        <View style={styles.pin}>
-          <Icon name="pin" size={20} color={Colors.textOnPrimary} />
+        <View style={styles.ring}>
+          <View style={styles.dot} />
         </View>
       </View>
 
@@ -89,7 +92,7 @@ export default function MapPreview({ latitude, longitude }: MapPreviewProps) {
       </View>
 
       <Text style={[styles.attribution, styles.noPointer]}>
-        © OpenStreetMap · © CARTO
+        © Esri · Maxar · Earthstar Geographics
       </Text>
     </View>
   );
@@ -125,43 +128,30 @@ const styles = StyleSheet.create({
   },
   halo: {
     position: 'absolute',
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(59, 130, 184, 0.16)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(59, 130, 184, 0.45)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(59, 130, 184, 0.22)',
   },
-  crosshair: {
+  ring: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    borderWidth: 2.5,
-    borderColor: Colors.accent,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     // @ts-ignore — sombra sutil para separar el punto del mapa
-    boxShadow: '0 1px 6px rgba(3, 15, 28, 0.35)',
+    boxShadow: '0 1px 6px rgba(3, 15, 28, 0.45)',
+    backgroundColor: 'rgba(59, 130, 184, 0.25)',
   },
-  crosshairCenter: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: Colors.accentDim,
-  },
-  pin: {
-    position: 'absolute',
-    top: -8,
-    right: -9,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.accentDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.textOnPrimary,
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.accent,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.55)',
   },
   badge: {
     position: 'absolute',

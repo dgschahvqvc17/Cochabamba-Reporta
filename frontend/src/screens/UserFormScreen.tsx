@@ -45,14 +45,19 @@ import {
   spacing,
 } from '../theme';
 import { formatDate } from '../utils/format';
-import { ROLE_LABELS, ROLES } from '../utils/roles';
+import { ADMIN_CREATABLE_ROLES, ROLE_LABELS } from '../utils/roles';
 import {
+  MAX_ADDRESS_LENGTH,
+  MAX_LAST_NAME_LENGTH,
+  MAX_NAME_LENGTH,
   isValidEmail,
   isValidIdentityNumber,
   isValidPhone,
   onlyDigits,
   onlyLetters,
   parseBirthDate,
+  singleSpaced,
+  validatePersonName,
 } from '../utils/validators';
 
 type UserFormScreenProps = {
@@ -97,6 +102,16 @@ const ROLE_COLORS: Record<Role, string> = {
   ADMINISTRADOR: Colors.danger,
 };
 
+// Tonos oscuros y legibles sobre el fondo claro (contraste WCAG).
+const ROLE_TEXT: Record<Role, string> = {
+  CIUDADANO: Colors.accentDim,
+  RECEPCION: '#43556A',
+  VERIFICADOR: Colors.warningDim,
+  ENCARGADO_SOLUCION: '#574596',
+  PERSONAL_SOLUCION: Colors.successDim,
+  ADMINISTRADOR: Colors.dangerDim,
+};
+
 function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) {
   const insets = useSafeAreaInsets();
   const { dialog, error, success, close } = useDialog();
@@ -138,14 +153,16 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
   }, [isEdit, userId]);
 
   const field = (key: keyof FormState) => (v: string) => {
-    setForm((c) => ({ ...c, [key]: v }));
+    setForm((c) => ({ ...c, [key]: singleSpaced(v) }));
     setErrors((c) => { const n = { ...c }; delete n[key]; return n; });
   };
 
   const validateForm = (): FieldErrors => {
     const errs: FieldErrors = {};
-    if (!form.firstName.trim()) errs.firstName = 'El nombre es obligatorio.';
-    if (!form.lastName.trim()) errs.lastName = 'El apellido es obligatorio.';
+    const firstNameError = validatePersonName(form.firstName, 'El nombre', MAX_NAME_LENGTH);
+    if (firstNameError) errs.firstName = firstNameError;
+    const lastNameError = validatePersonName(form.lastName, 'El apellido', MAX_LAST_NAME_LENGTH);
+    if (lastNameError) errs.lastName = lastNameError;
     if (!form.email.trim()) errs.email = 'El correo electrónico es obligatorio.';
     else if (!isValidEmail(form.email)) errs.email = 'El correo no tiene un formato válido.';
     if (!isEdit) {
@@ -259,8 +276,8 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
         >
           {/* Datos personales */}
           <DarkSectionCard title="Datos personales" icon="person" color={Colors.accent}>
-            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={(v) => field('firstName')(onlyLetters(v))} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" />
-            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={(v) => field('lastName')(onlyLetters(v))} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" />
+            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={(v) => field('firstName')(onlyLetters(v))} placeholder="Ej. Juan Carlos" maxLength={MAX_NAME_LENGTH} error={errors.firstName} icon="person" />
+            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={(v) => field('lastName')(onlyLetters(v))} placeholder="Ej. Pérez Mamani" maxLength={MAX_LAST_NAME_LENGTH} error={errors.lastName} icon="person" />
           </DarkSectionCard>
 
           {/* Acceso */}
@@ -290,7 +307,7 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
             <AppTextInput label="Teléfono" value={form.phone} onChangeText={(v) => field('phone')(onlyDigits(v))} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" />
             <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={(v) => field('identityNumber')(onlyDigits(v))} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" />
             <AppDateField label="Fecha de nacimiento" value={form.birthDate} onPress={() => setIsCalendarOpen(true)} error={errors.birthDate} />
-            <AppTextInput label="Dirección o referencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." icon="pin" />
+            <AppTextInput label="Dirección de residencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." maxLength={MAX_ADDRESS_LENGTH} icon="pin" />
           </DarkSectionCard>
 
           {/* Rol */}
@@ -307,10 +324,11 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
           ) : (
             <DarkSectionCard title="Rol del usuario *" icon="badge" color={Colors.info}>
               <Text style={styles.roleHint}>
-                Selecciona un único rol para la cuenta nueva.
+                Los ciudadanos se registran desde la app. Selecciona un rol
+                municipal para la cuenta nueva.
               </Text>
               <View style={styles.roleList}>
-                {ROLES.map((role) => {
+                {ADMIN_CREATABLE_ROLES.map((role) => {
                   const active = form.role === role;
                   const rc = ROLE_COLORS[role];
                   return (
@@ -330,7 +348,7 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
                       <Text
                         style={[
                           styles.roleOptionText,
-                          active && { color: rc, fontWeight: fontWeights.bold },
+                          active && { color: ROLE_TEXT[role], fontWeight: fontWeights.bold },
                         ]}
                       >
                         {ROLE_LABELS[role]}
@@ -452,9 +470,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   roleHint: {
-    color: 'rgba(232,240,248,0.5)',
+    color: Colors.textSecondary,
     fontSize: fontSizes.caption,
     marginBottom: spacing.sm,
+    lineHeight: 18,
   },
   roleList: {
     gap: spacing.sm,
@@ -465,8 +484,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: radius.card,
     borderWidth: 1.5,
-    borderColor: Colors.border,
-    backgroundColor: 'rgba(232,240,248,0.04)',
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surfaceSubtle,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
   },
@@ -475,15 +494,15 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(232,240,248,0.35)',
+    borderColor: '#9FB0C2',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(232,240,248,0.06)',
+    backgroundColor: '#FFFFFF',
   },
   roleRadioDot: { width: 12, height: 12, borderRadius: 6 },
   roleOptionText: {
     flex: 1,
-    color: 'rgba(232,240,248,0.85)',
+    color: Colors.textPrimary,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.medium,
   },

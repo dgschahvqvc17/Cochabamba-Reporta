@@ -79,10 +79,21 @@ export interface IncidentReporter {
   id: number;
   firstName: string;
   lastName: string;
-  identityNumber: string | null;
+  /**
+   * Documento de identidad del reportante. Solo llega al propio ciudadano
+   * (en su reporte) y al administrador; el resto del personal no lo recibe.
+   */
+  identityNumber?: string | null;
   phone: string | null;
   email: string | null;
 }
+
+/**
+ * Orden por fecha de llegada del reporte: `desc` (por defecto) muestra
+ * primero los más recientes; `asc` muestra primero los más antiguos, que
+ * son los que llevan más tiempo esperando.
+ */
+export type IncidentOrder = 'asc' | 'desc';
 
 /** Respuesta paginada del listado de incidentes para el personal (HU09). */
 export interface IncidentListData {
@@ -91,6 +102,8 @@ export interface IncidentListData {
   page: number;
   limit: number;
   pages: number;
+  /** Orden aplicado por el backend (el que se pidió, ya normalizado). */
+  order?: IncidentOrder;
 }
 
 /**
@@ -159,26 +172,43 @@ export interface IncidentHistoryEntry {
 export interface Incident {
   id: number;
   code: string;
+  /** Ciudadano que creó el reporte (no viaja en las vistas del personal). */
+  userId?: number;
   categoryId: number;
   category: {
     id: number;
     name: string;
   } | null;
   title: string;
-  description: string;
+  /**
+   * Descripción del reporte. En el mapa llega como `null` cuando el
+   * reporte es de otra persona y quien consulta es un ciudadano: en ese
+   * caso solo se necesita saber que ya existe (código, categoría y estado).
+   */
+  description?: string | null;
   status: IncidentStatus;
   createdAt: string;
   updatedAt: string;
+  /** Fecha límite (ISO) en la que se compromete una respuesta (SLA, HU06). */
+  responseDeadlineAt?: string | null;
   /** true si está REPORTADO y nunca fue editado (permite editar una sola vez). */
   canEdit?: boolean;
   /** true si está REPORTADO (permite eliminar). */
   canDelete?: boolean;
+  /** true si está RECHAZADO y nunca fue reabierto (permite reabrirlo y
+   *  mejorarlo una sola vez). */
+  canReopen?: boolean;
   /** Ciudadano que reportó (solo disponible para el personal municipal, HU09). */
   reporter?: IncidentReporter | null;
   location?: IncidentLocation | null;
   evidence?: Evidence[];
   /** Motivo del rechazo (HU11, estado RECHAZADO). */
   rejectedReason?: string | null;
+  /**
+   * Verificador asignado actualmente (solo presente en la lista de
+   * incidentes en verificación, GET /incidents/in-verification).
+   */
+  verifier?: VerifierUser | null;
 }
 
 /** Payload para registrar la decisión de verificación (HU11). */
@@ -186,6 +216,16 @@ export interface VerifyIncidentPayload {
   verified: boolean;
   observations?: string;
   rejectedReason?: string;
+}
+
+/** Payload del rechazo del encargado de recepción (reporte no válido). */
+export interface RejectIncidentPayload {
+  rejectedReason: string;
+}
+
+/** Respuesta del rechazo en recepción: incidente actualizado. */
+export interface RejectIncidentResult {
+  incident: Incident;
 }
 
 /** Respuesta de la verificación: incidente actualizado + asignación completada. */

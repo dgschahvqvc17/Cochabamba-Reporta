@@ -13,6 +13,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import Icon from './Icon';
+import { OFFLINE_MESSAGE, OFFLINE_TITLE } from '../utils/errorMessages';
 import { Colors, fontSizes, fontWeights, letterSpacings, spacing } from '../theme';
 
 type OfflineBannerProps = {
@@ -54,8 +55,8 @@ function OfflineBanner({ visible, topInset }: OfflineBannerProps) {
         <Icon name="wifiOff" size={16} color={Colors.warning} />
       </View>
       <View style={styles.textWrap}>
-        <Text style={styles.title}>Sin conexión a internet</Text>
-        <Text style={styles.sub}>No podrás enviar ni guardar datos.</Text>
+        <Text style={styles.title}>{OFFLINE_TITLE}</Text>
+        <Text style={styles.sub}>{OFFLINE_MESSAGE}</Text>
       </View>
     </Animated.View>
   );

@@ -22,6 +22,7 @@
 
 const incidentRepository = require('../repositories/incident.repository');
 const assignmentRepository = require('../repositories/assignment.repository');
+const notificationRepository = require('../repositories/notification.repository');
 const ROLES = require('../utils/roles');
 const { buildError } = require('../utils/errors');
 const { normalizeText } = require('../utils/text');
@@ -97,7 +98,7 @@ const solutionService = {
       });
 
     return {
-      incidents: incidents.map(toPublicIncidentListItem),
+      incidents: incidents.map((item) => toPublicIncidentListItem(item, { viewer: user })),
       ...buildPaginationResponse({ total, page, limit }),
     };
   },
@@ -209,7 +210,7 @@ const solutionService = {
 
     return {
       incident: {
-        ...toPublicIncident(updated),
+        ...toPublicIncident(updated, { viewer: user }),
         actions: actions || null,
         observations: observations || null,
       },
@@ -276,7 +277,7 @@ const solutionService = {
 
     return {
       incident: {
-        ...toPublicIncident(updated),
+        ...toPublicIncident(updated, { viewer: user }),
         actions: actions || null,
         observations: observations || null,
       },
@@ -344,15 +345,33 @@ const solutionService = {
       INCIDENT_STATUS.CERRADO,
       user.id,
       comment || 'Incidente cerrado.',
+      {},
+      { suppressCitizenNotification: true },
     );
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId: incident.user_id,
+      message: `¡Su reporte ${incident.code} fue atendido y completado! Gracias por reportar.`,
+    });
 
     if (assignment) {
       await assignmentRepository.complete(assignment.id);
     }
 
+    // El encargado de solución que asignó este incidente recibe el aviso
+    // del cierre en su propia bandeja de notificaciones.
+    if (assignment && assignment.assigned_by) {
+      await notificationRepository.create({
+        incidentId: incident.id,
+        userId: assignment.assigned_by,
+        message: `El reporte ${incident.code} fue atendido y cerrado por el personal de solución.`,
+      });
+    }
+
     return {
       incident: {
-        ...toPublicIncident(updated),
+        ...toPublicIncident(updated, { viewer: user }),
         actions: actions || null,
         observations: observations || null,
       },

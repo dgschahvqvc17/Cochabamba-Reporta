@@ -18,6 +18,15 @@ export const ROLES: Role[] = [
   'ADMINISTRADOR',
 ];
 
+/**
+ * Roles que un administrador puede crear/otorgar.
+ * El ciudadano se autorregistra desde la app (HU01) y no debe ser
+ * creado por un administrador del sistema.
+ */
+export const ADMIN_CREATABLE_ROLES: Role[] = ROLES.filter(
+  (role) => role !== 'CIUDADANO',
+);
+
 export const ROLE_LABELS: Record<Role, string> = {
   CIUDADANO: 'Ciudadano',
   RECEPCION: 'Encargado de recepción',

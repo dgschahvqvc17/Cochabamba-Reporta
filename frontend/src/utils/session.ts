@@ -5,6 +5,9 @@
  *   - Web: usa localStorage (soporta "Recordarme").
  *   - Nativo: almacena en memoria (la persistencia nativa requeriría
  *     AsyncStorage, que se configura en una historia futura si aplica).
+ * Sin comunicación con el sistema no se puede comprobar la vigencia de la
+ * sesión, así que `peekStoredSession` la devuelve tal cual y el cierre de
+ * sesión se pospone hasta que vuelva la conexión (ver AppNavigator).
  *
  * @format
  */
@@ -52,6 +55,22 @@ function isExpired(session: StoredSession): boolean {
   return session.expiresAt * 1000 <= Date.now();
 }
 
+/**
+ * `true` si hay una sesión guardada y su vigencia sigue vigente. Es la
+ * comprobación que se usa solo cuando hay conexión; sin internet el usuario
+ * no se cierra la sesión.
+ */
+export function isSessionValid(): boolean {
+  const session = peekStoredSession();
+
+  if (!session || isExpired(session)) {
+    clearSession();
+    return false;
+  }
+
+  return true;
+}
+
 export function saveSession(session: StoredSession, remember: boolean): void {
   const raw = JSON.stringify(session);
 
@@ -80,6 +99,24 @@ export function clearSession(): void {
 }
 
 export function getStoredSession(): StoredSession | null {
+  const parsed = peekStoredSession();
+
+  if (parsed && !isExpired(parsed)) {
+    return parsed;
+  }
+
+  clearSession();
+  return null;
+}
+
+/**
+ * Devuelve la sesión guardada aunque su vigencia haya terminado, sin
+ * borrarla. Sin comunicación con el sistema no se puede saber si la sesión
+ * sigue siendo válida, así que leer el token nunca debe expulsar al usuario:
+ * el cierre se decide en AppNavigator (al volver la conexión) o cuando la
+ * API responde 401 de verdad.
+ */
+export function peekStoredSession(): StoredSession | null {
   const memoryRaw = memoryStore.get(SESSION_KEY) ?? null;
   const storage = getStorage();
   const raw = memoryRaw ?? (storage ? storage.getItem(SESSION_KEY) : null);
@@ -89,23 +126,20 @@ export function getStoredSession(): StoredSession | null {
   }
 
   try {
-    const parsed = JSON.parse(raw) as StoredSession;
-
-    if (!isExpired(parsed)) {
-      return parsed;
-    }
+    return JSON.parse(raw) as StoredSession;
   } catch {
-    // Valor corrupto: se limpia debajo.
+    return null;
   }
-
-  clearSession();
-  return null;
 }
 
+/**
+ * Token para las peticiones. No borra la sesión: si el token ya no sirve,
+ * el servidor responde 401 y entonces sí se cierra (ver apiClient).
+ */
 export function getAccessToken(): string {
-  return getStoredSession()?.accessToken ?? '';
+  return peekStoredSession()?.accessToken ?? '';
 }
 
 export function getSessionUser(): User | null {
-  return getStoredSession()?.user ?? null;
+  return peekStoredSession()?.user ?? null;
 }

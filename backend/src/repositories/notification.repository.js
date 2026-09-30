@@ -30,6 +30,35 @@ const create = async ({ incidentId, userId, message }) => {
   return data;
 };
 
+/**
+ * Crea varias notificaciones en una sola operación. Se usa cuando el aviso
+ * va dirigido a un grupo de funcionarios (por ejemplo, recepción y
+ * administración al llegar un reporte nuevo).
+ */
+const createMany = async ({ incidentId, userIds, message }) => {
+  if (!Array.isArray(userIds) || userIds.length === 0) {
+    return [];
+  }
+
+  const rows = userIds.map((userId) => ({
+    incident_id: incidentId,
+    user_id: userId,
+    message,
+    read: false,
+  }));
+
+  const { data, error } = await supabaseAdmin
+    .from('notifications')
+    .insert(rows)
+    .select('*');
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 const findByUser = async ({ userId, limit = 50 }) => {
   const { data, error } = await supabaseAdmin
     .from('notifications')
@@ -90,6 +119,7 @@ const markAsRead = async (id) => {
 
 module.exports = {
   create,
+  createMany,
   findByUser,
   findById,
   countUnreadByUser,

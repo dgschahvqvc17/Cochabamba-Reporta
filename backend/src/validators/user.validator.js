@@ -1,8 +1,10 @@
 /**
- * Validaciones del registro de ciudadano (HU01).
+ * Validaciones de los datos de las personas (HU01 y HU03).
  *
  * Reglas aplicadas conforme a los criterios de aceptación:
- *   - Campos obligatorios completos.
+ *   - Campos obligatorios completos y sin espacios en blanco inútiles.
+ *   - Longitudes correctas de nombre, apellido y dirección de residencia.
+ *   - Sin letras repetidas (teclado pulsado sin querer).
  *   - Formato de correo electrónico.
  *   - Formato de teléfono.
  *   - Fecha de nacimiento válida.
@@ -17,29 +19,71 @@
 const { body } = require('express-validator');
 
 const ROLES = require('../utils/roles');
+const {
+  MAX_REPEATED_LETTERS_RUN,
+  hasExcessiveRepeatedLetters,
+  hasUselessSpaces,
+} = require('../utils/text');
+const {
+  MIN_NAME_LENGTH,
+  MAX_NAME_LENGTH,
+  MIN_LAST_NAME_LENGTH,
+  MAX_LAST_NAME_LENGTH,
+  MAX_ADDRESS_LENGTH,
+} = require('../utils/userRules');
 
 const MIN_PASSWORD_LENGTH = 8;
 const ROLE_VALUES = Object.values(ROLES);
 
 const LETTERS_ONLY = /^[\p{L}\p{M}\s'’-]+$/u;
 
+/** Sin espacios al principio, al final ni duplicados ("  Ana   María "). */
+const noUselessSpaces = (label) => (value) => {
+  if (hasUselessSpaces(value)) {
+    throw new Error(
+      `${label} no puede empezar ni terminar con espacios, ni tener espacios de más.`,
+    );
+  }
+
+  return true;
+};
+
+/** Detecta el relleno con teclado: "aaa", "lllooo", "bbbb". */
+const noRepeatedLetters = (label) => (value) => {
+  if (hasExcessiveRepeatedLetters(value, MAX_REPEATED_LETTERS_RUN)) {
+    throw new Error(
+      `${label} no puede tener más de ${MAX_REPEATED_LETTERS_RUN} letras iguales seguidas. Revisa que esté bien escrito.`,
+    );
+  }
+
+  return true;
+};
+
 const validateFirstName = body('firstName')
   .trim()
   .notEmpty()
   .withMessage('El nombre es obligatorio.')
-  .isLength({ max: 100 })
-  .withMessage('El nombre no debe superar los 100 caracteres.')
+  .isLength({ min: MIN_NAME_LENGTH, max: MAX_NAME_LENGTH })
+  .withMessage(
+    `El nombre debe tener entre ${MIN_NAME_LENGTH} y ${MAX_NAME_LENGTH} caracteres.`,
+  )
   .matches(LETTERS_ONLY)
-  .withMessage('El nombre solo puede contener letras.');
+  .withMessage('El nombre solo puede contener letras.')
+  .custom(noUselessSpaces('El nombre'))
+  .custom(noRepeatedLetters('El nombre'));
 
 const validateLastName = body('lastName')
   .trim()
   .notEmpty()
   .withMessage('El apellido es obligatorio.')
-  .isLength({ max: 100 })
-  .withMessage('El apellido no debe superar los 100 caracteres.')
+  .isLength({ min: MIN_LAST_NAME_LENGTH, max: MAX_LAST_NAME_LENGTH })
+  .withMessage(
+    `El apellido debe tener entre ${MIN_LAST_NAME_LENGTH} y ${MAX_LAST_NAME_LENGTH} caracteres.`,
+  )
   .matches(LETTERS_ONLY)
-  .withMessage('El apellido solo puede contener letras.');
+  .withMessage('El apellido solo puede contener letras.')
+  .custom(noUselessSpaces('El apellido'))
+  .custom(noRepeatedLetters('El apellido'));
 
 const validateBirthDate = body('birthDate')
   .trim()
@@ -131,8 +175,11 @@ const validateConfirmNewPassword = body('confirmPassword').custom(
 const validateAddress = body('address')
   .optional({ values: 'falsy' })
   .trim()
-  .isLength({ max: 200 })
-  .withMessage('La dirección no debe superar los 200 caracteres.');
+  .isLength({ max: MAX_ADDRESS_LENGTH })
+  .withMessage(
+    `La dirección de residencia no debe superar los ${MAX_ADDRESS_LENGTH} caracteres.`,
+  )
+  .custom(noUselessSpaces('La dirección de residencia'));
 
 const validateLoginEmail = body('email')
   .trim()
@@ -192,8 +239,11 @@ const validateOptionalBirthDate = body('birthDate')
 const validateOptionalAddress = body('address')
   .optional({ values: 'falsy' })
   .trim()
-  .isLength({ max: 200 })
-  .withMessage('La dirección no debe superar los 200 caracteres.');
+  .isLength({ max: MAX_ADDRESS_LENGTH })
+  .withMessage(
+    `La dirección de residencia no debe superar los ${MAX_ADDRESS_LENGTH} caracteres.`,
+  )
+  .custom(noUselessSpaces('La dirección de residencia'));
 
 const validateUserStatus = body('active')
   .toBoolean()
@@ -254,4 +304,7 @@ module.exports = {
   updateUserRoleValidation,
   changePasswordValidation,
   MIN_PASSWORD_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_LAST_NAME_LENGTH,
+  MAX_ADDRESS_LENGTH,
 };

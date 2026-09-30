@@ -20,6 +20,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const userRepository = require('../repositories/user.repository');
 const roleRepository = require('../repositories/role.repository');
 const auditRepository = require('../repositories/audit.repository');
+const userDuplicatesService = require('./userDuplicates.service');
 const { toPublicUser } = require('../utils/userMapper');
 const ROLES = require('../utils/roles');
 const { buildError } = require('../utils/errors');
@@ -113,6 +114,14 @@ const userService = {
       throw buildError('El rol seleccionado no es válido.', 422, 'INVALID_ROLE');
     }
 
+    if (roleName === ROLES.CIUDADANO) {
+      throw buildError(
+        'Un administrador no puede crear cuentas de ciudadano; los ciudadanos se registran desde la aplicación.',
+        400,
+        'ROLE_NOT_ALLOWED',
+      );
+    }
+
     const existingByEmail = await userRepository.findByEmail(email);
     if (existingByEmail) {
       throw buildError(
@@ -136,6 +145,13 @@ const userService = {
         );
       }
     }
+
+    await userDuplicatesService.assertNotDuplicatePerson({
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      phone,
+      identityNumber,
+    });
 
     const role = await roleRepository.findByRoleName(roleName);
     if (!role) {
@@ -240,6 +256,16 @@ const userService = {
       }
     }
 
+    if (updates.first_name || updates.last_name || updates.phone) {
+      await userDuplicatesService.assertNotDuplicatePerson({
+        firstName: updates.first_name ?? current.first_name,
+        lastName: updates.last_name ?? current.last_name,
+        phone: updates.phone ?? current.phone,
+        identityNumber: updates.identity_number ?? current.identity_number,
+        excludeUserId: id,
+      });
+    }
+
     const updated = await userRepository.update(id, updates);
 
     for (const entry of auditEntries) {
@@ -307,6 +333,14 @@ const userService = {
     const normalized = normalizeRoleName(roleName);
     if (!ROLES[normalized]) {
       throw buildError('El rol seleccionado no es válido.', 422, 'INVALID_ROLE');
+    }
+
+    if (normalized === ROLES.CIUDADANO) {
+      throw buildError(
+        'No se puede asignar el rol de ciudadano; los ciudadanos se registran desde la aplicación.',
+        400,
+        'ROLE_NOT_ALLOWED',
+      );
     }
 
     if (current.roles.name === normalized) {

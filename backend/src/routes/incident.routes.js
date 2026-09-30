@@ -21,6 +21,10 @@
  *                                             de verificación (REPORTADO/RECIBIDO).
  *   - POST /api/v1/incidents/:id/assign-verification → asignar a verificación
  *                                             (cambia a EN_VERIFICACION).
+ *   - GET  /api/v1/incidents/in-verification → incidentes EN_VERIFICACION
+ *                                             con su verificador asignado.
+ *   - POST /api/v1/incidents/:id/reassign-verification → reasignar el
+ *                                             verificador del incidente.
  * HU11 — Verificar incidente (personal de verificación):
  *   - GET  /api/v1/incidents/assigned-verification → incidentes asignados
  *                                             al verificador.
@@ -44,6 +48,9 @@
  *                                             (ATENDIDO → CERRADO).
  *   - POST /api/v1/incidents/:id/evidence → evidencia del trabajo
  *                                             realizado (personal de solución).
+ * Mapa interactivo (acotado por rol y por asignación):
+ *   - GET  /api/v1/incidents/map-incidents → incidentes con ubicación dentro
+ *                                             del alcance del rol (HU09-HU13).
  * Transición de estados:
  *   - PATCH /api/v1/incidents/:id/status    → cambiar estado (transiciones
  *                                             autorizadas por rol, con
@@ -52,6 +59,9 @@
  * Editar / eliminar reporte (solo estado REPORTADO y edición única):
  *   - PATCH /api/v1/incidents/:id                → editar (ciudadano).
  *   - DELETE /api/v1/incidents/:id               → eliminar (ciudadano).
+ * Reabrir reporte rechazado (ciudadano, solo una vez):
+ *   - POST /api/v1/incidents/:id/reopen → devuelve a REPORTADO y habilita
+ *                                           una única edición para mejorarlo.
  * Sigue el patrón de category.routes.js (router + authenticate +
  * requireRole + validate). Solo enrutan, sin lógica de negocio.
  *
@@ -78,10 +88,13 @@ const {
 const {
   createIncidentValidation,
   listIncidentsValidation,
+  mapIncidentsValidation,
   assignVerificationValidation,
+  reassignVerificationValidation,
   assignSolutionValidation,
   changeStatusValidation,
   verifyIncidentValidation,
+  rejectIncidentValidation,
   attendIncidentValidation,
   markAttendedValidation,
   closeIncidentValidation,
@@ -116,12 +129,46 @@ router.get(
   assignmentController.listVerifiers,
 );
 
+/**
+ * Mapa interactivo de incidentes con ubicación registrada.
+ * Todos los roles autenticados pueden consultar este endpoint;
+ * el service acota la vista al alcance de cada rol (utils/mapScope):
+ * el ciudadano ve todos los reportes (para no duplicar uno ya hecho), el
+ * personal municipal ve solo lo que le corresponde y el administrador ve todo.
+ */
+router.get(
+  '/map-incidents',
+  authenticate,
+  requireRole(
+    ROLES.CIUDADANO,
+    ROLES.RECEPCION,
+    ROLES.VERIFICADOR,
+    ROLES.ENCARGADO_SOLUCION,
+    ROLES.PERSONAL_SOLUCION,
+    ROLES.ADMINISTRADOR,
+  ),
+  validate(mapIncidentsValidation),
+  incidentController.getMapIncidents,
+);
+
 /** HU10 — Incidentes pendientes de verificación (REPORTADO/RECIBIDO). */
 router.get(
   '/pending-verification',
   authenticate,
   requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
   assignmentController.listPendingVerification,
+);
+
+/**
+ * HU — Incidentes actualmente EN_VERIFICACION con su verificador asignado,
+ * para que la recepción pueda reasignarlo.
+ */
+router.get(
+  '/in-verification',
+  authenticate,
+  requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
+  validate(listIncidentsValidation),
+  assignmentController.listInVerification,
 );
 
 /** HU11 — Incidentes asignados al verificador para su verificación. */
@@ -149,6 +196,32 @@ router.post(
   requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
   validate(assignVerificationValidation),
   assignmentController.assignVerification,
+);
+
+/**
+ * HU — Reasignar el verificador de un incidente en verificación
+ * (EN_VERIFICACION). Completa la asignación actual, crea la nueva,
+ * registra historial y notifica (verificador saliente, nuevo y ciudadano).
+ */
+router.post(
+  '/:id/reassign-verification',
+  authenticate,
+  requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
+  validate(reassignVerificationValidation),
+  assignmentController.reassignVerification,
+);
+
+/**
+ * HU — Rechazo del encargado de recepción de un reporte que no considera
+ * válido (solo REPORTADO/RECIBIDO, antes de asignar a verificación).
+ * Guarda el motivo, registra el historial y notifica al ciudadano.
+ */
+router.post(
+  '/:id/reject',
+  authenticate,
+  requireRole(ROLES.RECEPCION, ROLES.ADMINISTRADOR),
+  validate(rejectIncidentValidation),
+  statusController.rejectIncident,
 );
 
 /** HU12 — Personal de solución disponible (encargado de solución). */
@@ -263,6 +336,17 @@ router.patch(
   requireRole(ROLES.CIUDADANO),
   validate(createIncidentValidation),
   incidentController.updateIncident,
+);
+
+/**
+ * Reabrir reporte rechazado (ciudadano, dueño, una sola vez). Devuelve el
+ * reporte a REPORTADO y habilita una única edición para mejorarlo.
+ */
+router.post(
+  '/:id/reopen',
+  authenticate,
+  requireRole(ROLES.CIUDADANO),
+  incidentController.reopenIncident,
 );
 
 router.delete(

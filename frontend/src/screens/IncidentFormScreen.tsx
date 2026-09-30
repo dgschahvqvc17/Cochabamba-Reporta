@@ -61,6 +61,9 @@ import {
   radius,
   spacing,
 } from '../theme';
+import { formatDateTime } from '../utils/format';
+import { OFFLINE_TITLE } from '../utils/errorMessages';
+import { hasRepeatedLetters, repeatedLettersMessage, singleSpaced } from '../utils/validators';
 import type { PickedEvidence } from '../utils/evidence';
 import type { CurrentPosition } from '../utils/location';
 
@@ -69,6 +72,12 @@ type IncidentFormScreenProps = {
   onSaved: () => void;
   mode?: 'create' | 'edit';
   incidentId?: number;
+  /**
+   * Abre el mapa de la ciudad. Permite al ciudadano comprobar si el
+   * problema que va a describir ya fue reportado en esa ubicación antes de
+   * enviar un reporte duplicado.
+   */
+  onOpenMap?: () => void;
 };
 
 const MIN_TITLE_LENGTH = 8;
@@ -78,11 +87,42 @@ const MAX_DESCRIPTION_LENGTH = 2000;
 
 type FieldErrors = Record<string, string>;
 
+type SubmitProgress =
+  | { phase: 'register' }
+  | { phase: 'location' }
+  | { phase: 'evidence'; done: number; total: number };
+
+function submitProgressText(progress: SubmitProgress): string {
+  switch (progress.phase) {
+    case 'register':
+      return 'Registrando el reporte…';
+    case 'location':
+      return 'Guardando tu ubicación…';
+    case 'evidence':
+      return `Subiendo evidencia ${progress.done + 1} de ${progress.total}…`;
+  }
+}
+
+/**
+ * Mensaje del plazo máximo de respuesta comprometido al ciudadano (HU06).
+ * Se añade a la confirmación de éxito cuando el backend envía la fecha.
+ */
+function buildDeadlineMessage(deadline?: string | null): string {
+  if (!deadline) {
+    return '';
+  }
+
+  return ` Te responderemos en un plazo máximo de 1 día (antes del ${formatDateTime(
+    deadline,
+  )}).`;
+}
+
 export default function IncidentFormScreen({
   onBack,
   onSaved,
   mode = 'create',
   incidentId,
+  onOpenMap,
 }: IncidentFormScreenProps) {
   const insets = useSafeAreaInsets();
   const { dialog, error, confirm, success, close } = useDialog();
@@ -97,6 +137,9 @@ export default function IncidentFormScreen({
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState<SubmitProgress | null>(
+    null,
+  );
   const [evidence, setEvidence] = useState<PickedEvidence[]>([]);
   const [isPicking, setIsPicking] = useState(false);
   const [position, setPosition] = useState<CurrentPosition | null>(null);
@@ -138,7 +181,7 @@ export default function IncidentFormScreen({
       const incident = result.data;
       setCategoryId(incident.categoryId);
       setTitle(incident.title);
-      setDescription(incident.description);
+      setDescription(incident.description ?? '');
     })();
   }, [isEdit, incidentId, error, onBack]);
 
@@ -153,12 +196,16 @@ export default function IncidentFormScreen({
       errs.title = `Mínimo ${MIN_TITLE_LENGTH} caracteres.`;
     else if (t.length > MAX_TITLE_LENGTH)
       errs.title = `Máximo ${MAX_TITLE_LENGTH} caracteres.`;
+    else if (hasRepeatedLetters(t))
+      errs.title = repeatedLettersMessage('El título');
     const d = description.trim();
     if (!d) errs.description = 'La descripción es obligatoria.';
     else if (d.length < MIN_DESCRIPTION_LENGTH)
       errs.description = `Mínimo ${MIN_DESCRIPTION_LENGTH} caracteres.`;
     else if (d.length > MAX_DESCRIPTION_LENGTH)
       errs.description = `Máximo ${MAX_DESCRIPTION_LENGTH} caracteres.`;
+    else if (hasRepeatedLetters(d))
+      errs.description = repeatedLettersMessage('La descripción');
     if (!isEdit && !position) {
       errs.location = 'Debes registrar la ubicación del incidente.';
     }
@@ -208,11 +255,11 @@ export default function IncidentFormScreen({
   const handleBack = () => {
     if (!isOnline && hasDraft) {
       confirm({
-        title: 'Sin conexión a internet',
+        title: OFFLINE_TITLE,
         message:
-          'Estás elaborando un reporte sin conexión. Si sales ahora, los datos que ingresaste se perderán porque aún no se guardaron.',
+          'Estás escribiendo tu reporte sin conexión a internet. Si sales ahora, lo que escribiste se perderá porque todavía no se guardó en el sistema.',
         confirmLabel: 'Salir de todos modos',
-        cancelLabel: 'Seguir en el formulario',
+        cancelLabel: 'Seguir escribiendo',
         tone: 'warning',
         onConfirm: onBack,
       });
@@ -253,10 +300,7 @@ export default function IncidentFormScreen({
     setEvidence((current) => current.filter((_, itemIndex) => itemIndex !== index));
   };
 
-  const handleSubmit = async () => {
-    const errs = validateForm();
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+  const performSubmit = async () => {
     if (categoryId === null) return;
 
     setIsSubmitting(true);
@@ -277,6 +321,7 @@ export default function IncidentFormScreen({
           return;
         }
 
+        setSubmitProgress({ phase: 'register' });
         const result = await editIncident(incidentId, payload);
 
         if (!result.success) {
@@ -297,12 +342,16 @@ export default function IncidentFormScreen({
         return;
       }
 
+      setSubmitProgress({ phase: 'register' });
       const result = await registerIncident(payload);
 
       if (!result.success || !result.data) {
         if (result.fieldErrors) setErrors(result.fieldErrors);
         error({
-          title: 'No se pudo registrar el reporte',
+          title:
+            result.code === 'DUPLICATE_INCIDENT'
+              ? 'Reporte duplicado detectado'
+              : 'No se pudo registrar el reporte',
           message: result.message,
         });
         return;
@@ -312,6 +361,7 @@ export default function IncidentFormScreen({
       let locationFailed = false;
 
       if (position) {
+        setSubmitProgress({ phase: 'location' });
         const locationResult = await attachLocationToIncident(incident.id, {
           latitude: position.latitude,
           longitude: position.longitude,
@@ -324,7 +374,9 @@ export default function IncidentFormScreen({
       let failedCount = 0;
       let firstEvidenceError = '';
 
-      for (const image of evidence) {
+      for (let i = 0; i < evidence.length; i += 1) {
+        const image = evidence[i];
+        setSubmitProgress({ phase: 'evidence', done: i, total: evidence.length });
         const attachResult = await attachEvidenceToIncident(incident.id, image);
         if (!attachResult.success) {
           failedCount += 1;
@@ -365,7 +417,9 @@ export default function IncidentFormScreen({
             ? `${evidence.length - failedCount} de ${evidence.length} imágenes se adjuntaron correctamente; ${failedCount} no pudieron subirse${
                 firstEvidenceError ? ` (${firstEvidenceError})` : '.'
               }`
-            : 'Tu incidente se registró correctamente y está en revisión.',
+            : `Tu incidente se registró correctamente y está en revisión.${buildDeadlineMessage(
+                incident.responseDeadlineAt,
+              )}`,
         onAccept: onSaved,
       });
     } catch (caught) {
@@ -378,7 +432,32 @@ export default function IncidentFormScreen({
       });
     } finally {
       setIsSubmitting(false);
+      setSubmitProgress(null);
     }
+  };
+
+  const handleSubmit = () => {
+    // Antebloqueo: el botón solo debe disparar UNA vez por envío.
+    if (isSubmitting) return;
+
+    const errs = validateForm();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    if (categoryId === null) return;
+
+    confirm({
+      title: isEdit ? '¿Guardar los cambios?' : '¿Enviar el reporte?',
+      message: isEdit
+        ? 'Tu reporte se actualizará. Recuerda que solo se permite una edición.'
+        : 'El reporte quedará en revisión para su atención. Recibirás una respuesta en un plazo máximo de 1 día. Se guardarán la ubicación y las evidencias adjuntas.',
+      confirmLabel: isEdit ? 'Sí, guardar' : 'Sí, enviar',
+      cancelLabel: 'No, revisar',
+      tone: 'accent',
+      onConfirm: async () => {
+        close();
+        await performSubmit();
+      },
+    });
   };
 
   const selectedCategory = categories.find((c) => c.id === categoryId);
@@ -479,7 +558,7 @@ export default function IncidentFormScreen({
                   <AppTextInput
                     label="Título"
                     value={title}
-                    onChangeText={setTitle}
+                    onChangeText={(v) => setTitle(singleSpaced(v))}
                     placeholder="Ej.: Bache en la Av. Principal"
                     maxLength={MAX_TITLE_LENGTH}
                     error={errors.title}
@@ -489,7 +568,7 @@ export default function IncidentFormScreen({
                   <AppTextInput
                     label="Descripción"
                     value={description}
-                    onChangeText={setDescription}
+                    onChangeText={(v) => setDescription(singleSpaced(v))}
                     placeholder="Describe con detalle qué está ocurriendo…"
                     maxLength={MAX_DESCRIPTION_LENGTH}
                     error={errors.description}
@@ -527,12 +606,39 @@ export default function IncidentFormScreen({
                     </>
                   )}
 
+                  {!isEdit && onOpenMap ? (
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.mapHint,
+                        pressed && styles.mapHintPressed,
+                      ]}
+                      onPress={onOpenMap}
+                      testID="incident-open-map"
+                    >
+                      <Icon name="map" size={18} color={Colors.accentDim} />
+                      <View style={styles.mapHintTextBox}>
+                        <Text style={styles.mapHintTitle}>
+                          ¿Ya fue reportado antes?
+                        </Text>
+                        <Text style={styles.mapHintSub}>
+                          Revisa el mapa de la ciudad para ver si el problema
+                          ya está registrado en esa ubicación.
+                        </Text>
+                      </View>
+                      <Icon
+                        name="chevronRight"
+                        size={18}
+                        color={Colors.accentDim}
+                      />
+                    </Pressable>
+                  ) : null}
+
                   <PrimaryButton
                     label={
                       isSubmitting
                         ? isEdit
                           ? 'Guardando…'
-                          : 'Registrando…'
+                          : 'Enviando…'
                         : isEdit
                         ? 'Guardar cambios'
                         : 'Enviar reporte'
@@ -543,6 +649,18 @@ export default function IncidentFormScreen({
                       !isEdit && evidence.length === 0 && !isSubmitting
                     }
                   />
+
+                  {isSubmitting && submitProgress ? (
+                    <View style={styles.progressRow}>
+                      <ActivityIndicator
+                        size="small"
+                        color={Colors.accent}
+                      />
+                      <Text style={styles.progressText}>
+                        {submitProgressText(submitProgress)}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
               )}
@@ -731,6 +849,46 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontSize: fontSizes.caption,
     marginTop: spacing.xs,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm - spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  progressText: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.caption,
+  },
+  mapHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(59, 130, 184, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 184, 0.28)',
+    borderRadius: radius.element,
+    padding: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  mapHintPressed: {
+    backgroundColor: 'rgba(59, 130, 184, 0.16)',
+  },
+  mapHintTextBox: {
+    flex: 1,
+  },
+  mapHintTitle: {
+    color: Colors.textPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.semiBold,
+  },
+  mapHintSub: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.micro,
+    lineHeight: 16,
+    marginTop: 2,
   },
   loadingEditBox: {
     alignItems: 'center',

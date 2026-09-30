@@ -20,6 +20,7 @@ const userRoutes = require('./routes/user.routes');
 const categoryRoutes = require('./routes/category.routes');
 const incidentRoutes = require('./routes/incident.routes');
 const notificationRoutes = require('./routes/notification.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 const errorMiddleware = require('./middlewares/error.middleware');
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/incidents', incidentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/dashboard', dashboardRoutes);
 
 app.use(errorMiddleware);
 

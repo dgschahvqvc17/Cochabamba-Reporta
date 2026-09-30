@@ -203,8 +203,8 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
   };
 
   const hPad = isDesktop
-    ? Math.max(insets.left, spacing.base)
-    : Math.max(insets.left, spacing.sm);
+    ? Math.max(insets.left, spacing.lg)
+    : Math.max(insets.left, spacing.base);
 
   // Zona segura inferior + holgura mínima para que la barra quede siempre
   // por encima de los botones del dispositivo (barra de gestos/navegación).
@@ -279,17 +279,13 @@ function AppNavBar({ items, activeKey, onLogout, dimmed = false }: AppNavBarProp
 
 const styles = StyleSheet.create({
   wrapper: {
-    // Solid background so content behind doesn't bleed through
-    backgroundColor: '#FFFFFF',
+    // Transparent so the rounded "pill" bar reads as floating over the
+    // screen for every role (the white background only lives on the bar).
+    backgroundColor: 'transparent',
     overflow: 'hidden',
-    // Premium hairline (soft gold) on top edge
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(201, 162, 75, 0.35)',
-    // @ts-ignore
-    boxShadow: '0 -8px 30px -18px rgba(18, 38, 58, 0.35)',
   },
   wrapperCompact: {
-    borderTopColor: 'rgba(201, 162, 75, 0.28)',
+    backgroundColor: 'transparent',
   },
   wrapperCollapsed: {
     maxHeight: 0,
@@ -303,12 +299,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingBottom: spacing.xs,
     borderWidth: 1,
-    borderColor: Colors.borderSoft,
+    borderColor: Colors.borderLight,
     maxWidth: layout.contentMaxWidth,
     alignSelf: 'center',
     width: '100%',
     // @ts-ignore
-    boxShadow: '0 18px 42px -18px rgba(18, 38, 58, 0.45)',
+    boxShadow: '0 20px 44px -18px rgba(18, 38, 58, 0.55)',
   },
   barCompact: {
     borderRadius: radius.card,

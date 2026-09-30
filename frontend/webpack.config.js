@@ -14,6 +14,10 @@ module.exports = {
   resolve: {
     alias: {
       'react-native$': 'react-native-web',
+      // `global` (ProvidePlugin) resuelve al paquete `globalthis`, cuya
+      // polyfill devuelve un global reducido sin APIs del navegador (ver
+      // config/globalthis.stub.js). Se sustituye por el globalThis real.
+      'globalThis$': path.resolve(__dirname, 'config', 'globalthis.stub.js'),
       '@react-native/assets-registry/registry': path.resolve(
         __dirname,
         'config',

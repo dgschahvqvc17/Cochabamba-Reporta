@@ -23,6 +23,11 @@
 const { body, query } = require('express-validator');
 const { INCIDENT_STATUSES } = require('../utils/incidentStatus');
 const {
+  MAX_REPEATED_LETTERS_RUN,
+  hasExcessiveRepeatedLetters,
+  hasUselessSpaces,
+} = require('../utils/text');
+const {
   MIN_TITLE_LENGTH,
   MAX_TITLE_LENGTH,
   MIN_DESCRIPTION_LENGTH,
@@ -32,6 +37,7 @@ const {
   MAX_OBSERVATIONS_LENGTH,
   MAX_REJECTED_REASON_LENGTH,
   MAX_ACTIONS_LENGTH,
+  INCIDENT_ORDER_VALUES,
 } = require('../utils/incidentRules');
 
 const validateCategoryId = body('categoryId')
@@ -76,6 +82,13 @@ const validateListLimit = query('limit')
   )
   .toInt();
 
+/** Orden por fecha de llegada: `asc` (más antiguos) u `order=desc`. */
+const validateListOrder = query('order')
+  .optional({ values: 'falsy' })
+  .toLowerCase()
+  .isIn(INCIDENT_ORDER_VALUES)
+  .withMessage('El orden debe ser "asc" (más antiguos primero) o "desc".');
+
 const listIncidentsValidation = [
   validateListStatus,
   validateListCategoryId,
@@ -84,7 +97,41 @@ const listIncidentsValidation = [
   validateListSearch,
   validateListPage,
   validateListLimit,
+  validateListOrder,
 ];
+
+/**
+ * Mapa interactivo: mismos filtros que el listado (estado, categoría y
+ * búsqueda) sin paginación. El alcance por rol lo aplica el service
+ * (utils/mapScope), nunca los parámetros de la consulta.
+ */
+const mapIncidentsValidation = [
+  validateListStatus,
+  validateListCategoryId,
+  validateListSearch,
+];
+
+/** Sin espacios al principio, al final ni duplicados ("  bache  roto "). */
+const noUselessSpaces = (label) => (value) => {
+  if (hasUselessSpaces(value)) {
+    throw new Error(
+      `${label} no puede empezar ni terminar con espacios, ni tener espacios de más.`,
+    );
+  }
+
+  return true;
+};
+
+/** Detecta el relleno con teclado: "aaa", "lllooo", "bbbb". */
+const noRepeatedLetters = (label) => (value) => {
+  if (hasExcessiveRepeatedLetters(value, MAX_REPEATED_LETTERS_RUN)) {
+    throw new Error(
+      `${label} no puede tener más de ${MAX_REPEATED_LETTERS_RUN} letras iguales seguidas. Revisa que esté bien escrito.`,
+    );
+  }
+
+  return true;
+};
 
 const validateTitle = body('title')
   .trim()
@@ -93,7 +140,9 @@ const validateTitle = body('title')
   .isLength({ min: MIN_TITLE_LENGTH, max: MAX_TITLE_LENGTH })
   .withMessage(
     `El título debe tener entre ${MIN_TITLE_LENGTH} y ${MAX_TITLE_LENGTH} caracteres.`,
-  );
+  )
+  .custom(noUselessSpaces('El título'))
+  .custom(noRepeatedLetters('El título'));
 
 const validateDescription = body('description')
   .trim()
@@ -102,7 +151,9 @@ const validateDescription = body('description')
   .isLength({ min: MIN_DESCRIPTION_LENGTH, max: MAX_DESCRIPTION_LENGTH })
   .withMessage(
     `La descripción debe tener entre ${MIN_DESCRIPTION_LENGTH} y ${MAX_DESCRIPTION_LENGTH} caracteres.`,
-  );
+  )
+  .custom(noUselessSpaces('La descripción'))
+  .custom(noRepeatedLetters('La descripción'));
 
 const createIncidentValidation = [
   validateCategoryId,
@@ -123,6 +174,15 @@ const validateAssignNote = body('note')
   .withMessage('La nota no debe superar los 255 caracteres.');
 
 const assignVerificationValidation = [
+  validateAssignedToId,
+  validateAssignNote,
+];
+
+/**
+ * HU — Reasignar el verificador de un incidente en verificación.
+ * Misma forma que la asignación (assignedToId distinto del actual + nota).
+ */
+const reassignVerificationValidation = [
   validateAssignedToId,
   validateAssignNote,
 ];
@@ -180,6 +240,21 @@ const verifyIncidentValidation = [
   validateRejectedReason,
 ];
 
+/**
+ * Rechazo del encargado de recepción (HU) — el motivo es obligatorio y se
+ * entrega al ciudadano (historial + notificación).
+ */
+const validateRejectedReasonRequired = body('rejectedReason')
+  .trim()
+  .notEmpty()
+  .withMessage('Debe indicar el motivo por el que rechaza el reporte.')
+  .isLength({ max: MAX_REJECTED_REASON_LENGTH })
+  .withMessage(
+    `El motivo de rechazo no debe superar los ${MAX_REJECTED_REASON_LENGTH} caracteres.`,
+  );
+
+const rejectIncidentValidation = [validateRejectedReasonRequired];
+
 /** HU13: acciones realizadas obligatorias al iniciar la atención. */
 const validateActionsRequired = body('actions')
   .trim()
@@ -208,10 +283,13 @@ const closeIncidentValidation = [validateActionsOptional, validateObservations];
 module.exports = {
   createIncidentValidation,
   listIncidentsValidation,
+  mapIncidentsValidation,
   assignVerificationValidation,
+  reassignVerificationValidation,
   assignSolutionValidation,
   changeStatusValidation,
   verifyIncidentValidation,
+  rejectIncidentValidation,
   attendIncidentValidation,
   markAttendedValidation,
   closeIncidentValidation,

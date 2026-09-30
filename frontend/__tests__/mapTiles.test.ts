@@ -10,6 +10,7 @@
 import {
   MAX_MERCATOR_LATITUDE,
   clampLatitude,
+  esriStreetUrl,
   mercatorTile,
   tileUrl,
 } from '../src/utils/mapTiles';
@@ -53,5 +54,14 @@ describe('mapTiles utils (HU08)', () => {
     expect(tileUrl(1, 1, 1, 'rastertiles/voyager')).toContain(
       '/rastertiles/voyager/1/1/1.png',
     );
+  });
+
+  test('genera URLs de Esri World Street Map en el orden z/y/x', () => {
+    expect(esriStreetUrl(41449, 71968, 17)).toBe(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/17/71968/41449',
+    );
+
+    // x negativo debe envolverse al final de la fila (zoom 1 → 2 tiles).
+    expect(esriStreetUrl(-1, 1, 1)).toContain('/tile/1/1/1');
   });
 });

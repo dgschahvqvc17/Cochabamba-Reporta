@@ -4,6 +4,7 @@
  * Consumo de la API REST del backend para la gestión de usuarios
  * y roles (HU03). Todas las operaciones requieren el token del
  * administrador autenticado.
+ * Usa el cliente HTTP compartido (services/apiClient).
  *
  * @format
  */
@@ -16,18 +17,9 @@ import type {
   UserListData,
   UserUpdatePayload,
 } from '../models/User';
-import { clearSession } from '../utils/session';
-import { API_BASE_URL as BASE_URL } from '../config/api';
+import { api, type ApiResponse } from './apiClient';
 
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-  error?: {
-    code?: string;
-    details?: { field: string; message: string }[];
-  };
-}
+export type { ApiResponse };
 
 export interface UserListParams {
   page?: number;
@@ -36,27 +28,6 @@ export interface UserListParams {
   role?: string;
   active?: boolean;
 }
-
-const api = async <T>(
-  path: string,
-  accessToken: string,
-  options: RequestInit = {},
-): Promise<ApiResponse<T>> => {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      ...(options.headers || {}),
-    },
-  });
-
-  if (response.status === 401) {
-    clearSession();
-  }
-
-  return response.json();
-};
 
 export async function getUsers(
   accessToken: string,

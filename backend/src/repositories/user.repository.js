@@ -144,7 +144,7 @@ const findById = async (id) => {
 const findAll = async ({ page, limit, search, role, active }) => {
   let query = supabaseAdmin
     .from('users')
-    .select('*, roles(id, name)', { count: 'exact' });
+    .select('*, roles!inner(id, name)', { count: 'exact' });
 
   if (role) {
     query = query.eq('roles.name', role);
@@ -209,6 +209,44 @@ const findStaffByRole = async (roleName) => {
 };
 
 const findVerifiers = async () => findStaffByRole('VERIFICADOR');
+
+/**
+ * Funcionarios activos de varios roles a la vez. Se usa para avisar a todo
+ * el personal que debe enterarse de un reporte nuevo (recepción y
+ * administración), sin repetir consultas ni duplicar avisos cuando alguien
+ * tiene más de un rol.
+ */
+const findActiveStaffByRoles = async (roleNames) => {
+  const roles = Array.isArray(roleNames) ? roleNames : [roleNames];
+
+  if (roles.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id, roles!inner(name)')
+    .eq('active', true)
+    .in('roles.name', roles);
+
+  if (error) {
+    throw error;
+  }
+
+  const seen = new Set();
+  const unique = [];
+
+  for (const staff of data ?? []) {
+    if (seen.has(staff.id)) {
+      continue;
+    }
+
+    seen.add(staff.id);
+    unique.push(staff);
+  }
+
+  return unique;
+};
 
 /** HU12 — Personal de solución activo disponible para asignar. */
 const findSolutionStaff = async () => findStaffByRole('PERSONAL_SOLUCION');
@@ -275,6 +313,38 @@ const findUsersByIds = async (ids) => {
   return data;
 };
 
+/**
+ * Candidatos a duplicados de persona: usuarios cuyo nombre o apellido se
+ * parece al indicado. La confirmación exacta (nombre + apellido + teléfono
+ * o documento) la hace userDuplicates.service, para no dar falsos positivos
+ * con nombres comunes.
+ */
+const findSameNameCandidates = async ({ firstName, lastName, excludeId }) => {
+  const first = sanitizeSearchTerm(firstName);
+  const last = sanitizeSearchTerm(lastName);
+
+  if (!first || !last) {
+    return [];
+  }
+
+  let query = supabaseAdmin
+    .from('users')
+    .select('id, first_name, last_name, phone, identity_number')
+    .or(`first_name.ilike.%${first}%,last_name.ilike.%${last}%`);
+
+  if (excludeId) {
+    query = query.neq('id', excludeId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 module.exports = {
   findByEmail,
   findByEmailWithRole,
@@ -283,6 +353,7 @@ module.exports = {
   findByIdentityNumber,
   findByEmailExcludingId,
   findByIdentityNumberExcludingId,
+  findSameNameCandidates,
   createAuthUser,
   create,
   findAll,
@@ -293,4 +364,6 @@ module.exports = {
   findUsersByIds,
   findVerifiers,
   findSolutionStaff,
+  findStaffByRole,
+  findActiveStaffByRoles,
 };

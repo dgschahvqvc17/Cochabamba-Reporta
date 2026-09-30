@@ -29,7 +29,7 @@ import { fondo3 } from '../assets/images';
 import { loadCategories } from '../controllers/categoryController';
 import { loadManagedIncidents } from '../controllers/incidentController';
 import type { Category } from '../models/Category';
-import type { Incident, IncidentStatus } from '../models/Incident';
+import type { Incident, IncidentOrder, IncidentStatus } from '../models/Incident';
 import {
   Colors,
   fontSizes,
@@ -62,6 +62,15 @@ const STATUS_OPTIONS: {
   { value: 'ATENDIDO', label: 'Atendido', tone: 'success' },
   { value: 'CERRADO', label: 'Cerrado', tone: 'neutral' },
   { value: 'RECHAZADO', label: 'Rechazado', tone: 'danger' },
+];
+
+/**
+ * Orden por fecha de llegada: "Más antiguos primero" deja arriba lo que
+ * lleva más tiempo esperando, que es lo que necesita recepción.
+ */
+const ORDER_OPTIONS: { value: IncidentOrder; label: string }[] = [
+  { value: 'desc', label: 'Más recientes primero' },
+  { value: 'asc', label: 'Más antiguos primero' },
 ];
 
 const STATUS_COLORS: Record<IncidentStatus, string> = {
@@ -128,6 +137,7 @@ function IncidentsScreen({ onBack, onOpenDetail }: IncidentsScreenProps) {
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<'' | IncidentStatus>('');
   const [categoryFilter, setCategoryFilter] = useState<number | null>(null);
+  const [orderFilter, setOrderFilter] = useState<IncidentOrder>('desc');
   const [categories, setCategories] = useState<Category[]>([]);
   const [fromInput, setFromInput] = useState('');
   const [toInput, setToInput] = useState('');
@@ -151,6 +161,7 @@ function IncidentsScreen({ onBack, onOpenDetail }: IncidentsScreenProps) {
         categoryId: categoryFilter ?? undefined,
         from: appliedFrom || undefined,
         to: appliedTo || undefined,
+        order: orderFilter,
       });
 
       refreshing ? setIsRefreshing(false) : setIsLoading(false);
@@ -166,7 +177,7 @@ function IncidentsScreen({ onBack, onOpenDetail }: IncidentsScreenProps) {
       setPage(data?.page ?? targetPage);
       setPages(data?.pages ?? 1);
     },
-    [searchInput, statusFilter, categoryFilter, appliedFrom, appliedTo],
+    [searchInput, statusFilter, categoryFilter, orderFilter, appliedFrom, appliedTo],
   );
 
   useEffect(() => {
@@ -359,6 +370,39 @@ function IncidentsScreen({ onBack, onOpenDetail }: IncidentsScreenProps) {
             })}
           </ScrollView>
         ) : null}
+
+        {/* Orden por fecha de llegada */}
+        <Text style={styles.filterLabel}>ORDEN POR LLEGADA</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}
+        >
+          {ORDER_OPTIONS.map((option) => {
+            const selected = orderFilter === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => setOrderFilter(option.value)}
+                style={({ pressed }) => [
+                  styles.chip,
+                  selected && styles.chipSelected,
+                  pressed && styles.chipPressed,
+                ]}
+              >
+                {selected && <Icon name="check" size={12} color={Colors.accent} />}
+                <Text
+                  style={[
+                    styles.chipText,
+                    selected && styles.chipTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         {/* Fecha */}
         <Text style={styles.filterLabel}>FECHA</Text>

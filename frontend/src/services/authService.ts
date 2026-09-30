@@ -5,80 +5,52 @@
  * las operaciones de registro (HU01) e inicio de sesión,
  * sesión actual y cierre de sesión (HU02).
  *
+ * Usa el cliente HTTP compartido (services/apiClient) para que, sin
+ * internet, la app muestre un mensaje de conexión comprensible en vez de
+ * quedar cargando o fallar en silencio.
+ *
  * @format
  */
 
 import type { Citizen, CitizenRegistration } from '../models/Citizen';
 import type { Session } from '../models/Session';
 import type { User } from '../models/User';
-import { API_BASE_URL as BASE_URL } from '../config/api';
+import { api, type ApiResponse } from './apiClient';
 
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data?: T;
-  error?: {
-    code?: string;
-    details?: { field: string; message: string }[];
-  };
-}
+export type { ApiResponse };
 
 export interface LoginData {
   user: User;
   session: Session;
 }
 
-const authHeaders = (accessToken: string): Record<string, string> => ({
-  Authorization: `Bearer ${accessToken}`,
-});
-
 export async function registerCitizen(
   payload: CitizenRegistration,
 ): Promise<ApiResponse<{ user: Citizen }>> {
-  const response = await fetch(`${BASE_URL}/auth/register`, {
+  return api<{ user: Citizen }>('/auth/register', '', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(payload),
   });
-
-  return response.json();
 }
 
 export async function login(
   email: string,
   password: string,
 ): Promise<ApiResponse<LoginData>> {
-  const response = await fetch(`${BASE_URL}/auth/login`, {
+  return api<LoginData>('/auth/login', '', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify({ email, password }),
   });
-
-  return response.json();
 }
 
 export async function me(
   accessToken: string,
 ): Promise<ApiResponse<{ user: User }>> {
-  const response = await fetch(`${BASE_URL}/auth/me`, {
-    method: 'GET',
-    headers: authHeaders(accessToken),
-  });
-
-  return response.json();
+  return api<{ user: User }>('/auth/me', accessToken, { method: 'GET' });
 }
 
 export async function logout(accessToken: string): Promise<ApiResponse<null>> {
-  const response = await fetch(`${BASE_URL}/auth/logout`, {
-    method: 'POST',
-    headers: authHeaders(accessToken),
-  });
-
-  return response.json();
+  return api<null>('/auth/logout', accessToken, { method: 'POST' });
 }
 
 export interface ChangePasswordPayload {
@@ -90,14 +62,8 @@ export async function changePassword(
   accessToken: string,
   payload: ChangePasswordPayload,
 ): Promise<ApiResponse<null>> {
-  const response = await fetch(`${BASE_URL}/auth/change-password`, {
+  return api<null>('/auth/change-password', accessToken, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(accessToken),
-    },
     body: JSON.stringify(payload),
   });
-
-  return response.json();
 }
