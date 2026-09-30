@@ -22,6 +22,7 @@ const {
   MAX_LIST_PAGE_SIZE,
   MAX_OBSERVATIONS_LENGTH,
   MAX_REJECTED_REASON_LENGTH,
+  truncateNotificationMessage,
 } = require('../utils/incidentRules');
 const { INCIDENT_STATUS } = require('../utils/incidentStatus');
 const {
@@ -75,7 +76,7 @@ const verificationService = {
       });
 
     return {
-      incidents: incidents.map(toPublicIncidentListItem),
+      incidents: incidents.map((item) => toPublicIncidentListItem(item, { viewer: user })),
       ...buildPaginationResponse({ total, page, limit }),
     };
   },
@@ -190,6 +191,7 @@ const verificationService = {
       user.id,
       comment,
       extraFields,
+      { suppressCitizenNotification: !verified },
     );
 
     if (assignment) {
@@ -200,15 +202,29 @@ const verificationService = {
       await notificationRepository.create({
         incidentId: incident.id,
         userId: incident.user_id,
-        message: `Su reporte ${incident.code} fue rechazado${
-          rejectedReason ? `: ${rejectedReason}` : '.'
-        }`,
+        message: truncateNotificationMessage(
+          `Su reporte ${incident.code} fue rechazado${
+            rejectedReason ? `: ${rejectedReason}` : '.'
+          }`,
+        ),
+      });
+    }
+
+    // El encargado de recepción que asignó este incidente recibe el
+    // resultado de la verificación (propia bandeja de notificaciones).
+    if (assignment && assignment.assigned_by) {
+      await notificationRepository.create({
+        incidentId: incident.id,
+        userId: assignment.assigned_by,
+        message: verified
+          ? `El reporte ${incident.code} fue verificado por el personal de verificación.`
+          : `El reporte ${incident.code} fue rechazado en la verificación.`,
       });
     }
 
     return {
       incident: {
-        ...toPublicIncident(updated),
+        ...toPublicIncident(updated, { viewer: user }),
         observations: observations || null,
         rejectedReason: updated.rejected_reason || null,
       },

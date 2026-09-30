@@ -44,14 +44,22 @@ import {
   spacing,
 } from '../theme';
 import { isValidEmail } from '../utils/validators';
+import {
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+  SESSION_CLOSED_TITLE,
+} from '../utils/errorMessages';
 import type { StoredSession } from '../utils/session';
 
 type LoginScreenProps = {
   onGoToRegister: () => void;
   onLoginSuccess: (session: StoredSession) => void;
+  /** Aviso claro de por qué se volvió al inicio de sesión (p. ej. la
+   *  sesión se cerró por seguridad). Nunca texto técnico sobre tokens. */
+  notice?: string | null;
 };
 
-function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
+function LoginScreen({ onGoToRegister, onLoginSuccess, notice }: LoginScreenProps) {
   const { dialog, error, close } = useDialog();
   const { width } = useWindowDimensions();
   const isDesktop = width >= layout.breakpointMd;
@@ -106,7 +114,23 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
     if (Object.keys(errs).length > 0) return;
 
     setIsSubmitting(true);
-    const result = await handleLogin(email, password, remember);
+
+    let result: Awaited<ReturnType<typeof handleLogin>>;
+
+    try {
+      result = await handleLogin(email, password, remember);
+    } catch {
+      // Sin internet el sistema no responde: se informa con un mensaje
+      // comprensible en lugar de dejar la pantalla cargando.
+      setIsSubmitting(false);
+      error({
+        title: OFFLINE_TITLE,
+        message: OFFLINE_MESSAGE,
+        tone: 'warning',
+      });
+      return;
+    }
+
     setIsSubmitting(false);
 
     if (!result.success) {
@@ -257,6 +281,16 @@ function LoginScreen({ onGoToRegister, onLoginSuccess }: LoginScreenProps) {
               <Text style={styles.cardSub}>
                 Escribe tus credenciales para continuar
               </Text>
+
+              {notice ? (
+                <View style={styles.noticeBox}>
+                  <Icon name="info" size={18} color={Colors.gold} />
+                  <View style={styles.noticeTextWrap}>
+                    <Text style={styles.noticeTitle}>{SESSION_CLOSED_TITLE}</Text>
+                    <Text style={styles.noticeText}>{notice}</Text>
+                  </View>
+                </View>
+              ) : null}
 
               <View style={styles.dividerH} />
 
@@ -545,6 +579,33 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.borderSoft,
     marginVertical: spacing.base,
     marginHorizontal: -spacing.lg,
+  },
+  noticeBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginTop: spacing.base,
+    backgroundColor: 'rgba(201, 162, 75, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 162, 75, 0.35)',
+    borderRadius: radius.element,
+    padding: spacing.base,
+  },
+  noticeTextWrap: {
+    flex: 1,
+  },
+  noticeTitle: {
+    color: Colors.gold,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.wide,
+    textTransform: 'uppercase',
+  },
+  noticeText: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.caption,
+    lineHeight: 18,
+    marginTop: 2,
   },
   fields: {
     marginTop: spacing.xs,

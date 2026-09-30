@@ -10,7 +10,7 @@
  * @format
  */
 
-export const MAP_TILE_SIZE = 128;
+export const MAP_TILE_SIZE = 256;
 
 /** Máximo paralelo soportado por el Web Mercator (≈85.05°). */
 export const MAX_MERCATOR_LATITUDE = 85.0511287798066;
@@ -66,6 +66,19 @@ export function mercatorTile(
     offsetX: worldX * scale - x,
     offsetY: worldY * scale - y,
   };
+}
+
+/**
+ * URL de un tile Esri "World Street Map" para {z}/{x}/{y}.
+ * Estilo colorido tipo Google Maps (calles, manzanas, parques, agua y
+ * etiquetas) con buena cobertura mundial, sin API key. Es el proveedor
+ * usado por `MapPreview` porque en Bolivia CARTO "voyager" devuelve tiles
+ * prácticamente vacíos (~16 colores).
+ */
+export function esriStreetUrl(x: number, y: number, zoom: number): string {
+  const wrappedX = ((x % (2 ** zoom)) + 2 ** zoom) % (2 ** zoom);
+  const wrappedY = Math.max(0, Math.min(2 ** zoom - 1, y));
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${zoom}/${wrappedY}/${wrappedX}`;
 }
 
 /** Estilos de tiles CARTO disponibles (sin API key). */

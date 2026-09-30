@@ -16,7 +16,7 @@
 const dashboardRepository = require('../repositories/dashboard.repository');
 const { buildError } = require('../utils/errors');
 const ROLES = require('../utils/roles');
-const INCIDENT_STATUS = require('../utils/incidentStatus');
+const { INCIDENT_STATUS } = require('../utils/incidentStatus');
 
 /** Umbral de incidentes pendientes para emitir la alerta de gestión. */
 const PENDING_ALERT_THRESHOLD = 8;
@@ -63,6 +63,8 @@ const buildDashboardSnapshot = async ({ user } = {}) => {
     pending,
     attended,
     recent,
+    byStatus,
+    byCategory,
   ] = await Promise.all([
     dashboardRepository.countTotalCitizens(),
     dashboardRepository.countTotalIncidents(),
@@ -74,6 +76,8 @@ const buildDashboardSnapshot = async ({ user } = {}) => {
     dashboardRepository.countIncidentsByStatus(INCIDENT_STATUS.REPORTADO),
     dashboardRepository.countIncidentsByStatus(INCIDENT_STATUS.ATENDIDO),
     dashboardRepository.findRecentIncidents({ limit: 6 }),
+    dashboardRepository.countIncidentsGroupedByStatus(),
+    dashboardRepository.countIncidentsGroupedByCategory({ limit: 5 }),
   ]);
 
   const alerts = [];
@@ -103,6 +107,8 @@ const buildDashboardSnapshot = async ({ user } = {}) => {
       activeVerifiers: verifiers,
       activeSolutionStaff: solutionStaff,
     },
+    byStatus,
+    byCategory,
     alerts,
     recent,
   };

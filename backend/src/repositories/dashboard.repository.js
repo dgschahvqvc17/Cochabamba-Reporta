@@ -14,7 +14,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const countActiveUsersByRole = async (roleName) => {
   const { count, error } = await supabaseAdmin
     .from('users')
-    .select('*', { count: 'exact', head: true })
+    .select('*, roles!inner(id)', { count: 'exact', head: true })
     .eq('active', true)
     .eq('roles.name', roleName);
 
@@ -106,6 +106,44 @@ const findRecentIncidents = async ({ limit = 6 } = {}) => {
   return data ?? [];
 };
 
+const countIncidentsGroupedByStatus = async () => {
+  const { data, error } = await supabaseAdmin.from('incidents').select('status');
+
+  if (error) {
+    throw error;
+  }
+
+  const counts = {};
+  for (const row of data ?? []) {
+    counts[row.status] = (counts[row.status] ?? 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .map(([status, count]) => ({ status, count }))
+    .sort((a, b) => b.count - a.count);
+};
+
+const countIncidentsGroupedByCategory = async ({ limit = 5 } = {}) => {
+  const { data, error } = await supabaseAdmin
+    .from('incidents')
+    .select('categories(name)');
+
+  if (error) {
+    throw error;
+  }
+
+  const counts = {};
+  for (const row of data ?? []) {
+    const name = (row.categories && row.categories.name) || 'Sin categoría';
+    counts[name] = (counts[name] ?? 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+};
+
 module.exports = {
   countActiveUsersByRole,
   countTotalCitizens,
@@ -114,4 +152,6 @@ module.exports = {
   countIncidentsByCategory,
   countIncidentsToday,
   findRecentIncidents,
+  countIncidentsGroupedByStatus,
+  countIncidentsGroupedByCategory,
 };

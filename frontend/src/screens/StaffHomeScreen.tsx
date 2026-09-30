@@ -52,6 +52,8 @@ type StaffHomeScreenProps = {
   onGoToVerificationQueue: () => void;
   onGoToPendingSolution: () => void;
   onGoToSolutionQueue: () => void;
+  onViewNotifications: () => void;
+  onViewProfile: () => void;
 };
 
 const ROLE_TONES: Partial<Record<Role, PillTone>> = {
@@ -77,6 +79,8 @@ function StaffHomeScreen({
   onGoToVerificationQueue,
   onGoToPendingSolution,
   onGoToSolutionQueue,
+  onViewNotifications,
+  onViewProfile,
 }: StaffHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -183,6 +187,22 @@ function StaffHomeScreen({
             </View>
           </Animated.View>
 
+          {/* Accesos rápidos */}
+          <View style={styles.quickRow}>
+            <QuickAccessCard
+              icon="bell"
+              label="Notificaciones"
+              color={Colors.accent}
+              onPress={onViewNotifications}
+            />
+            <QuickAccessCard
+              icon="settings"
+              label="Configuración"
+              color={Colors.info}
+              onPress={onViewProfile}
+            />
+          </View>
+
           {/* Module */}
           <Text style={styles.sectionLabel}>MÓDULOS DISPONIBLES</Text>
 
@@ -243,6 +263,42 @@ function StaffHomeScreen({
         </ScrollView>
       </ImageBackground>
     </View>
+  );
+}
+
+function QuickAccessCard({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.quickCard,
+        { borderColor: color + '30' },
+        pressed && styles.moduleCardPressed,
+      ]}
+    >
+      <View
+        style={[
+          styles.quickIconWrap,
+          { backgroundColor: color + '14', borderColor: color + '35' },
+        ]}
+      >
+        <Icon name={icon} size={20} color={color} />
+      </View>
+      <View style={styles.quickTextWrap}>
+        <Text style={styles.quickLabel}>{label}</Text>
+        <Text style={styles.quickSub}>Bandeja y ajustes</Text>
+      </View>
+    </Pressable>
   );
 }
 
@@ -447,6 +503,46 @@ const styles = StyleSheet.create({
     // @ts-ignore
     boxShadow: '0 14px 28px -16px rgba(2, 10, 18, 0.8)',
     overflow: 'hidden',
+  },
+  quickRow: {
+    flexDirection: 'row',
+    gap: spacing.base,
+    marginTop: spacing.base,
+  },
+  quickCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(10, 30, 48, 0.8)',
+    borderRadius: radius.card,
+    borderWidth: 1,
+    padding: spacing.base,
+    // @ts-ignore
+    boxShadow: '0 14px 28px -16px rgba(2, 10, 18, 0.8)',
+    overflow: 'hidden',
+  },
+  quickIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.element,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickTextWrap: {
+    flex: 1,
+  },
+  quickLabel: {
+    color: Colors.textOnDark,
+    fontSize: fontSizes.small,
+    fontWeight: fontWeights.bold,
+    letterSpacing: -0.2,
+  },
+  quickSub: {
+    color: Colors.textMuted,
+    fontSize: fontSizes.caption,
+    marginTop: 1,
   },
   moduleCardPressed: {
     opacity: 0.82,

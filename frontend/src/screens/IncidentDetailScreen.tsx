@@ -160,6 +160,15 @@ function IncidentDetailScreen({
                 label="Última actualización"
                 value={formatDateTime(incident.updatedAt)}
               />
+              <InfoRow
+                icon="clock"
+                label="Plazo máximo de respuesta"
+                value={
+                  incident.responseDeadlineAt
+                    ? formatDateTime(incident.responseDeadlineAt)
+                    : '—'
+                }
+              />
             </DetailCard>
 
             {/* Descripción */}
@@ -179,11 +188,15 @@ function IncidentDetailScreen({
             {/* Ciudadano que reportó */}
             <DetailCard title="Ciudadano que reportó" icon="person" color={Colors.success}>
               <Text style={styles.reporterName}>{reporterName || '—'}</Text>
-              <InfoRow
-                icon="badge"
-                label="Documento de identidad"
-                value={incident.reporter?.identityNumber || '—'}
-              />
+              {/* El documento del reportante solo lo recibe el propio
+                  ciudadano o el administrador, así que puede no venir. */}
+              {incident.reporter?.identityNumber ? (
+                <InfoRow
+                  icon="badge"
+                  label="Documento de identidad"
+                  value={incident.reporter.identityNumber}
+                />
+              ) : null}
               <InfoRow
                 icon="bell"
                 label="Teléfono"

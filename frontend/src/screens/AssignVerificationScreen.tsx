@@ -35,6 +35,7 @@ import {
   assignIncidentForVerification,
   loadIncidentById,
   loadVerifiers,
+  reassignIncidentVerifier,
 } from '../controllers/incidentController';
 import { useDialog } from '../hooks/useDialog';
 import type { Incident, IncidentStatus, VerifierUser } from '../models/Incident';
@@ -53,6 +54,15 @@ type AssignVerificationScreenProps = {
   incidentId: number;
   onBack: () => void;
   onAssigned: () => void;
+  /** Modo reasignación: incidente ya EN_VERIFICACION, cambia de verificador. */
+  reassign?: boolean;
+  /** Verificador asignado actualmente (solo útil en modo reasignación). */
+  currentVerifier?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  } | null;
 };
 
 const STATUS_OPTIONS: {
@@ -79,11 +89,14 @@ const statusMeta = (status: IncidentStatus) =>
   };
 
 const PENDING_STATUSES: IncidentStatus[] = ['REPORTADO', 'RECIBIDO'];
+const IN_VERIFICATION_STATUS: IncidentStatus = 'EN_VERIFICACION';
 
 function AssignVerificationScreen({
   incidentId,
   onBack,
   onAssigned,
+  reassign = false,
+  currentVerifier = null,
 }: AssignVerificationScreenProps) {
   const insets = useSafeAreaInsets();
   const { dialog, confirm, close, error, success } = useDialog();
@@ -127,8 +140,16 @@ function AssignVerificationScreen({
 
   const meta = incident ? statusMeta(incident.status) : null;
   const isPending = incident
-    ? PENDING_STATUSES.includes(incident.status)
+    ? reassign
+      ? incident.status === IN_VERIFICATION_STATUS
+      : PENDING_STATUSES.includes(incident.status)
     : false;
+  const currentVerifierName = currentVerifier
+    ? `${currentVerifier.firstName} ${currentVerifier.lastName}`.trim()
+    : '';
+  const currentVerifierInitials = currentVerifier
+    ? `${currentVerifier.firstName.charAt(0)}${currentVerifier.lastName.charAt(0)}`.toUpperCase()
+    : '?';
   const reporterName = incident?.reporter
     ? `${incident.reporter.firstName} ${incident.reporter.lastName}`.trim()
     : '';
@@ -142,28 +163,44 @@ function AssignVerificationScreen({
     }
 
     const targetVerifier = selectedVerifier;
+    const targetName = `${targetVerifier.firstName} ${targetVerifier.lastName}`.trim();
 
     confirm({
-      title: 'Asignar a verificación',
-      message: `¿Asignar el incidente ${incident.code} a ${targetVerifier.firstName} ${targetVerifier.lastName} para su verificación?`,
-      confirmLabel: 'Asignar',
+      title: reassign ? 'Reasignar verificador' : 'Asignar a verificación',
+      message: reassign
+        ? `¿Reasignar el incidente ${incident.code} de ${currentVerifierName ||
+            'su verificador actual'} a ${targetName}?`
+        : `¿Asignar el incidente ${incident.code} a ${targetName} para su verificación?`,
+      confirmLabel: reassign ? 'Reasignar' : 'Asignar',
       tone: 'accent',
       onConfirm: async () => {
         setIsSubmitting(true);
-        const result = await assignIncidentForVerification(incidentId, {
-          assignedToId: selectedVerifierId ?? targetVerifier.id,
-          note: note.trim() || undefined,
-        });
+        const result = reassign
+          ? await reassignIncidentVerifier(incidentId, {
+              assignedToId: selectedVerifierId ?? targetVerifier.id,
+              note: note.trim() || undefined,
+            })
+          : await assignIncidentForVerification(incidentId, {
+              assignedToId: selectedVerifierId ?? targetVerifier.id,
+              note: note.trim() || undefined,
+            });
         setIsSubmitting(false);
 
         if (!result.success) {
           const conflict =
             result.code === 'ALREADY_ASSIGNED' ||
+            result.code === 'ASSIGNMENT_NOT_FOUND' ||
             result.code === 'INVALID_TRANSITION';
           error({
-            title: conflict ? 'Ya no está pendiente' : 'No se pudo asignar',
+            title: conflict
+              ? reassign
+                ? 'Ya no está en verificación'
+                : 'Ya no está pendiente'
+              : reassign
+                ? 'No se pudo reasignar'
+                : 'No se pudo asignar',
             message: conflict
-              ? `${incident.code} ya fue asignado o ya no está pendiente de verificación (fue gestionado en otra ventana). Al volver, la lista se actualizará.`
+              ? `${incident.code} ya fue verificado, reasignado o ya no está en verificación (fue gestionado en otra ventana). Al volver, la lista se actualizará.`
               : result.fieldErrors?.assignedToId ??
                 result.message ??
                 'Ocurrió un error inesperado.',
@@ -173,8 +210,11 @@ function AssignVerificationScreen({
         }
 
         success({
-          title: 'Incidente asignado',
-          message: `${incident.code} fue asignado a ${targetVerifier.firstName} ${targetVerifier.lastName}. El estado cambió a En verificación y se notificó al funcionario y al ciudadano.`,
+          title: reassign ? 'Verificador reasignado' : 'Incidente asignado',
+          message: reassign
+            ? `${incident.code} fue reasignado de ${currentVerifierName ||
+                'su verificador actual'} a ${targetName}. Se notificó al funcionario saliente, al nuevo y al ciudadano.`
+            : `${incident.code} fue asignado a ${targetName}. El estado cambió a En verificación y se notificó al funcionario y al ciudadano.`,
           onAccept: onAssigned,
         });
       },
@@ -187,13 +227,21 @@ function AssignVerificationScreen({
     <View style={styles.flex}>
       <AdminImageHeader
         background={fondo3}
-        title={incident ? incident.code : 'Asignar a verificación'}
+        title={
+          incident
+            ? incident.code
+            : reassign
+              ? 'Reasignar verificador'
+              : 'Asignar a verificación'
+        }
         subtitle={
           isLoading || !incident
             ? 'Cargando…'
-            : `${incident.title} · ${reporterName || 'Sin reportante'}`
+            : reassign
+              ? `${incident.title} · ${currentVerifierName || 'Sin verificador'}`
+              : `${incident.title} · ${reporterName || 'Sin reportante'}`
         }
-        badge="ASIGNACIÓN"
+        badge={reassign ? 'REASIGNACIÓN' : 'ASIGNACIÓN'}
         contentBackground={Colors.background}
         onBack={onBack}
       />
@@ -225,11 +273,16 @@ function AssignVerificationScreen({
             <View style={styles.notPendingIcon}>
               <Icon name="warning" size={32} color={Colors.warning} />
             </View>
-            <Text style={styles.notPendingTitle}>Ya no está pendiente</Text>
+            <Text style={styles.notPendingTitle}>
+              {reassign ? 'Ya no está en verificación' : 'Ya no está pendiente'}
+            </Text>
             <Text style={styles.notPendingText}>
               El incidente {incident.code} tiene el estado "
-              {meta ? meta.label : incident.status}" y ya no puede asignarse a
-              verificación. Vuelve a la lista para ver su estado actualizado.
+              {meta ? meta.label : incident.status}" y
+              {reassign
+                ? ' ya no puede reasignarse el verificador.'
+                : ' ya no puede asignarse a verificación.'}{' '}
+              Vuelve a la lista para ver su estado actualizado.
             </Text>
             <PrimaryButton label="Volver a la lista" onPress={onBack} />
           </View>
@@ -244,6 +297,26 @@ function AssignVerificationScreen({
               <InfoRow icon="refresh" label="Última actualización" value={formatDateTime(incident.updatedAt)} />
             </DetailCard>
 
+            {reassign ? (
+              <DetailCard title="Verificador actual" icon="person" color={Colors.warning}>
+                <View style={styles.currentVerifierRow}>
+                  <View style={styles.currentVerifierAvatar}>
+                    <Text style={styles.currentVerifierAvatarText}>
+                      {currentVerifierInitials}
+                    </Text>
+                  </View>
+                  <View style={styles.verifierInfo}>
+                    <Text style={styles.verifierName}>
+                      {currentVerifierName || 'Sin datos del verificador'}
+                    </Text>
+                    <Text style={styles.verifierEmail} numberOfLines={1}>
+                      {currentVerifier?.email ?? '—'}
+                    </Text>
+                  </View>
+                </View>
+              </DetailCard>
+            ) : null}
+
             {/* Incidente */}
             <DetailCard title="Incidente" icon="report" color={Colors.warning}>
               <Text style={styles.incidentTitle}>{incident.title}</Text>
@@ -255,7 +328,11 @@ function AssignVerificationScreen({
             {/* Ciudadano que reportó */}
             <DetailCard title="Ciudadano que reportó" icon="person" color={Colors.success}>
               <Text style={styles.reporterName}>{reporterName || '—'}</Text>
-              <InfoRow icon="badge" label="Documento de identidad" value={incident.reporter?.identityNumber || '—'} />
+              {/* El documento del reportante solo lo recibe el propio
+                  ciudadano o el administrador, así que puede no venir. */}
+              {incident.reporter?.identityNumber ? (
+                <InfoRow icon="badge" label="Documento de identidad" value={incident.reporter.identityNumber} />
+              ) : null}
               <InfoRow icon="bell" label="Teléfono" value={incident.reporter?.phone || '—'} />
               <InfoRow icon="send" label="Correo electrónico" value={incident.reporter?.email || '—'} />
             </DetailCard>
@@ -316,7 +393,11 @@ function AssignVerificationScreen({
             </DetailCard>
 
             {/* Funcionarios disponibles */}
-            <DetailCard title="Funcionarios disponibles" icon="person" color={Colors.primaryLight}>
+            <DetailCard
+              title={reassign ? 'Nuevo verificador' : 'Funcionarios disponibles'}
+              icon="person"
+              color={Colors.primaryLight}
+            >
               {verifiers.length === 0 ? (
                 <>
                   <Text style={styles.mutedText}>
@@ -331,14 +412,21 @@ function AssignVerificationScreen({
                 <>
                   {verifiers.map((verifier) => {
                     const selected = selectedVerifierId === verifier.id;
+                    const isCurrent =
+                      reassign && currentVerifier?.id === verifier.id;
                     return (
                       <Pressable
                         key={verifier.id}
-                        onPress={() => setSelectedVerifierId(verifier.id)}
+                        onPress={() => {
+                          if (!isCurrent) {
+                            setSelectedVerifierId(verifier.id);
+                          }
+                        }}
                         style={({ pressed }) => [
                           styles.verifierCard,
                           selected && styles.verifierCardSelected,
-                          pressed && styles.pressed,
+                          isCurrent && styles.verifierCardCurrent,
+                          pressed && !isCurrent && styles.pressed,
                         ]}
                       >
                         <View
@@ -359,16 +447,27 @@ function AssignVerificationScreen({
                             {verifier.email}
                           </Text>
                         </View>
-                        <View
-                          style={[
-                            styles.radioOuter,
-                            selected && styles.radioOuterSelected,
-                          ]}
-                        >
-                          {selected ? (
-                            <Icon name="check" size={14} color={Colors.textOnPrimary} />
-                          ) : null}
-                        </View>
+                        {isCurrent ? (
+                          <View
+                            style={[
+                              styles.radioOuter,
+                              styles.radioOuterCurrent,
+                            ]}
+                          >
+                            <Text style={styles.currentText}>Actual</Text>
+                          </View>
+                        ) : (
+                          <View
+                            style={[
+                              styles.radioOuter,
+                              selected && styles.radioOuterSelected,
+                            ]}
+                          >
+                            {selected ? (
+                              <Icon name="check" size={14} color={Colors.textOnPrimary} />
+                            ) : null}
+                          </View>
+                        )}
                       </Pressable>
                     );
                   })}
@@ -383,7 +482,11 @@ function AssignVerificationScreen({
                   style={styles.noteInput}
                   value={note}
                   onChangeText={setNote}
-                  placeholder="Instrucciones para la verificación…"
+                  placeholder={
+                    reassign
+                      ? 'Motivo de la reasignación…'
+                      : 'Instrucciones para la verificación…'
+                  }
                   placeholderTextColor={Colors.textSecondary}
                   multiline
                   maxLength={255}
@@ -393,7 +496,7 @@ function AssignVerificationScreen({
             </DetailCard>
 
             <PrimaryButton
-              label="Asignar a verificación"
+              label={reassign ? 'Reasignar verificador' : 'Asignar a verificación'}
               onPress={handleAssign}
               disabled={!canAssign}
               loading={isSubmitting}
@@ -617,6 +720,29 @@ const styles = StyleSheet.create({
     borderColor: Colors.borderSoft,
     backgroundColor: Colors.background,
   },
+  currentVerifierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.base,
+    borderRadius: radius.element,
+    borderWidth: 1,
+    borderColor: Colors.borderSoft,
+    backgroundColor: Colors.surfaceSubtle,
+  },
+  currentVerifierAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,214,0,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currentVerifierAvatarText: {
+    color: Colors.warningDim,
+    fontSize: fontSizes.small,
+    fontWeight: fontWeights.bold,
+  },
   verifierCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -631,6 +757,9 @@ const styles = StyleSheet.create({
   verifierCardSelected: {
     borderColor: Colors.accent,
     backgroundColor: 'rgba(59,130,184,0.10)',
+  },
+  verifierCardCurrent: {
+    opacity: 0.72,
   },
   verifierAvatar: {
     width: 42,
@@ -673,6 +802,19 @@ const styles = StyleSheet.create({
   radioOuterSelected: {
     borderColor: Colors.accent,
     backgroundColor: Colors.accent,
+  },
+  radioOuterCurrent: {
+    borderColor: 'rgba(255,214,0,0.55)',
+    backgroundColor: 'rgba(255,214,0,0.12)',
+    width: 'auto',
+    paddingHorizontal: spacing.sm,
+  },
+  currentText: {
+    color: Colors.warningDim,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.wide,
+    textTransform: 'uppercase',
   },
   noteInputWrap: {
     backgroundColor: Colors.surface,

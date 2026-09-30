@@ -20,6 +20,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const userRepository = require('../repositories/user.repository');
 const roleRepository = require('../repositories/role.repository');
 const auditRepository = require('../repositories/audit.repository');
+const userDuplicatesService = require('./userDuplicates.service');
 const { toPublicUser } = require('../utils/userMapper');
 const ROLES = require('../utils/roles');
 const { buildError } = require('../utils/errors');
@@ -145,6 +146,13 @@ const userService = {
       }
     }
 
+    await userDuplicatesService.assertNotDuplicatePerson({
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      phone,
+      identityNumber,
+    });
+
     const role = await roleRepository.findByRoleName(roleName);
     if (!role) {
       throw buildError(
@@ -246,6 +254,16 @@ const userService = {
           'identityNumber',
         );
       }
+    }
+
+    if (updates.first_name || updates.last_name || updates.phone) {
+      await userDuplicatesService.assertNotDuplicatePerson({
+        firstName: updates.first_name ?? current.first_name,
+        lastName: updates.last_name ?? current.last_name,
+        phone: updates.phone ?? current.phone,
+        identityNumber: updates.identity_number ?? current.identity_number,
+        excludeUserId: id,
+      });
     }
 
     const updated = await userRepository.update(id, updates);

@@ -61,6 +61,9 @@ import {
   radius,
   spacing,
 } from '../theme';
+import { formatDateTime } from '../utils/format';
+import { OFFLINE_TITLE } from '../utils/errorMessages';
+import { hasRepeatedLetters, repeatedLettersMessage, singleSpaced } from '../utils/validators';
 import type { PickedEvidence } from '../utils/evidence';
 import type { CurrentPosition } from '../utils/location';
 
@@ -92,6 +95,20 @@ function submitProgressText(progress: SubmitProgress): string {
     case 'evidence':
       return `Subiendo evidencia ${progress.done + 1} de ${progress.total}…`;
   }
+}
+
+/**
+ * Mensaje del plazo máximo de respuesta comprometido al ciudadano (HU06).
+ * Se añade a la confirmación de éxito cuando el backend envía la fecha.
+ */
+function buildDeadlineMessage(deadline?: string | null): string {
+  if (!deadline) {
+    return '';
+  }
+
+  return ` Te responderemos en un plazo máximo de 1 día (antes del ${formatDateTime(
+    deadline,
+  )}).`;
 }
 
 export default function IncidentFormScreen({
@@ -172,12 +189,16 @@ export default function IncidentFormScreen({
       errs.title = `Mínimo ${MIN_TITLE_LENGTH} caracteres.`;
     else if (t.length > MAX_TITLE_LENGTH)
       errs.title = `Máximo ${MAX_TITLE_LENGTH} caracteres.`;
+    else if (hasRepeatedLetters(t))
+      errs.title = repeatedLettersMessage('El título');
     const d = description.trim();
     if (!d) errs.description = 'La descripción es obligatoria.';
     else if (d.length < MIN_DESCRIPTION_LENGTH)
       errs.description = `Mínimo ${MIN_DESCRIPTION_LENGTH} caracteres.`;
     else if (d.length > MAX_DESCRIPTION_LENGTH)
       errs.description = `Máximo ${MAX_DESCRIPTION_LENGTH} caracteres.`;
+    else if (hasRepeatedLetters(d))
+      errs.description = repeatedLettersMessage('La descripción');
     if (!isEdit && !position) {
       errs.location = 'Debes registrar la ubicación del incidente.';
     }
@@ -227,11 +248,11 @@ export default function IncidentFormScreen({
   const handleBack = () => {
     if (!isOnline && hasDraft) {
       confirm({
-        title: 'Sin conexión a internet',
+        title: OFFLINE_TITLE,
         message:
-          'Estás elaborando un reporte sin conexión. Si sales ahora, los datos que ingresaste se perderán porque aún no se guardaron.',
+          'Estás escribiendo tu reporte sin conexión a internet. Si sales ahora, lo que escribiste se perderá porque todavía no se guardó en el sistema.',
         confirmLabel: 'Salir de todos modos',
-        cancelLabel: 'Seguir en el formulario',
+        cancelLabel: 'Seguir escribiendo',
         tone: 'warning',
         onConfirm: onBack,
       });
@@ -320,7 +341,10 @@ export default function IncidentFormScreen({
       if (!result.success || !result.data) {
         if (result.fieldErrors) setErrors(result.fieldErrors);
         error({
-          title: 'No se pudo registrar el reporte',
+          title:
+            result.code === 'DUPLICATE_INCIDENT'
+              ? 'Reporte duplicado detectado'
+              : 'No se pudo registrar el reporte',
           message: result.message,
         });
         return;
@@ -386,7 +410,9 @@ export default function IncidentFormScreen({
             ? `${evidence.length - failedCount} de ${evidence.length} imágenes se adjuntaron correctamente; ${failedCount} no pudieron subirse${
                 firstEvidenceError ? ` (${firstEvidenceError})` : '.'
               }`
-            : 'Tu incidente se registró correctamente y está en revisión.',
+            : `Tu incidente se registró correctamente y está en revisión.${buildDeadlineMessage(
+                incident.responseDeadlineAt,
+              )}`,
         onAccept: onSaved,
       });
     } catch (caught) {
@@ -416,7 +442,7 @@ export default function IncidentFormScreen({
       title: isEdit ? '¿Guardar los cambios?' : '¿Enviar el reporte?',
       message: isEdit
         ? 'Tu reporte se actualizará. Recuerda que solo se permite una edición.'
-        : 'El reporte quedará en revisión para su atención. Se guardarán la ubicación y las evidencias adjuntas.',
+        : 'El reporte quedará en revisión para su atención. Recibirás una respuesta en un plazo máximo de 1 día. Se guardarán la ubicación y las evidencias adjuntas.',
       confirmLabel: isEdit ? 'Sí, guardar' : 'Sí, enviar',
       cancelLabel: 'No, revisar',
       tone: 'accent',
@@ -525,7 +551,7 @@ export default function IncidentFormScreen({
                   <AppTextInput
                     label="Título"
                     value={title}
-                    onChangeText={setTitle}
+                    onChangeText={(v) => setTitle(singleSpaced(v))}
                     placeholder="Ej.: Bache en la Av. Principal"
                     maxLength={MAX_TITLE_LENGTH}
                     error={errors.title}
@@ -535,7 +561,7 @@ export default function IncidentFormScreen({
                   <AppTextInput
                     label="Descripción"
                     value={description}
-                    onChangeText={setDescription}
+                    onChangeText={(v) => setDescription(singleSpaced(v))}
                     placeholder="Describe con detalle qué está ocurriendo…"
                     maxLength={MAX_DESCRIPTION_LENGTH}
                     error={errors.description}

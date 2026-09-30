@@ -34,6 +34,21 @@ const statusController = {
     }
   },
 
+  /** Rechazo en recepción (HU) — reporte considerado no válido. */
+  async rejectIncident(req, res, next) {
+    try {
+      const data = await statusService.rejectIncident(
+        req.user,
+        req.params.id,
+        req.body && req.body.rejectedReason,
+      );
+
+      return ok(res, 200, 'Reporte rechazado correctamente.', data);
+    } catch (error) {
+      return next(error);
+    }
+  },
+
   async getIncidentHistory(req, res, next) {
     try {
       const data = await statusService.getIncidentHistory(

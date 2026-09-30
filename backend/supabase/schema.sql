@@ -90,9 +90,13 @@ create table if not exists incidents (
   longitude       numeric(10, 7),
   address         varchar(200),
   rejected_reason text,
+  response_deadline_at timestamptz,
   created_at      timestamptz  not null default now(),
   updated_at      timestamptz  not null default now()
 );
+
+-- Migración idempotente: agrega la columna a bases ya existentes.
+alter table incidents add column if not exists response_deadline_at timestamptz;
 
 -- ---------- evidence ----------
 create table if not exists evidence (

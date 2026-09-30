@@ -79,6 +79,19 @@ const incidentController = {
     }
   },
 
+  async reopenIncident(req, res, next) {
+    try {
+      const incident = await incidentService.reopenIncident(
+        req.user,
+        req.params.id,
+      );
+
+      return ok(res, 200, 'Reporte reabierto correctamente.', { incident });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
   async deleteIncident(req, res, next) {
     try {
       const deleted = await incidentService.deleteIncident(

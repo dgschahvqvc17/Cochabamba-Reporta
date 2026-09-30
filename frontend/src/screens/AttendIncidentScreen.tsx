@@ -434,7 +434,11 @@ function AttendIncidentScreen({
             {/* Ciudadano que reportó */}
             <DetailCard title="Ciudadano que reportó" icon="person" color={Colors.success}>
               <Text style={styles.reporterName}>{reporterName || '—'}</Text>
-              <InfoRow icon="badge" label="Documento de identidad" value={incident.reporter?.identityNumber || '—'} />
+              {/* El documento del reportante solo lo recibe el propio
+                  ciudadano o el administrador, así que puede no venir. */}
+              {incident.reporter?.identityNumber ? (
+                <InfoRow icon="badge" label="Documento de identidad" value={incident.reporter.identityNumber} />
+              ) : null}
               <InfoRow icon="bell" label="Teléfono" value={incident.reporter?.phone || '—'} />
               <InfoRow icon="send" label="Correo electrónico" value={incident.reporter?.email || '—'} />
             </DetailCard>

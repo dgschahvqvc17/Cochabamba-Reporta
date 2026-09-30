@@ -27,12 +27,16 @@ import {
   getIncidentById as getIncidentByIdRequest,
   getIncidentHistory as getIncidentHistoryRequest,
   getIncidents as getIncidentsRequest,
+  getInVerificationIncidents as getInVerificationIncidentsRequest,
   getMyIncidents as getMyIncidentsRequest,
   getPendingSolutionIncidents as getPendingSolutionIncidentsRequest,
   getPendingVerificationIncidents as getPendingVerificationIncidentsRequest,
   getSolutionStaff as getSolutionStaffRequest,
   getVerifiers as getVerifiersRequest,
   markIncidentAttended as markIncidentAttendedRequest,
+  reassignVerification as reassignVerificationRequest,
+  rejectIncident as rejectIncidentRequest,
+  reopenIncident as reopenIncidentRequest,
   updateIncident as updateIncidentRequest,
   verifyIncident as verifyIncidentRequest,
   type IncidentListParams,
@@ -50,6 +54,8 @@ import type {
   IncidentLocation,
   IncidentPayload,
   LocationPayload,
+  RejectIncidentPayload,
+  RejectIncidentResult,
   SolutionUser,
   VerifierUser,
   VerifyIncidentPayload,
@@ -249,6 +255,62 @@ export async function assignIncidentForVerification(
   };
 }
 
+/**
+ * HU: lista los incidentes actualmente en verificación (EN_VERIFICACION)
+ * con su verificador asignado, para poder reasignarlo.
+ */
+export async function loadInVerification(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getInVerificationIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU: reasigna el verificador de un incidente en verificación. */
+export async function reassignIncidentVerifier(
+  incidentId: number,
+  payload: AssignVerificationPayload,
+): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
+  const accessToken = getAccessToken();
+  const result = await reassignVerificationRequest(
+    accessToken,
+    incidentId,
+    payload,
+  );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
 /** HU11: lista los incidentes asignados al verificador (paginado). */
 export async function loadAssignedVerification(params: {
   page?: number;
@@ -282,6 +344,32 @@ export async function verifyIncidentById(
 ): Promise<ActionResult<VerifyIncidentResult>> {
   const accessToken = getAccessToken();
   const result = await verifyIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** Rechazo del encargado de recepción de un reporte no válido. */
+export async function rejectIncidentById(
+  incidentId: number,
+  payload: RejectIncidentPayload,
+): Promise<ActionResult<RejectIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await rejectIncidentRequest(accessToken, incidentId, payload);
 
   if (!result.success) {
     return {
@@ -611,6 +699,28 @@ export async function editIncident(
       ...(toFieldErrors(result.error?.details) && {
         fieldErrors: toFieldErrors(result.error?.details),
       }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incident,
+  };
+}
+
+/** Reabre un reporte propio rechazado (una sola vez, para mejorarlo). */
+export async function reopenIncidentById(
+  incidentId: number,
+): Promise<ActionResult<Incident>> {
+  const accessToken = getAccessToken();
+  const result = await reopenIncidentRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
     };
   }
 

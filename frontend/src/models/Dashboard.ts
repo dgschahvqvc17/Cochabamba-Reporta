@@ -34,8 +34,20 @@ export interface RecentIncident {
   user_id: string;
 }
 
+export interface StatusDistributionEntry {
+  status: string;
+  count: number;
+}
+
+export interface CategoryDistributionEntry {
+  name: string;
+  count: number;
+}
+
 export interface DashboardSnapshot {
   indicators: DashboardIndicators;
+  byStatus: StatusDistributionEntry[];
+  byCategory: CategoryDistributionEntry[];
   alerts: DashboardAlert[];
   recent: RecentIncident[];
   [key: string]: unknown;

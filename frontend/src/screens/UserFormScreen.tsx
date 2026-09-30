@@ -47,12 +47,17 @@ import {
 import { formatDate } from '../utils/format';
 import { ADMIN_CREATABLE_ROLES, ROLE_LABELS } from '../utils/roles';
 import {
+  MAX_ADDRESS_LENGTH,
+  MAX_LAST_NAME_LENGTH,
+  MAX_NAME_LENGTH,
   isValidEmail,
   isValidIdentityNumber,
   isValidPhone,
   onlyDigits,
   onlyLetters,
   parseBirthDate,
+  singleSpaced,
+  validatePersonName,
 } from '../utils/validators';
 
 type UserFormScreenProps = {
@@ -148,14 +153,16 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
   }, [isEdit, userId]);
 
   const field = (key: keyof FormState) => (v: string) => {
-    setForm((c) => ({ ...c, [key]: v }));
+    setForm((c) => ({ ...c, [key]: singleSpaced(v) }));
     setErrors((c) => { const n = { ...c }; delete n[key]; return n; });
   };
 
   const validateForm = (): FieldErrors => {
     const errs: FieldErrors = {};
-    if (!form.firstName.trim()) errs.firstName = 'El nombre es obligatorio.';
-    if (!form.lastName.trim()) errs.lastName = 'El apellido es obligatorio.';
+    const firstNameError = validatePersonName(form.firstName, 'El nombre', MAX_NAME_LENGTH);
+    if (firstNameError) errs.firstName = firstNameError;
+    const lastNameError = validatePersonName(form.lastName, 'El apellido', MAX_LAST_NAME_LENGTH);
+    if (lastNameError) errs.lastName = lastNameError;
     if (!form.email.trim()) errs.email = 'El correo electrónico es obligatorio.';
     else if (!isValidEmail(form.email)) errs.email = 'El correo no tiene un formato válido.';
     if (!isEdit) {
@@ -269,8 +276,8 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
         >
           {/* Datos personales */}
           <DarkSectionCard title="Datos personales" icon="person" color={Colors.accent}>
-            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={(v) => field('firstName')(onlyLetters(v))} placeholder="Ej. Juan Carlos" error={errors.firstName} icon="person" />
-            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={(v) => field('lastName')(onlyLetters(v))} placeholder="Ej. Pérez Mamani" error={errors.lastName} icon="person" />
+            <AppTextInput label="Nombres *" value={form.firstName} onChangeText={(v) => field('firstName')(onlyLetters(v))} placeholder="Ej. Juan Carlos" maxLength={MAX_NAME_LENGTH} error={errors.firstName} icon="person" />
+            <AppTextInput label="Apellidos *" value={form.lastName} onChangeText={(v) => field('lastName')(onlyLetters(v))} placeholder="Ej. Pérez Mamani" maxLength={MAX_LAST_NAME_LENGTH} error={errors.lastName} icon="person" />
           </DarkSectionCard>
 
           {/* Acceso */}
@@ -300,7 +307,7 @@ function UserFormScreen({ mode, userId, onBack, onSaved }: UserFormScreenProps) 
             <AppTextInput label="Teléfono" value={form.phone} onChangeText={(v) => field('phone')(onlyDigits(v))} placeholder="Ej. 78901234" keyboardType="phone-pad" maxLength={8} error={errors.phone} icon="bell" />
             <AppTextInput label="Documento de identidad" value={form.identityNumber} onChangeText={(v) => field('identityNumber')(onlyDigits(v))} placeholder="Ej. 7654321" keyboardType="number-pad" maxLength={8} error={errors.identityNumber} icon="badge" />
             <AppDateField label="Fecha de nacimiento" value={form.birthDate} onPress={() => setIsCalendarOpen(true)} error={errors.birthDate} />
-            <AppTextInput label="Dirección o referencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." icon="pin" />
+            <AppTextInput label="Dirección de residencia" value={form.address} onChangeText={field('address')} placeholder="Ej. Av. Heroínas, zona..." maxLength={MAX_ADDRESS_LENGTH} icon="pin" />
           </DarkSectionCard>
 
           {/* Rol */}

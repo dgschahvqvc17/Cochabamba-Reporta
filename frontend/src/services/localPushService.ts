@@ -23,7 +23,8 @@ import Constants from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
 
 let nativeNotifications: typeof import('expo-notifications') | null = null;
-let ready = false;
+let loadingPromise: Promise<typeof import('expo-notifications') | null> | null =
+  null;
 let channelReady = false;
 
 /**
@@ -52,29 +53,37 @@ function isExpoGo(): boolean {
   }
 }
 
-/** Carga dinámica de expo-notifications, solo en plataformas nativas. */
+/**
+ * Carga dinámica de expo-notifications, solo en plataformas nativas.
+ *
+ * Se cachea la promesa de carga: si varias llamadas llegan mientras el
+ * `import()` está en vuelo (p. ej. `initializeLocalNotifications` y un
+ * `presentDeviceNotification` simultáneos), todas comparten el mismo
+ * resultado en lugar de devolver `null` por error de temporización.
+ */
 async function getNative(): Promise<typeof import('expo-notifications') | null> {
-  if (ready) {
+  if (loadingPromise) {
+    return loadingPromise;
+  }
+
+  loadingPromise = (async () => {
+    if (Platform.OS === 'web' || isExpoGo()) {
+      return null;
+    }
+
+    try {
+      // Carga diferida: evita romper web (Metro resuelve el módulo nativo solo
+      // fuera de web; en CI/web la rama inferior devuelve null antes).
+      const mod = await import('expo-notifications');
+      nativeNotifications = mod;
+    } catch {
+      nativeNotifications = null;
+    }
+
     return nativeNotifications;
-  }
+  })();
 
-  ready = true;
-
-  if (Platform.OS === 'web' || isExpoGo()) {
-    nativeNotifications = null;
-    return null;
-  }
-
-  try {
-    // Carga diferida: evita romper web (Metro resuelve el módulo nativo solo
-    // fuera de web; en CI/web la rama inferior devuelve null antes).
-    const mod = await import('expo-notifications');
-    nativeNotifications = mod;
-  } catch {
-    nativeNotifications = null;
-  }
-
-  return nativeNotifications;
+  return loadingPromise;
 }
 
 /** Configura el canal de notificación Android + el handler del banner. */

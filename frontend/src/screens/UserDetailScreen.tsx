@@ -93,7 +93,7 @@ const FIELD_LABELS: Record<string, string> = {
   phone: 'Teléfono',
   identityNumber: 'Documento',
   birthDate: 'Fecha de nacimiento',
-  address: 'Dirección',
+  address: 'Dirección de residencia',
   role: 'Rol',
   active: 'Estado',
 };
@@ -265,7 +265,7 @@ function UserDetailScreen({ userId, onBack, onEdit }: UserDetailScreenProps) {
           <InfoRow label="Documento" value={user.identityNumber || '—'} icon="badge" />
           <InfoRow label="Teléfono" value={user.phone || '—'} icon="bell" last={false} />
           <InfoRow label="Fecha de nacimiento" value={user.birthDate ? formatDate(user.birthDate) : '—'} icon="calendar" last={false} />
-          <InfoRow label="Dirección" value={user.address || '—'} icon="pin" last />
+          <InfoRow label="Dirección de residencia" value={user.address || '—'} icon="pin" last />
         </View>
 
         {/* Actions */}

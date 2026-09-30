@@ -21,6 +21,7 @@ import { fondo4 } from '../assets/images';
 import { handleChangePassword } from '../controllers/AuthController';
 import { useDialog } from '../hooks/useDialog';
 import type { User } from '../models/User';
+import { ROLE_LABELS } from '../utils/roles';
 import {
   Colors,
   fontSizes,
@@ -34,11 +35,13 @@ import { formatDate } from '../utils/format';
 type ProfileScreenProps = {
   user: User;
   onBack: () => void;
+  /** Muestra una fila con el rol del usuario (personal municipal/administrador). */
+  showRole?: boolean;
 };
 
 const MIN_PASSWORD_LENGTH = 8;
 
-function ProfileScreen({ user, onBack }: ProfileScreenProps) {
+function ProfileScreen({ user, onBack, showRole = false }: ProfileScreenProps) {
   const insets = useSafeAreaInsets();
   const { dialog, error, success, close } = useDialog();
 
@@ -54,6 +57,9 @@ function ProfileScreen({ user, onBack }: ProfileScreenProps) {
       value: `${user.firstName} ${user.lastName}`,
       icon: 'person',
     },
+    ...(showRole
+      ? [{ label: 'Rol en el sistema', value: ROLE_LABELS[user.role], icon: 'shield' as const }]
+      : []),
     { label: 'Correo electrónico', value: user.email, icon: 'badge' },
     { label: 'Teléfono', value: user.phone || '—', icon: 'badge' },
     {
@@ -66,7 +72,7 @@ function ProfileScreen({ user, onBack }: ProfileScreenProps) {
       value: formatDate(user.birthDate),
       icon: 'calendar',
     },
-    { label: 'Dirección', value: user.address || '—', icon: 'map' },
+    { label: 'Dirección de residencia', value: user.address || '—', icon: 'map' },
   ];
 
   const handleSubmit = async () => {

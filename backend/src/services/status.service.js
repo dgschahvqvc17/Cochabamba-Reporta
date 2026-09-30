@@ -27,8 +27,13 @@ const ROLES = require('../utils/roles');
 const {
   INCIDENT_STATUS,
   INCIDENT_STATUS_LABELS,
+  REJECTABLE_BY_RECEPTION,
   ROLE_STATUS_TRANSITIONS,
 } = require('../utils/incidentStatus');
+const {
+  MAX_REJECTED_REASON_LENGTH,
+  truncateNotificationMessage,
+} = require('../utils/incidentRules');
 const {
   toPublicIncident,
   toPublicHistoryEntry,
@@ -38,7 +43,11 @@ const statusService = {
   /**
    * Aplica un cambio de estado, registra el historial y notifica al
    * ciudadano. `extraFields` permite persistir campos extra del nuevo
-   * estado (por ejemplo rejected_reason en HU11).
+   * estado (por ejemplo rejected_reason en HU11). `options.skipEvidenceCheck`
+   * permite transiciones especiales (rechazo en recepción) de un reporte
+   * REPORTADO sin evidencia adjunta, y `options.suppressCitizenNotification`
+   * evita la notificación genérica cuando el service notifica un mensaje
+   * específico (rechazo en recepción con motivo).
    */
   async applyStatusChange(
     incident,
@@ -46,10 +55,14 @@ const statusService = {
     changedBy,
     comment = null,
     extraFields = {},
+    options = {},
   ) {
     // Un reporte no puede salir de REPORTADO (comenzar el proceso de
-    // atención) sin al menos una evidencia fotográfica.
+    // atención) sin al menos una evidencia fotográfica. El rechazo en
+    // recepción es la excepción: el reporte puede ser "inválido" justamente
+    // por carecer de evidencia, por lo que no puede exigírsele una.
     if (
+      !options.skipEvidenceCheck &&
       incident.status === INCIDENT_STATUS.REPORTADO &&
       (await evidenceRepository.countByIncident(incident.id)) < 1
     ) {
@@ -77,13 +90,15 @@ const statusService = {
       comment: normalizedComment,
     });
 
-    await notificationRepository.create({
-      incidentId: incident.id,
-      userId: incident.user_id,
-      message: `Su reporte ${incident.code} cambió de estado a ${
-        INCIDENT_STATUS_LABELS[toStatus] ?? toStatus
-      }.`,
-    });
+    if (!options.suppressCitizenNotification) {
+      await notificationRepository.create({
+        incidentId: incident.id,
+        userId: incident.user_id,
+        message: `Su reporte ${incident.code} cambió de estado a ${
+          INCIDENT_STATUS_LABELS[toStatus] ?? toStatus
+        }.`,
+      });
+    }
 
     return updated;
   },
@@ -139,7 +154,88 @@ const statusService = {
       comment || null,
     );
 
-    return toPublicIncident(updated);
+    return toPublicIncident(updated, { viewer: user });
+  },
+
+  /**
+   * Rechazo del encargado de recepción (POST /incidents/:id/reject).
+   *
+   * HU — Permite que quien recibe los reportes del ciudadano rechace los
+   * que considere no válidos, NOTIFICADOS antes de asignar a verificación
+   * (solo desde REPORTADO/RECIBIDO). Persiste el motivo en `rejected_reason`,
+   * registra el historial y notifica al ciudadano el motivo.
+   */
+  async rejectIncident(user, incidentId, rejectedReason) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para rechazar un reporte.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    if (![ROLES.RECEPCION, ROLES.ADMINISTRADOR].includes(user.role)) {
+      throw buildError(
+        'No tienes permisos para rechazar reportes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (!REJECTABLE_BY_RECEPTION.includes(incident.status)) {
+      throw buildError(
+        'El incidente ya no está pendiente de validación inicial.',
+        409,
+        'INVALID_TRANSITION',
+      );
+    }
+
+    const reason = normalizeText(rejectedReason);
+
+    if (!reason) {
+      throw buildError(
+        'Debe indicar el motivo por el que rechaza el reporte.',
+        422,
+        'VALIDATION_ERROR',
+        'rejectedReason',
+      );
+    }
+
+    if (reason.length > MAX_REJECTED_REASON_LENGTH) {
+      throw buildError(
+        `El motivo de rechazo no debe superar los ${MAX_REJECTED_REASON_LENGTH} caracteres.`,
+        422,
+        'VALIDATION_ERROR',
+        'rejectedReason',
+      );
+    }
+
+    const updated = await this.applyStatusChange(
+      incident,
+      INCIDENT_STATUS.RECHAZADO,
+      user.id,
+      reason,
+      { rejected_reason: reason },
+      { skipEvidenceCheck: true, suppressCitizenNotification: true },
+    );
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId: incident.user_id,
+      message: truncateNotificationMessage(
+        `Su reporte ${incident.code} fue rechazado en recepción: ${reason}`,
+      ),
+    });
+
+    return { incident: toPublicIncident(updated, { viewer: user }) };
   },
 
   /**

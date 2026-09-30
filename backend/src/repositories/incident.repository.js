@@ -11,8 +11,16 @@
 
 const { supabaseAdmin } = require('../config/supabase');
 const { sanitizeSearchTerm } = require('../utils/text');
+const { INCIDENT_STATUS } = require('../utils/incidentStatus');
 
-const create = async ({ code, userId, categoryId, title, description }) => {
+const create = async ({
+  code,
+  userId,
+  categoryId,
+  title,
+  description,
+  responseDeadlineAt,
+}) => {
   const { data, error } = await supabaseAdmin
     .from('incidents')
     .insert({
@@ -22,8 +30,9 @@ const create = async ({ code, userId, categoryId, title, description }) => {
       title,
       description,
       status: 'REPORTADO',
+      response_deadline_at: responseDeadlineAt || null,
     })
-    .select('*')
+    .select('*, category:categories(id, name)')
     .single();
 
   if (error) {
@@ -36,7 +45,9 @@ const create = async ({ code, userId, categoryId, title, description }) => {
 const findById = async (id) => {
   const { data, error } = await supabaseAdmin
     .from('incidents')
-    .select('*, citizen:users(id, first_name, last_name, identity_number, phone, email)')
+    .select(
+      '*, citizen:users(id, first_name, last_name, identity_number, phone, email), category:categories(id, name)',
+    )
     .eq('id', id)
     .maybeSingle();
 
@@ -82,6 +93,7 @@ const findAllManaged = async ({
   from = null,
   to = null,
   search = '',
+  order = 'desc',
 } = {}) => {
   let query = supabaseAdmin
     .from('incidents')
@@ -118,8 +130,15 @@ const findAllManaged = async ({
   const fromIndex = (page - 1) * limit;
   const toIndex = fromIndex + limit - 1;
 
+  // `order=asc` deja primero los reportes más antiguos, que son los que
+  // llevan más tiempo esperando; `desc` (por defecto) deja primero los más
+  // recientes. `id` desempata porque varios reportes pueden registrarse en
+  // el mismo segundo.
+  const ascending = order === 'asc';
+
   const { data, error, count } = await query
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending })
+    .order('id', { ascending })
     .range(fromIndex, toIndex);
 
   if (error) {
@@ -134,6 +153,47 @@ const findAllManaged = async ({
  * (assignments tipo VERIFICACION, active). El propio service limita el
  * uso a los roles VERIFICADOR/ADMINISTRADOR. Con búsqueda y paginación.
  */
+/**
+ * HU — Incidentes actualmente EN_VERIFICACION con su asignación de
+ * verificación activa (para que la recepción pueda reasignar al
+ * verificador). Con búsqueda y paginación.
+ */
+const findAllInVerification = async ({
+  page = 1,
+  limit = 10,
+  search = '',
+} = {}) => {
+  let query = supabaseAdmin
+    .from('incidents')
+    .select(
+      '*, category:categories(id, name), citizen:users(id, first_name, last_name, identity_number, phone, email), assignments!inner(id, assignment_type, assigned_to, assigned_by, note, active)',
+      { count: 'exact' },
+    )
+    .eq('status', INCIDENT_STATUS.EN_VERIFICACION)
+    .eq('assignments.assignment_type', 'VERIFICACION')
+    .eq('assignments.active', true);
+
+  const term = sanitizeSearchTerm(search);
+  if (term) {
+    query = query.or(
+      `code.ilike.%${term}%,title.ilike.%${term}%,description.ilike.%${term}%`,
+    );
+  }
+
+  const fromIndex = (page - 1) * limit;
+  const toIndex = fromIndex + limit - 1;
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(fromIndex, toIndex);
+
+  if (error) {
+    throw error;
+  }
+
+  return { incidents: data ?? [], total: count ?? data?.length ?? 0 };
+};
+
 const findAssignedForVerification = async ({
   userId,
   page = 1,
@@ -218,6 +278,33 @@ const findAssignedForSolution = async ({
   return { incidents: data ?? [], total: count ?? data?.length ?? 0 };
 };
 
+const findPotentialDuplicates = async ({
+  categoryId,
+  since,
+  excludedStatuses,
+  limit = 200,
+} = {}) => {
+  let query = supabaseAdmin
+    .from('incidents')
+    .select('id, code, title, description, status, created_at')
+    .eq('category_id', categoryId)
+    .gte('created_at', since);
+
+  if (Array.isArray(excludedStatuses) && excludedStatuses.length > 0) {
+    query = query.not('status', 'in', `(${excludedStatuses.join(',')})`);
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 const countToday = async () => {
   const localMidnight = new Date();
   localMidnight.setHours(0, 0, 0, 0);
@@ -245,7 +332,7 @@ const update = async ({ id, userId, categoryId, title, description }) => {
     })
     .eq('id', id)
     .eq('user_id', userId)
-    .select('*')
+    .select('*, category:categories(id, name)')
     .single();
 
   if (error) {
@@ -260,7 +347,9 @@ const updateStatus = async (id, status, extraFields = {}) => {
     .from('incidents')
     .update({ status, updated_at: new Date().toISOString(), ...extraFields })
     .eq('id', id)
-    .select('*')
+    .select(
+      '*, citizen:users(id, first_name, last_name, identity_number, phone, email), category:categories(id, name)',
+    )
     .single();
 
   if (error) {
@@ -290,10 +379,12 @@ module.exports = {
   findById,
   findByUserId,
   findAllManaged,
+  findAllInVerification,
   findAssignedForVerification,
   findAssignedForSolution,
   countToday,
   update,
   updateStatus,
   remove,
+  findPotentialDuplicates,
 };

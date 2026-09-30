@@ -25,6 +25,7 @@
 const incidentRepository = require('../repositories/incident.repository');
 const assignmentRepository = require('../repositories/assignment.repository');
 const notificationRepository = require('../repositories/notification.repository');
+const historyRepository = require('../repositories/history.repository');
 const userRepository = require('../repositories/user.repository');
 const ROLES = require('../utils/roles');
 const { buildError } = require('../utils/errors');
@@ -44,6 +45,7 @@ const {
   toPublicIncident,
   toPublicVerifier,
   toPublicSolutionStaff,
+  toPublicVerificationListItem,
   toPublicAssignment,
   toPublicIncidentListItem,
 } = require('../utils/incidentMappers');
@@ -107,7 +109,7 @@ const assignmentService = {
     });
 
     return {
-      incidents: incidents.map(toPublicIncidentListItem),
+      incidents: incidents.map((item) => toPublicIncidentListItem(item, { viewer: user })),
       ...buildPaginationResponse({ total, page, limit }),
     };
   },
@@ -133,6 +135,195 @@ const assignmentService = {
     return Boolean(
       assignment && Number(assignment.assigned_to) === Number(user.id),
     );
+  },
+
+  /**
+   * HU — Incidentes actualmente en verificación (EN_VERIFICACION) con su
+   * verificador asignado, para que la recepción pueda reasignarlo.
+   */
+  async listInVerification(user, query = {}) {
+    if (!this.isRecepcionStaff(user)) {
+      throw buildError(
+        'No tienes permisos para consultar los incidentes en verificación.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const page = parsePositiveInt(query.page, 1, Number.MAX_SAFE_INTEGER);
+    const limit = parsePositiveInt(
+      query.limit,
+      DEFAULT_LIST_PAGE_SIZE,
+      MAX_LIST_PAGE_SIZE,
+    );
+    const search = query && query.search ? String(query.search).trim() : '';
+
+    const { incidents, total } =
+      await incidentRepository.findAllInVerification({
+        page,
+        limit,
+        search,
+      });
+
+    const verifierIds = incidents
+      .map((incident) =>
+        Array.isArray(incident.assignments) && incident.assignments[0]
+          ? Number(incident.assignments[0].assigned_to)
+          : null,
+      )
+      .filter((id) => id !== null);
+
+    const verifierByName = new Map();
+    if (verifierIds.length > 0) {
+      const verifiers = await userRepository.findUsersByIds(
+        [...new Set(verifierIds)],
+      );
+      verifiers.forEach((verifier) =>
+        verifierByName.set(Number(verifier.id), verifier),
+      );
+    }
+
+    return {
+      incidents: incidents.map((incident) => {
+        const assignment =
+          Array.isArray(incident.assignments) && incident.assignments[0]
+            ? incident.assignments[0]
+            : null;
+        const verifier = assignment
+          ? verifierByName.get(Number(assignment.assigned_to)) || null
+          : null;
+
+        return toPublicVerificationListItem(
+          incident,
+          verifier
+            ? {
+                id: verifier.id,
+                firstName: verifier.first_name,
+                lastName: verifier.last_name,
+                email: verifier.email,
+              }
+            : null,
+          { viewer: user },
+        );
+      }),
+      ...buildPaginationResponse({ total, page, limit }),
+    };
+  },
+
+  /**
+   * HU — Reasignar el verificador de un incidente en verificación.
+   * Completa la asignación actual, crea una nueva activa para el nuevo
+   * verificador, registra el historial (el estado permanece EN_VERIFICACION)
+   * y notifica al verificador saliente, al nuevo y al ciudadano.
+   */
+  async reassignForVerification(user, incidentId, payload) {
+    if (!this.isRecepcionStaff(user)) {
+      throw buildError(
+        'No tienes permisos para reasignar incidentes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.status !== INCIDENT_STATUS.EN_VERIFICACION) {
+      throw buildError(
+        'El incidente no se encuentra en verificación.',
+        409,
+        'INVALID_TRANSITION',
+      );
+    }
+
+    const currentAssignment =
+      await assignmentRepository.findActiveByIncident(
+        incident.id,
+        'VERIFICACION',
+      );
+
+    if (!currentAssignment) {
+      throw buildError(
+        'El incidente no tiene una asignación de verificación activa.',
+        409,
+        'ASSIGNMENT_NOT_FOUND',
+      );
+    }
+
+    const assignedToId = Number(payload && payload.assignedToId);
+    const verifier = await userRepository.findByIdWithRole(assignedToId);
+
+    if (
+      !verifier ||
+      String(verifier.roles && verifier.roles.name) !== ROLES.VERIFICADOR ||
+      !verifier.active
+    ) {
+      throw buildError(
+        'El funcionario seleccionado no es un verificador activo.',
+        422,
+        'INVALID_ASSIGNEE',
+        'assignedToId',
+      );
+    }
+
+    if (Number(currentAssignment.assigned_to) === assignedToId) {
+      throw buildError(
+        'Debe seleccionar un verificador distinto al asignado actualmente.',
+        422,
+        'INVALID_ASSIGNEE',
+        'assignedToId',
+      );
+    }
+
+    const note = payload && payload.note ? normalizeText(payload.note) : '';
+
+    await assignmentRepository.complete(currentAssignment.id);
+
+    const assignment = await assignmentRepository.create({
+      incidentId: incident.id,
+      type: 'VERIFICACION',
+      assignedBy: user.id,
+      assignedTo: assignedToId,
+      note: note || null,
+    });
+
+    const comment =
+      note ||
+      `Verificador reasignado a ${verifier.first_name} ${verifier.last_name}.`;
+
+    await historyRepository.create({
+      incidentId: incident.id,
+      fromStatus: INCIDENT_STATUS.EN_VERIFICACION,
+      toStatus: INCIDENT_STATUS.EN_VERIFICACION,
+      changedBy: user.id,
+      comment,
+    });
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId: assignedToId,
+      message: `Se le asignó el incidente ${incident.code} para su verificación.`,
+    });
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId: currentAssignment.assigned_to,
+      message: `Se le retiró la asignación del incidente ${incident.code}; fue reasignado a otro verificador.`,
+    });
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId: incident.user_id,
+      message: `Su reporte ${incident.code} fue reasignado a otro funcionario de verificación.`,
+    });
+
+    return {
+      assignment: toPublicAssignment(assignment),
+      incident: toPublicIncident(incident, { viewer: user }),
+    };
   },
 
   /**
@@ -242,7 +433,7 @@ const assignmentService = {
 
     return {
       assignment: toPublicAssignment(assignment),
-      incident: toPublicIncident(updated),
+      incident: toPublicIncident(updated, { viewer: user }),
     };
   },
 
@@ -303,7 +494,7 @@ const assignmentService = {
     });
 
     return {
-      incidents: incidents.map(toPublicIncidentListItem),
+      incidents: incidents.map((item) => toPublicIncidentListItem(item, { viewer: user })),
       ...buildPaginationResponse({ total, page, limit }),
     };
   },
@@ -392,7 +583,7 @@ const assignmentService = {
 
     return {
       assignment: toPublicAssignment(assignment),
-      incident: toPublicIncident(updated),
+      incident: toPublicIncident(updated, { viewer: user }),
     };
   },
 };

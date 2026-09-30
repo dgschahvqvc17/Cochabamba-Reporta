@@ -328,6 +328,20 @@ function ReportsScreen({
                         </Text>
                       </View>
                     </View>
+
+                    {incident.responseDeadlineAt ? (
+                      <View style={styles.deadlineRow}>
+                        <Icon
+                          name="clock"
+                          size={13}
+                          color={Colors.successDim}
+                        />
+                        <Text style={styles.deadlineText} numberOfLines={1}>
+                          Respuesta estimada antes del{' '}
+                          {formatDateTime(incident.responseDeadlineAt)}
+                        </Text>
+                      </View>
+                    ) : null}
                   </Pressable>
 
                   <View style={styles.cardFoot}>
@@ -584,6 +598,18 @@ const styles = StyleSheet.create({
     flex: 1,
     color: Colors.textSecondary,
     fontSize: fontSizes.caption,
+  },
+  deadlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.sm,
+  },
+  deadlineText: {
+    flex: 1,
+    color: Colors.successDim,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.semiBold,
   },
   cardFoot: {
     flexDirection: 'row',

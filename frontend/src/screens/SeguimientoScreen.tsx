@@ -22,12 +22,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AdminImageHeader from '../components/AdminImageHeader';
+import AppDialog from '../components/AppDialog';
 import Icon from '../components/Icon';
 import PillBadge, { type PillTone } from '../components/PillBadge';
 import { fondo3 } from '../assets/images';
+import { useDialog } from '../hooks/useDialog';
 import {
   loadIncidentById,
   loadIncidentHistory,
+  reopenIncidentById,
 } from '../controllers/incidentController';
 import type {
   Incident,
@@ -47,6 +50,7 @@ import { formatDateTime } from '../utils/format';
 type SeguimientoScreenProps = {
   incidentId: number;
   onBack: () => void;
+  onEdit?: (incidentId: number) => void;
 };
 
 const STATUS_OPTIONS: {
@@ -84,12 +88,24 @@ const statusMeta = (status: IncidentStatus) =>
     tone: 'neutral' as PillTone,
   };
 
-function SeguimientoScreen({ incidentId, onBack }: SeguimientoScreenProps) {
+function SeguimientoScreen({
+  incidentId,
+  onBack,
+  onEdit,
+}: SeguimientoScreenProps) {
   const insets = useSafeAreaInsets();
+  const {
+    dialog,
+    confirm,
+    success,
+    error: showError,
+    close,
+  } = useDialog();
   const [incident, setIncident] = useState<Incident | null>(null);
   const [history, setHistory] = useState<IncidentHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const load = useCallback(
@@ -121,6 +137,49 @@ function SeguimientoScreen({ incidentId, onBack }: SeguimientoScreenProps) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const requestReopen = () => {
+    if (!incident) return;
+
+    confirm({
+      title: 'Reabrir reporte',
+      message: `Tu reporte ${incident.code} fue rechazado por el municipio. Al reabrirlo volverá a estar en estado "Reportado" y podrás mejorar su información una sola vez.`,
+      confirmLabel: 'Reabrir',
+      tone: 'danger',
+      onConfirm: () => performReopen(incident.id),
+    });
+  };
+
+  const performReopen = async (id: number) => {
+    if (isReopening) return;
+
+    setIsReopening(true);
+
+    const result = await reopenIncidentById(id);
+
+    setIsReopening(false);
+
+    if (!result.success) {
+      showError({
+        title: 'No se pudo reabrir el reporte',
+        message: result.message,
+      });
+      return;
+    }
+
+    success({
+      title: 'Reporte reabierto',
+      message:
+        'Tu reporte volvió a estar en estado "Reportado" y ahora puedes mejorar su información. Tienes una sola oportunidad de edición.',
+      onAccept: () => {
+        if (onEdit) {
+          onEdit(id);
+          return;
+        }
+        load();
+      },
+    });
+  };
 
   const meta = incident ? statusMeta(incident.status) : null;
   const statusColor = incident ? STATUS_COLORS[incident.status] : Colors.accent;
@@ -213,6 +272,43 @@ function SeguimientoScreen({ incidentId, onBack }: SeguimientoScreenProps) {
                   </Text>
                 </View>
               ) : null}
+
+              {incident.canReopen ? (
+                <View style={styles.reopenBox}>
+                  <Icon name="refresh" size={18} color={Colors.danger} />
+                  <Text style={styles.reopenText}>
+                    Puedes reabrir este reporte una sola vez para corregirlo o
+                    mejorar su información y volver a ponerlo en proceso.
+                  </Text>
+                  <Pressable
+                    onPress={requestReopen}
+                    disabled={isReopening}
+                    style={({ pressed }) => [
+                      styles.reopenButton,
+                      pressed && styles.reopenButtonPressed,
+                    ]}
+                  >
+                    <Text style={styles.reopenButtonText}>
+                      {isReopening ? 'Reabriendo…' : 'Reabrir y editar'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {incident.status === 'CERRADO' ? (
+                <View style={styles.completedBox}>
+                  <Icon name="checkCircle" size={22} color={Colors.success} />
+                  <View style={styles.completedTextWrap}>
+                    <Text style={styles.completedTitle}>
+                      ¡Reporte completado!
+                    </Text>
+                    <Text style={styles.completedText}>
+                      Tu reporte fue atendido y cerrado por el municipio.
+                      Gracias por reportar.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             <View style={styles.datesRow}>
@@ -236,6 +332,21 @@ function SeguimientoScreen({ incidentId, onBack }: SeguimientoScreenProps) {
               </View>
             </View>
 
+            {incident.responseDeadlineAt ? (
+              <View style={styles.deadlineBox}>
+                <Icon name="clock" size={16} color={Colors.successDim} />
+                <View style={styles.deadlineTextWrap}>
+                  <Text style={styles.deadlineLabel}>
+                    PLAZO MÁXIMO DE RESPUESTA
+                  </Text>
+                  <Text style={styles.deadlineValue}>
+                    Te responderemos antes del{' '}
+                    {formatDateTime(incident.responseDeadlineAt)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
             {/* Historial de estados */}
             <Text style={styles.timelineTitle}>HISTORIAL DE ESTADOS</Text>
             {history.length === 0 ? (
@@ -258,6 +369,8 @@ function SeguimientoScreen({ incidentId, onBack }: SeguimientoScreenProps) {
           </>
         )}
       </ScrollView>
+
+      <AppDialog dialog={dialog} onCancel={close} />
     </View>
   );
 }
@@ -421,6 +534,62 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontSize: fontSizes.caption,
   },
+  reopenBox: {
+    gap: spacing.sm,
+    backgroundColor: 'rgba(194,73,79,0.08)',
+    borderColor: 'rgba(194,73,79,0.3)',
+    borderWidth: 1,
+    borderRadius: radius.element,
+    padding: spacing.sm,
+    marginTop: spacing.base,
+  },
+  reopenText: {
+    color: Colors.textPrimary,
+    fontSize: fontSizes.caption,
+    lineHeight: 17,
+  },
+  reopenButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.danger,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  reopenButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.97 }],
+  },
+  reopenButtonText: {
+    color: Colors.textOnPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.bold,
+  },
+  completedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(47, 156, 110, 0.09)',
+    borderColor: 'rgba(47, 156, 110, 0.35)',
+    borderWidth: 1,
+    borderRadius: radius.element,
+    padding: spacing.sm,
+    marginTop: spacing.base,
+  },
+  completedTextWrap: {
+    flex: 1,
+  },
+  completedTitle: {
+    color: Colors.success,
+    fontSize: fontSizes.small,
+    fontWeight: fontWeights.bold,
+  },
+  completedText: {
+    color: Colors.textPrimary,
+    fontSize: fontSizes.caption,
+    lineHeight: 16,
+    marginTop: 2,
+  },
   datesRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -447,6 +616,32 @@ const styles = StyleSheet.create({
     letterSpacing: letterSpacings.wide,
   },
   dateValue: {
+    color: Colors.textPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.semiBold,
+    marginTop: 2,
+  },
+  deadlineBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(47, 156, 110, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(47, 156, 110, 0.3)',
+    borderRadius: radius.card,
+    padding: spacing.base,
+    marginTop: spacing.sm,
+  },
+  deadlineTextWrap: {
+    flex: 1,
+  },
+  deadlineLabel: {
+    color: Colors.successDim,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.bold,
+    letterSpacing: letterSpacings.wide,
+  },
+  deadlineValue: {
     color: Colors.textPrimary,
     fontSize: fontSizes.caption,
     fontWeight: fontWeights.semiBold,
