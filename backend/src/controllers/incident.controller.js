@@ -104,6 +104,16 @@ const incidentController = {
       return next(error);
     }
   },
+
+  async getMapIncidents(req, res, next) {
+    try {
+      const incidents = await incidentService.getMapIncidents(req.user, req.query);
+
+      return ok(res, 200, 'Mapa de incidentes consultado correctamente.', { incidents });
+    } catch (error) {
+      return next(error);
+    }
+  },
 };
 
 module.exports = incidentController;

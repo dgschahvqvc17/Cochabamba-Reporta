@@ -552,3 +552,28 @@ export async function deleteIncident(
     { method: 'DELETE' },
   );
 }
+
+/**
+ * Mapa interactivo de incidentes con ubicación registrada.
+ * Devuelve los incidentes que tienen coordenadas GPS para mostrarlos
+ * en el mapa según el rol del usuario autenticado.
+ */
+export async function getMapIncidents(
+  accessToken: string,
+  params: { categoryId?: number; status?: string; search?: string } = {},
+): Promise<ApiResponse<{ incidents: Incident[] }>> {
+  const query = new URLSearchParams();
+
+  if (params.categoryId !== undefined) {
+    query.set('categoryId', String(params.categoryId));
+  }
+  if (params.status) query.set('status', params.status);
+  if (params.search) query.set('search', params.search);
+
+  const qs = query.toString();
+
+  return api<{ incidents: Incident[] }>(
+    `/incidents/map-incidents${qs ? `?${qs}` : ''}`,
+    accessToken,
+  );
+}

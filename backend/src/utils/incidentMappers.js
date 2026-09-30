@@ -12,7 +12,14 @@
 
 const { EDITABLE_STATUS } = require('./incidentRules');
 const { INCIDENT_STATUS } = require('./incidentStatus');
+const { toPublicLocation } = require('./location');
 const ROLES = require('./roles');
+
+const formatLocation = (loc) => {
+  if (!loc) return null;
+  const single = Array.isArray(loc) ? loc[0] : loc;
+  return single && single.id ? toPublicLocation(single) : null;
+};
 
 /**
  * Estado de reapertura de un incidente (derivado del historial):
@@ -127,6 +134,7 @@ const toPublicIncident = (incident, { reopenState = null, viewer = null } = {}) 
     incident.citizen,
     canViewReporterIdentity(incident, viewer),
   ),
+  location: formatLocation(incident.location),
 });
 
 const toPublicIncidentListItem = (incident, { reopenState = null, viewer = null } = {}) => ({
@@ -150,6 +158,7 @@ const toPublicIncidentListItem = (incident, { reopenState = null, viewer = null 
     incident.citizen,
     canViewReporterIdentity(incident, viewer),
   ),
+  location: formatLocation(incident.location),
 });
 
 const toPublicEvidence = (evidence) => ({

@@ -710,6 +710,39 @@ const incidentService = {
 
     return { id: incident.id, code: incident.code };
   },
+
+  async getMapIncidents(user, query = {}) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para consultar el mapa de incidentes.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const categoryId = query.categoryId ? Number(query.categoryId) : null;
+    const status = query.status ? String(query.status).trim() : null;
+    const search = query.search ? String(query.search).trim() : '';
+
+    const incidents = await incidentRepository.findMapIncidents({
+      categoryId,
+      status,
+      search,
+    });
+
+    const reopenFlags = await historyRepository.findReopenFlags(
+      incidents.map((item) => item.id),
+    );
+
+    return incidents.map((item) =>
+      toPublicIncidentListItem(item, {
+        reopenState: reopenFlags.get(item.id),
+        viewer: user,
+      }),
+    );
+  },
 };
 
 module.exports = incidentService;

@@ -61,7 +61,7 @@ const findById = async (id) => {
 const findByUserId = async ({ userId, status = null } = {}) => {
   let query = supabaseAdmin
     .from('incidents')
-    .select('*, category:categories(id, name)')
+    .select('*, category:categories(id, name), location:locations(id, latitude, longitude, address, captured_at)')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
@@ -98,7 +98,7 @@ const findAllManaged = async ({
   let query = supabaseAdmin
     .from('incidents')
     .select(
-      '*, category:categories(id, name), citizen:users(id, first_name, last_name, identity_number, phone, email)',
+      '*, category:categories(id, name), citizen:users(id, first_name, last_name, identity_number, phone, email), location:locations(id, latitude, longitude, address, captured_at)',
       { count: 'exact' },
     );
 
@@ -374,6 +374,42 @@ const remove = async (id) => {
   return data;
 };
 
+/**
+ * Consulta de incidentes para el mapa interactivo.
+ * Devuelve incidentes que tienen ubicación registrada, con filtros opcionales.
+ */
+const findMapIncidents = async ({ categoryId = null, status = null, search = '' } = {}) => {
+  let query = supabaseAdmin
+    .from('incidents')
+    .select(
+      '*, category:categories(id, name), citizen:users(id, first_name, last_name, phone), location:locations!inner(id, latitude, longitude, address, captured_at)',
+    )
+    .order('created_at', { ascending: false });
+
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
+  }
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  const term = sanitizeSearchTerm(search);
+  if (term) {
+    query = query.or(
+      `code.ilike.%${term}%,title.ilike.%${term}%,description.ilike.%${term}%`,
+    );
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
 module.exports = {
   create,
   findById,
@@ -382,6 +418,7 @@ module.exports = {
   findAllInVerification,
   findAssignedForVerification,
   findAssignedForSolution,
+  findMapIncidents,
   countToday,
   update,
   updateStatus,

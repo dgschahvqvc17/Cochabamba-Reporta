@@ -40,6 +40,7 @@ import AttendIncidentScreen from '../screens/AttendIncidentScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SeguimientoScreen from '../screens/SeguimientoScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import MapScreen from '../screens/MapScreen';
 import AppNavBar from '../components/AppNavBar';
 import OfflineBanner from '../components/OfflineBanner';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -68,7 +69,8 @@ type AdminRoute =
   | { name: 'category-create' }
   | { name: 'category-edit'; categoryId: number }
   | { name: 'notifications' }
-  | { name: 'profile' };
+  | { name: 'profile' }
+  | { name: 'map' };
 
 type CitizenRoute =
   | { name: 'home' }
@@ -77,7 +79,8 @@ type CitizenRoute =
   | { name: 'my-reports' }
   | { name: 'incident-follow-up'; incidentId: number }
   | { name: 'notifications' }
-  | { name: 'profile' };
+  | { name: 'profile' }
+  | { name: 'map' };
 
 /** Roles municipales que usan el módulo de recepción/consulta (HU09). */
 type StaffRoute =
@@ -94,7 +97,8 @@ type StaffRoute =
   | { name: 'solution-queue' }
   | { name: 'attend-incident'; incidentId: number }
   | { name: 'notifications' }
-  | { name: 'profile' };
+  | { name: 'profile' }
+  | { name: 'map' };
 
 const STAFF_ROLES: string[] = [
   'RECEPCION',
@@ -214,7 +218,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               adminRoute.name === 'category-create' ||
               adminRoute.name === 'category-edit'
             ? 'categories'
-            : 'panel';
+            : adminRoute.name === 'map'
+              ? 'map'
+              : 'panel';
 
       return (
         <View style={styles.container}>
@@ -310,6 +316,13 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 showRole
               />
             ) : null}
+
+            {adminRoute.name === 'map' ? (
+              <MapScreen
+                role={session.user.role}
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+              />
+            ) : null}
           </View>
 
           {/* Navbar always visible — dimmed on sub-routes */}
@@ -332,6 +345,12 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 label: 'Categorías',
                 icon: 'category',
                 onPress: () => !isSubRoute && setAdminRoute({ name: 'categories' }),
+              },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => setAdminRoute({ name: 'map' }),
               },
             ]}
             activeKey={navActiveKey}
@@ -362,7 +381,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
       const staffNavActiveKey =
         staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
           ? 'incidents'
-          : 'home';
+          : staffRoute.name === 'map'
+            ? 'map'
+            : 'home';
 
       return (
         <View style={styles.container}>
@@ -459,6 +480,11 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 onBack={() => setStaffRoute({ name: 'home' })}
                 showRole
               />
+            ) : staffRoute.name === 'map' ? (
+              <MapScreen
+                role={session.user.role}
+                onBack={() => setStaffRoute({ name: 'home' })}
+              />
             ) : (
               <StaffHomeScreen
                 user={session.user}
@@ -498,6 +524,12 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 onPress: () =>
                   setStaffRoute({ name: 'incidents' }),
               },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => setStaffRoute({ name: 'map' }),
+              },
             ]}
             activeKey={staffNavActiveKey}
             dimmed={isStaffSubRoute}
@@ -514,7 +546,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
       citizenRoute.name === 'my-reports' ||
       citizenRoute.name === 'incident-follow-up'
         ? 'reports'
-        : 'home';
+        : citizenRoute.name === 'map'
+          ? 'map'
+          : 'home';
     return (
       <View style={styles.container}>
         <View style={styles.screenSlot}>
@@ -562,6 +596,11 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               user={session.user}
               onBack={() => setCitizenRoute({ name: 'home' })}
             />
+          ) : citizenRoute.name === 'map' ? (
+            <MapScreen
+              role={session.user.role}
+              onBack={() => setCitizenRoute({ name: 'home' })}
+            />
           ) : (
             <HomeScreen
               user={session.user}
@@ -574,22 +613,28 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
             />
           )}
         </View>
-        <AppNavBar
-          items={[
-            {
-              key: 'home',
-              label: 'Inicio',
-              icon: 'home',
-              onPress: () => setCitizenRoute({ name: 'home' }),
-            },
-            {
-              key: 'reports',
-              label: 'Reportes',
-              icon: 'report',
-              onPress: () => setCitizenRoute({ name: 'my-reports' }),
-            },
-          ]}
-          activeKey={citizenNavActiveKey}
+          <AppNavBar
+            items={[
+              {
+                key: 'home',
+                label: 'Inicio',
+                icon: 'home',
+                onPress: () => setCitizenRoute({ name: 'home' }),
+              },
+              {
+                key: 'reports',
+                label: 'Reportes',
+                icon: 'report',
+                onPress: () => setCitizenRoute({ name: 'my-reports' }),
+              },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => setCitizenRoute({ name: 'map' }),
+              },
+            ]}
+            activeKey={citizenNavActiveKey}
           dimmed={isCitizenSubRoute}
           onLogout={handleLogout}
         />

@@ -125,6 +125,25 @@ router.get(
   assignmentController.listVerifiers,
 );
 
+/**
+ * Mapa interactivo de incidentes con ubicación registrada.
+ * Todos los roles autenticados pueden consultar este endpoint;
+ * el service filtra la vista según el rol del usuario.
+ */
+router.get(
+  '/map-incidents',
+  authenticate,
+  requireRole(
+    ROLES.CIUDADANO,
+    ROLES.RECEPCION,
+    ROLES.VERIFICADOR,
+    ROLES.ENCARGADO_SOLUCION,
+    ROLES.PERSONAL_SOLUCION,
+    ROLES.ADMINISTRADOR,
+  ),
+  incidentController.getMapIncidents,
+);
+
 /** HU10 — Incidentes pendientes de verificación (REPORTADO/RECIBIDO). */
 router.get(
   '/pending-verification',
