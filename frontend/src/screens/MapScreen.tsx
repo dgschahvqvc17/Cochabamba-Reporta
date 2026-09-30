@@ -1,25 +1,30 @@
 /**
  * Pantalla: Mapa interactivo de incidentes (MVC - Screen).
  *
- * Cada rol ve los reportes que le corresponden marcados en el mapa:
- *   - CIUDADANO       → todos los reportes con ubicación (para ver si su
- *                       incidente ya fue reportado antes de reportarlo).
- *   - RECEPCION       → reportes pendientes de verificación asignados.
- *   - VERIFICADOR     → reportes asignados a él para verificar.
- *   - ENCARGADO_SOLUCION → reportes verificados pendientes de solución.
- *   - PERSONAL_SOLUCION  → reportes asignados a él para atender.
- *   - ADMINISTRADOR   → todos los reportes.
+ * Cada rol entra a su propia sección de mapa y ve únicamente lo que le
+ * corresponde (el alcance lo define el backend en utils/mapScope y aquí
+ * se refleja en utils/mapScope):
+ *   - CIUDADANO          → todos los reportes con ubicación, para ver si
+ *                          el problema que quiere reportar ya fue reportado.
+ *   - RECEPCION          → los reportes que le llegan (REPORTADO/RECIBIDO).
+ *   - VERIFICADOR        → los incidentes que le asignaron para verificar.
+ *   - ENCARGADO_SOLUCION → los verificados que debe revisar para asignar.
+ *   - PERSONAL_SOLUCION  → los incidentes que le asignaron para atender.
+ *   - ADMINISTRADOR      → todos los reportes.
  *
- * El componente usa el mismo sistema de tiles Web Mercator (Esri) que
- * MapPreview, sin SDKs nativos de mapas, funcionando en web y móvil.
+ * El mapa se arrastra con el dedo o el mouse, tiene zoom y un botón para
+ * encuadrar todos los reportes de una vez. Usa el mismo sistema de tiles
+ * Web Mercator (Esri) que MapPreview, sin SDKs nativos de mapas, por lo que
+ * funciona igual en web y en móvil.
  *
  * @format
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,15 +35,25 @@ import {
 
 import Icon from '../components/Icon';
 import PillBadge from '../components/PillBadge';
-import type { PillTone } from '../components/PillBadge';
 import { getMapIncidents } from '../services/incidentService';
 import { getStoredSession } from '../utils/session';
 import {
+  DEFAULT_MAP_ZOOM,
   MAP_TILE_SIZE,
+  MAX_TILE_ZOOM,
+  MIN_TILE_ZOOM,
   esriStreetUrl,
+  fitPointsToView,
   mercatorTile,
+  panCenter,
 } from '../utils/mapTiles';
-import type { Incident } from '../models/Incident';
+import {
+  MAP_STATUS_COLORS,
+  MAP_STATUS_LABELS,
+  MAP_STATUS_TONES,
+  mapScopeFor,
+} from '../utils/mapScope';
+import type { Incident, IncidentStatus } from '../models/Incident';
 import type { Role } from '../models/User';
 import {
   Colors,
@@ -53,65 +68,17 @@ import {
 /** Coordenadas de Cochabamba, Bolivia (punto de inicio del mapa) */
 const COCHABAMBA_LAT = -17.3935;
 const COCHABAMBA_LNG = -66.157;
-const DEFAULT_ZOOM = 13;
 
-// ── Colores de marcadores por estado ─────────────────────────────────────────
-const STATUS_COLORS: Record<string, string> = {
-  REPORTADO: Colors.accent,
-  RECIBIDO: Colors.accent,
-  EN_VERIFICACION: Colors.warning,
-  VERIFICADO: Colors.success,
-  ASIGNADO_PARA_SOLUCION: Colors.warning,
-  EN_ATENCION: '#E97600',
-  ATENDIDO: Colors.success,
-  CERRADO: Colors.textSecondary,
-  RECHAZADO: Colors.danger,
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  REPORTADO: 'Reportado',
-  RECIBIDO: 'Recibido',
-  EN_VERIFICACION: 'En verificación',
-  VERIFICADO: 'Verificado',
-  ASIGNADO_PARA_SOLUCION: 'Asignado para solución',
-  EN_ATENCION: 'En atención',
-  ATENDIDO: 'Atendido',
-  CERRADO: 'Cerrado',
-  RECHAZADO: 'Rechazado',
-};
-
-const STATUS_TONES: Record<string, PillTone> = {
-  REPORTADO: 'accent',
-  RECIBIDO: 'accent',
-  EN_VERIFICACION: 'warning',
-  VERIFICADO: 'success',
-  ASIGNADO_PARA_SOLUCION: 'warning',
-  EN_ATENCION: 'warning',
-  ATENDIDO: 'success',
-  CERRADO: 'neutral',
-  RECHAZADO: 'danger',
-};
-
-const ROLE_STATUS_FILTERS: Partial<Record<Role, string[]>> = {
-  CIUDADANO: ['REPORTADO', 'RECIBIDO', 'EN_VERIFICACION', 'VERIFICADO', 'ASIGNADO_PARA_SOLUCION', 'EN_ATENCION', 'ATENDIDO', 'CERRADO'],
-  RECEPCION: ['REPORTADO', 'RECIBIDO'],
-  VERIFICADOR: ['EN_VERIFICACION'],
-  ENCARGADO_SOLUCION: ['VERIFICADO'],
-  PERSONAL_SOLUCION: ['ASIGNADO_PARA_SOLUCION', 'EN_ATENCION'],
-  ADMINISTRADOR: ['REPORTADO', 'RECIBIDO', 'EN_VERIFICACION', 'VERIFICADO', 'ASIGNADO_PARA_SOLUCION', 'EN_ATENCION', 'ATENDIDO', 'CERRADO', 'RECHAZADO'],
-};
-
-const ROLE_MAP_TITLE: Partial<Record<Role, string>> = {
-  CIUDADANO: 'Mapa de reportes',
-  RECEPCION: 'Mapa — Pendientes de verificación',
-  VERIFICADOR: 'Mapa — Mis asignaciones',
-  ENCARGADO_SOLUCION: 'Mapa — Pendientes de solución',
-  PERSONAL_SOLUCION: 'Mapa — Mis casos',
-  ADMINISTRADOR: 'Mapa global de incidentes',
-};
+/** Umbral de movimiento (px) para distinguir un arrastre de un toque. */
+const PAN_THRESHOLD = 4;
 
 // ── Helpers de mapas de tiles ─────────────────────────────────────────────────
 
+/**
+ * Posición en pantalla de una coordenada respecto al centro visible del
+ * mapa, sumando el desplazamiento del arrastre en curso para que los pines
+ * acompañen al mapa mientras el dedo todavía está en pantalla.
+ */
 function latLngToPixel(
   lat: number,
   lng: number,
@@ -139,10 +106,24 @@ function latLngToPixel(
 type MapScreenProps = {
   onBack?: () => void;
   role: Role;
+  /**
+   * Abre el detalle del reporte seleccionado. El backend impide al
+   * ciudadano abrir el detalle de un reporte ajeno, así que solo se
+   * ofrece al personal municipal y al ciudadano en su propio reporte.
+   */
+  onOpenIncident?: (incidentId: number) => void;
+  /** `true` cuando el reporte seleccionado es del ciudadano que consulta. */
+  canOpenSelected?: (incident: Incident) => boolean;
 };
 
-export default function MapScreen({ onBack, role }: MapScreenProps) {
+export default function MapScreen({
+  onBack,
+  role,
+  onOpenIncident,
+  canOpenSelected,
+}: MapScreenProps) {
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Incident | null>(null);
@@ -154,12 +135,18 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
 
   // Mapa
   const [mapWidth, setMapWidth] = useState(0);
-  const [mapHeight, setMapHeight] = useState(300);
+  const [mapHeight, setMapHeight] = useState(0);
   const [centerLat, setCenterLat] = useState(COCHABAMBA_LAT);
   const [centerLng, setCenterLng] = useState(COCHABAMBA_LNG);
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const [zoom, setZoom] = useState(DEFAULT_MAP_ZOOM);
 
-  const allowedStatuses = ROLE_STATUS_FILTERS[role] ?? [];
+  // Arrastre en curso: el desplazamiento vive en un ref (no provoca render)
+  // y un contador de estado fuerza el repintado mientras se arrastra.
+  const gestureRef = useRef<{ dx: number; dy: number } | null>(null);
+  const [, setPanTick] = useState(0);
+
+  const scope = mapScopeFor(role);
+  const allowedStatuses: IncidentStatus[] = scope.statuses ?? [];
 
   const loadIncidents = useCallback(async () => {
     const session = getStoredSession();
@@ -174,17 +161,15 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
     });
 
     if (result.success && result.data?.incidents) {
-      // Filter to only incidents WITH location
+      // Solo se marcan los reportes que tienen ubicación capturada.
       const withLoc = (result.data.incidents as Incident[]).filter(
-        (inc) => inc.location && inc.location.latitude && inc.location.longitude,
+        (inc) =>
+          inc.location &&
+          typeof inc.location.latitude === 'number' &&
+          typeof inc.location.longitude === 'number',
       );
       setIncidents(withLoc);
-
-      // Center map on first incident if any
-      if (withLoc.length > 0 && withLoc[0].location) {
-        setCenterLat(withLoc[0].location.latitude);
-        setCenterLng(withLoc[0].location.longitude);
-      }
+      setTruncated(Boolean(result.data.truncated));
     } else {
       setError(result.message ?? 'No se pudieron cargar los reportes.');
     }
@@ -195,6 +180,71 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
   useEffect(() => {
     loadIncidents();
   }, [loadIncidents]);
+
+  /** Encuadra todos los reportes del alcance del rol de una sola vez. */
+  const fitAllIncidents = useCallback(() => {
+    if (incidents.length === 0 || mapWidth === 0 || mapHeight === 0) return;
+
+    const view = fitPointsToView(
+      incidents.map((inc) => ({
+        latitude: inc.location!.latitude,
+        longitude: inc.location!.longitude,
+      })),
+      mapWidth,
+      mapHeight,
+      { padding: 64 },
+    );
+
+    if (!view) return;
+
+    setCenterLat(view.latitude);
+    setCenterLng(view.longitude);
+    setZoom(view.zoom);
+  }, [incidents, mapWidth, mapHeight]);
+
+  /**
+   * Encuadre inicial: apenas llegan los reportes se ven todos juntos, para
+   * que el usuario vea de un vistazo el alcance de lo que tiene asignado.
+   */
+  useEffect(() => {
+    if (loading || incidents.length === 0 || mapWidth === 0 || mapHeight === 0) {
+      return;
+    }
+
+    fitAllIncidents();
+  }, [loading, incidents, mapWidth, mapHeight, fitAllIncidents]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_evt, gesture) =>
+          Math.abs(gesture.dx) > PAN_THRESHOLD ||
+          Math.abs(gesture.dy) > PAN_THRESHOLD,
+        onPanResponderMove: (_evt, gesture) => {
+          gestureRef.current = { dx: gesture.dx, dy: gesture.dy };
+          setPanTick((tick) => tick + 1);
+        },
+        onPanResponderRelease: (_evt, gesture) => {
+          gestureRef.current = null;
+          const next = panCenter(
+            centerLat,
+            centerLng,
+            zoom,
+            -gesture.dx,
+            -gesture.dy,
+          );
+          setCenterLat(next.latitude);
+          setCenterLng(next.longitude);
+        },
+        onPanResponderTerminate: () => {
+          gestureRef.current = null;
+        },
+      }),
+    [centerLat, centerLng, zoom],
+  );
+
+  const dragDx = gestureRef.current?.dx ?? 0;
+  const dragDy = gestureRef.current?.dy ?? 0;
 
   const centerTile = mercatorTile(centerLat, centerLng, zoom);
   const range = mapWidth > 0 ? Math.ceil(mapWidth / (MAP_TILE_SIZE * 2)) + 1 : 2;
@@ -208,10 +258,16 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
         key: `${dx}:${dy}`,
         uri: esriStreetUrl(centerTile.x + dx, centerTile.y + dy, centerTile.zoom),
         left: Math.round(
-          mapWidth / 2 - centerTile.offsetX * MAP_TILE_SIZE + dx * MAP_TILE_SIZE,
+          mapWidth / 2 -
+            centerTile.offsetX * MAP_TILE_SIZE +
+            dx * MAP_TILE_SIZE +
+            dragDx,
         ),
         top: Math.round(
-          mapHeight / 2 - centerTile.offsetY * MAP_TILE_SIZE + dy * MAP_TILE_SIZE,
+          mapHeight / 2 -
+            centerTile.offsetY * MAP_TILE_SIZE +
+            dy * MAP_TILE_SIZE +
+            dragDy,
         ),
       });
     }
@@ -229,18 +285,20 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
       mapWidth,
       mapHeight,
     );
-    return { incident: inc, x: pos.x, y: pos.y };
+    return { incident: inc, x: pos.x + dragDx, y: pos.y + dragDy };
   }).filter(Boolean) as { incident: Incident; x: number; y: number }[];
 
-  const handleZoomIn = () => setZoom((z) => Math.min(19, z + 1));
-  const handleZoomOut = () => setZoom((z) => Math.max(3, z - 1));
+  const handleZoomIn = () => setZoom((z) => Math.min(MAX_TILE_ZOOM, z + 1));
+  const handleZoomOut = () => setZoom((z) => Math.max(MIN_TILE_ZOOM, z - 1));
 
   const handleSearchSubmit = () => {
     setSearch(searchInput);
     setSelected(null);
   };
 
-  const title = ROLE_MAP_TITLE[role] ?? 'Mapa de incidentes';
+  const openDetailEnabled = Boolean(
+    onOpenIncident && selected && (!canOpenSelected || canOpenSelected(selected)),
+  );
 
   return (
     <View style={styles.root}>
@@ -252,14 +310,27 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
           </Pressable>
         ) : null}
         <View style={styles.headerText}>
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={styles.headerTitle}>{scope.title}</Text>
           <Text style={styles.headerSub}>
-            {loading ? 'Cargando…' : `${incidents.length} reporte${incidents.length !== 1 ? 's' : ''} con ubicación`}
+            {loading
+              ? 'Cargando…'
+              : `${incidents.length} reporte${incidents.length !== 1 ? 's' : ''} con ubicación`}
           </Text>
+          {!loading && truncated ? (
+            <Text style={styles.truncatedText} testID="map-truncated">
+              Se muestran los más recientes
+            </Text>
+          ) : null}
         </View>
         <Pressable onPress={() => loadIncidents()} style={styles.refreshBtn} testID="map-refresh">
           <Icon name="refresh" size={20} color={Colors.accent} />
         </Pressable>
+      </View>
+
+      {/* ── Alcance de lo que se está viendo ── */}
+      <View style={styles.scopeBox}>
+        <Icon name="info" size={14} color={Colors.accentDim} />
+        <Text style={styles.scopeText}>{scope.description}</Text>
       </View>
 
       {/* ── Barra de búsqueda y filtros ── */}
@@ -295,7 +366,7 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
           </Pressable>
         </View>
 
-        {/* Filtros de estado */}
+        {/* Filtros de estado (solo si el rol ve más de un estado) */}
         {allowedStatuses.length > 1 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
             <Pressable
@@ -314,14 +385,14 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
                 style={[
                   styles.filterChip,
                   filterStatus === st && styles.filterChipActive,
-                  { borderColor: STATUS_COLORS[st] + '66' },
-                  filterStatus === st && { backgroundColor: STATUS_COLORS[st] + '22' },
+                  { borderColor: MAP_STATUS_COLORS[st] + '66' },
+                  filterStatus === st && { backgroundColor: MAP_STATUS_COLORS[st] + '22' },
                 ]}
                 testID={`map-filter-${st}`}
               >
-                <View style={[styles.filterDot, { backgroundColor: STATUS_COLORS[st] }]} />
-                <Text style={[styles.filterChipText, filterStatus === st && { color: STATUS_COLORS[st] }]}>
-                  {STATUS_LABELS[st] ?? st}
+                <View style={[styles.filterDot, { backgroundColor: MAP_STATUS_COLORS[st] }]} />
+                <Text style={[styles.filterChipText, filterStatus === st && { color: MAP_STATUS_COLORS[st] }]}>
+                  {MAP_STATUS_LABELS[st] ?? st}
                 </Text>
               </Pressable>
             ))}
@@ -332,6 +403,8 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
       {/* ── Mapa ── */}
       <View
         style={styles.mapContainer}
+        testID="map-canvas"
+        {...panResponder.panHandlers}
         onLayout={(e) => {
           setMapWidth(e.nativeEvent.layout.width);
           setMapHeight(e.nativeEvent.layout.height);
@@ -357,18 +430,15 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
 
         {/* Pins de incidentes */}
         {!loading && pins.map(({ incident, x, y }) => {
-          const color = STATUS_COLORS[incident.status] ?? Colors.accent;
+          const color = MAP_STATUS_COLORS[incident.status] ?? Colors.accent;
           const isSelected = selected?.id === incident.id;
           return (
             <Pressable
               key={incident.id}
               style={[
                 styles.pin,
-                {
-                  left: x - 14,
-                  top: y - 28,
-                  zIndex: isSelected ? 20 : 10,
-                },
+                isSelected ? styles.pinSelected : styles.pin,
+                { left: x - 14, top: y - 28 },
               ]}
               onPress={() => {
                 setSelected(isSelected ? null : incident);
@@ -391,7 +461,7 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
           );
         })}
 
-        {/* Controles de zoom */}
+        {/* Controles de zoom y encuadre */}
         <View style={styles.zoomControls}>
           <Pressable style={styles.zoomBtn} onPress={handleZoomIn} testID="map-zoom-in">
             <Icon name="plus" size={20} color={Colors.textPrimary} />
@@ -399,6 +469,14 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
           <View style={styles.zoomDivider} />
           <Pressable style={styles.zoomBtn} onPress={handleZoomOut} testID="map-zoom-out">
             <Text style={styles.zoomMinus}>−</Text>
+          </Pressable>
+          <View style={styles.zoomDivider} />
+          <Pressable
+            style={styles.zoomBtn}
+            onPress={fitAllIncidents}
+            testID="map-fit-all"
+          >
+            <Icon name="map" size={18} color={Colors.textPrimary} />
           </Pressable>
         </View>
 
@@ -421,7 +499,9 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
           <View style={styles.emptyOverlay}>
             <Icon name="map" size={40} color={Colors.textSecondary} />
             <Text style={styles.emptyText}>
-              No hay reportes con{'\n'}ubicación registrada
+              {search || filterStatus
+                ? 'No hay reportes que coincidan\ncon la búsqueda'
+                : 'No hay reportes con\nubicación registrada'}
             </Text>
           </View>
         ) : null}
@@ -431,11 +511,11 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
       {selected ? (
         <View style={styles.detailCard}>
           <View style={styles.detailHeader}>
-            <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[selected.status] }]} />
+            <View style={[styles.statusDot, { backgroundColor: MAP_STATUS_COLORS[selected.status] }]} />
             <Text style={styles.detailCode}>{selected.code}</Text>
             <PillBadge
-              label={STATUS_LABELS[selected.status] ?? selected.status}
-              tone={STATUS_TONES[selected.status] ?? 'neutral'}
+              label={MAP_STATUS_LABELS[selected.status] ?? selected.status}
+              tone={MAP_STATUS_TONES[selected.status] ?? 'neutral'}
             />
             <Pressable
               onPress={() => setSelected(null)}
@@ -473,9 +553,22 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
             </View>
           ) : null}
 
-          <Text style={styles.detailDesc} numberOfLines={3}>
-            {selected.description}
-          </Text>
+          {selected.description ? (
+            <Text style={styles.detailDesc} numberOfLines={3}>
+              {selected.description}
+            </Text>
+          ) : null}
+
+          {openDetailEnabled && onOpenIncident ? (
+            <Pressable
+              style={styles.detailAction}
+              onPress={() => onOpenIncident(selected.id)}
+              testID="map-open-detail"
+            >
+              <Text style={styles.detailActionText}>Ver el reporte completo</Text>
+              <Icon name="chevronRight" size={16} color={Colors.textOnPrimary} />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -485,8 +578,8 @@ export default function MapScreen({ onBack, role }: MapScreenProps) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {[...new Set(incidents.map((i) => i.status))].map((st) => (
               <View key={st} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS[st] }]} />
-                <Text style={styles.legendText}>{STATUS_LABELS[st] ?? st}</Text>
+                <View style={[styles.legendDot, { backgroundColor: MAP_STATUS_COLORS[st] }]} />
+                <Text style={styles.legendText}>{MAP_STATUS_LABELS[st] ?? st}</Text>
               </View>
             ))}
           </ScrollView>
@@ -531,10 +624,33 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.micro,
     marginTop: 2,
   },
+  truncatedText: {
+    color: Colors.accentDim,
+    fontSize: fontSizes.micro,
+    marginTop: 2,
+  },
   refreshBtn: {
     padding: spacing.xs,
     borderRadius: radius.element,
     backgroundColor: Colors.accentSoft,
+  },
+
+  // Scope banner
+  scopeBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: Colors.accentSoft,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderSoft,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.xs,
+  },
+  scopeText: {
+    flex: 1,
+    color: Colors.accentDim,
+    fontSize: fontSizes.micro,
+    lineHeight: 15,
   },
 
   // Controls
@@ -697,7 +813,11 @@ const styles = StyleSheet.create({
   pin: {
     position: 'absolute',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  pinSelected: {
+    zIndex: 20,
   },
   pinBody: {
     width: 28,
@@ -777,7 +897,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     // @ts-ignore
     boxShadow: '0 -4px 16px rgba(18,38,58,0.10)',
-    maxHeight: 200,
+    maxHeight: 240,
   },
   detailHeader: {
     flexDirection: 'row',
@@ -821,6 +941,21 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.micro,
     lineHeight: 18,
     marginTop: 2,
+  },
+  detailAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.accent,
+    borderRadius: radius.element,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  detailActionText: {
+    color: Colors.textOnPrimary,
+    fontSize: fontSizes.micro,
+    fontWeight: fontWeights.semiBold,
   },
 
   // Legend

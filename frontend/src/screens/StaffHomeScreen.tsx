@@ -506,11 +506,16 @@ const styles = StyleSheet.create({
   },
   quickRow: {
     flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'stretch',
     gap: spacing.base,
     marginTop: spacing.base,
+    width: '100%',
   },
   quickCard: {
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -532,12 +537,14 @@ const styles = StyleSheet.create({
   },
   quickTextWrap: {
     flex: 1,
+    minWidth: 0,
   },
   quickLabel: {
     color: Colors.textOnDark,
     fontSize: fontSizes.small,
     fontWeight: fontWeights.bold,
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
   quickSub: {
     color: Colors.textMuted,

@@ -2,6 +2,9 @@
 
 **Alcaldía Municipal de Cochabamba — "Cochabamba, ciudad de todos"**
 
+> 📖 **Guía de instalación y uso paso a paso:** [`MANUAL-DE-USUARIO.md`](MANUAL-DE-USUARIO.md)
+> (requisitos, puesta en marcha, solución de problemas y manual de cada rol).
+
 Sistema multiplataforma que permite a los ciudadanos de Cochabamba reportar problemas urbanos (baches, basura, alumbrado público, espacios públicos, infraestructura, entre otros), adjuntar evidencia fotográfica, indicar la ubicación exacta y realizar seguimiento del proceso de atención con total trazabilidad. El personal municipal recibe, verifica, asigna y resuelve cada reporte, y el ciudadano recibe notificaciones de cada cambio de estado.
 
 ---

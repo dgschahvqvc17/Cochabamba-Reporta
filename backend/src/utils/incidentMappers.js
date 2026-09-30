@@ -161,6 +161,44 @@ const toPublicIncidentListItem = (incident, { reopenState = null, viewer = null 
   location: formatLocation(incident.location),
 });
 
+/**
+ * Incidente del mapa interactivo. Reutiliza la forma del ítem de lista y
+ * aplica un criterio de privacidad: el ciudadano ve el mapa completo para
+ * saber si el problema que quiere reportar ya fue reportado, pero solo
+ * necesita el código, el título, la categoría y el estado. Por eso, cuando
+ * el reporte es de otra persona, no se le entrega ni los datos de contacto
+ * del reportante ni la descripción completa; el personal municipal (que sí
+ * atiende el caso) y el propio ciudadano sí los reciben.
+ */
+const toPublicMapIncident = (incident, { viewer = null } = {}) => {
+  const isOwner =
+    Boolean(viewer) &&
+    viewer.role === ROLES.CIUDADANO &&
+    Number(incident.user_id) === Number(viewer.id);
+  const isStaff =
+    Boolean(viewer) &&
+    (viewer.role === ROLES.ADMINISTRADOR || viewer.role !== ROLES.CIUDADANO);
+
+  return {
+    id: incident.id,
+    code: incident.code,
+    userId: incident.user_id,
+    categoryId: incident.category_id,
+    category: incident.category
+      ? { id: incident.category.id, name: incident.category.name }
+      : null,
+    title: incident.title,
+    status: incident.status,
+    createdAt: incident.created_at,
+    location: formatLocation(incident.location),
+    description: isOwner || isStaff ? incident.description : null,
+    reporter:
+      isOwner || isStaff
+        ? toPublicReporter(incident.citizen, canViewReporterIdentity(incident, viewer))
+        : null,
+  };
+};
+
 const toPublicEvidence = (evidence) => ({
   id: evidence.id,
   incidentId: evidence.incident_id,
@@ -229,6 +267,7 @@ module.exports = {
   NO_REOPEN,
   toPublicIncident,
   toPublicIncidentListItem,
+  toPublicMapIncident,
   toPublicEvidence,
   toPublicVerifier,
   toPublicSolutionStaff,

@@ -56,6 +56,13 @@ import {
 
 export type { ApiResponse };
 
+/** Respuesta del mapa interactivo: incidentes del alcance del rol. */
+export interface MapIncidentData {
+  incidents: Incident[];
+  /** true si el alcance del rol tenía más reportes de los que se envían. */
+  truncated?: boolean;
+}
+
 export async function createIncident(
   accessToken: string,
   payload: IncidentPayload,
@@ -555,13 +562,15 @@ export async function deleteIncident(
 
 /**
  * Mapa interactivo de incidentes con ubicación registrada.
- * Devuelve los incidentes que tienen coordenadas GPS para mostrarlos
- * en el mapa según el rol del usuario autenticado.
+ * Devuelve los incidentes que tienen coordenadas GPS dentro del alcance del
+ * rol (el backend lo define: el ciudadano ve todos los reportes, el personal
+ * municipal solo lo que le corresponde). `truncated` indica que el alcance
+ * tenía más reportes de los que se envían.
  */
 export async function getMapIncidents(
   accessToken: string,
   params: { categoryId?: number; status?: string; search?: string } = {},
-): Promise<ApiResponse<{ incidents: Incident[] }>> {
+): Promise<ApiResponse<MapIncidentData>> {
   const query = new URLSearchParams();
 
   if (params.categoryId !== undefined) {
@@ -572,7 +581,7 @@ export async function getMapIncidents(
 
   const qs = query.toString();
 
-  return api<{ incidents: Incident[] }>(
+  return api<MapIncidentData>(
     `/incidents/map-incidents${qs ? `?${qs}` : ''}`,
     accessToken,
   );

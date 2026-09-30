@@ -12,6 +12,7 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { sanitizeSearchTerm } = require('../utils/text');
 const { INCIDENT_STATUS } = require('../utils/incidentStatus');
+const { MAX_MAP_INCIDENTS } = require('../utils/mapScope');
 
 const create = async ({
   code,
@@ -375,16 +376,63 @@ const remove = async (id) => {
 };
 
 /**
+ * Una misma fila puede repetirse cuando el filtro por asignación usa el
+ * `inner join` de `assignments`. Se conserva el primer registro de cada
+ * incidente para no duplicar pines en el mapa.
+ */
+const uniqueById = (rows) => {
+  if (!rows || rows.length === 0) {
+    return [];
+  }
+
+  const seen = new Set();
+  const result = [];
+
+  for (const row of rows) {
+    if (seen.has(row.id)) {
+      continue;
+    }
+
+    seen.add(row.id);
+    result.push(row);
+  }
+
+  return result;
+};
+
+/**
  * Consulta de incidentes para el mapa interactivo.
  * Devuelve incidentes que tienen ubicación registrada, con filtros opcionales.
+ *
+ * `statuses` acota por estado (alcance del rol) y `assignment` acota a los
+ * incidentes con una asignación activa de un tipo y persona concreta
+ * (`{ type, assignedTo }`), que es lo que ve el verificador y el personal
+ * de solución: únicamente lo que le asignaron. `locations!inner` mantiene
+ * fuera del resultado los reportes sin ubicación.
  */
-const findMapIncidents = async ({ categoryId = null, status = null, search = '' } = {}) => {
+const findMapIncidents = async ({
+  categoryId = null,
+  status = null,
+  statuses = null,
+  assignment = null,
+  search = '',
+} = {}) => {
+  const assignmentFilter =
+    assignment && assignment.type && assignment.assignedTo ? assignment : null;
+
+  const baseSelect =
+    '*, category:categories(id, name), citizen:users(id, first_name, last_name, phone), location:locations!inner(id, latitude, longitude, address, captured_at)';
+
+  const select = assignmentFilter
+    ? `${baseSelect}, assignments!inner(assignment_type, assigned_to, active)`
+    : baseSelect;
+
   let query = supabaseAdmin
     .from('incidents')
-    .select(
-      '*, category:categories(id, name), citizen:users(id, first_name, last_name, phone), location:locations!inner(id, latitude, longitude, address, captured_at)',
-    )
-    .order('created_at', { ascending: false });
+    .select(select)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(MAX_MAP_INCIDENTS);
 
   if (categoryId) {
     query = query.eq('category_id', categoryId);
@@ -392,6 +440,17 @@ const findMapIncidents = async ({ categoryId = null, status = null, search = '' 
 
   if (status) {
     query = query.eq('status', status);
+  }
+
+  if (Array.isArray(statuses) && statuses.length > 0) {
+    query = query.in('status', statuses);
+  }
+
+  if (assignmentFilter) {
+    query = query
+      .eq('assignments.assignment_type', assignmentFilter.type)
+      .eq('assignments.assigned_to', assignmentFilter.assignedTo)
+      .eq('assignments.active', true);
   }
 
   const term = sanitizeSearchTerm(search);
@@ -407,7 +466,7 @@ const findMapIncidents = async ({ categoryId = null, status = null, search = '' 
     throw error;
   }
 
-  return data ?? [];
+  return uniqueById(data);
 };
 
 module.exports = {

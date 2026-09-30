@@ -119,6 +119,14 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
   const [adminRoute, setAdminRoute] = useState<AdminRoute>({ name: 'dashboard' });
   const [citizenRoute, setCitizenRoute] = useState<CitizenRoute>({ name: 'home' });
+  /**
+   * A dónde vuelve el mapa del ciudadano: al inicio si se abrió desde la
+   * barra de navegación, o al formulario si se abrió para revisar si el
+   * reporte ya existe (y así no perder lo ya escrito).
+   */
+  const [citizenMapReturn, setCitizenMapReturn] = useState<'home' | 'incident-create'>(
+    'home',
+  );
   const [staffRoute, setStaffRoute] = useState<StaffRoute>({ name: 'home' });
   const isOnline = useNetworkStatus();
   const offlineBanner = (
@@ -484,6 +492,9 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               <MapScreen
                 role={session.user.role}
                 onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'incident-detail', incidentId })
+                }
               />
             ) : (
               <StaffHomeScreen
@@ -557,6 +568,10 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
               mode="create"
               onBack={() => setCitizenRoute({ name: 'home' })}
               onSaved={() => setCitizenRoute({ name: 'home' })}
+              onOpenMap={() => {
+                setCitizenMapReturn('incident-create');
+                setCitizenRoute({ name: 'map' });
+              }}
             />
           ) : citizenRoute.name === 'incident-edit' ? (
             <IncidentFormScreen
@@ -599,7 +614,19 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
           ) : citizenRoute.name === 'map' ? (
             <MapScreen
               role={session.user.role}
-              onBack={() => setCitizenRoute({ name: 'home' })}
+              onBack={() =>
+                setCitizenRoute(
+                  citizenMapReturn === 'incident-create'
+                    ? { name: 'incident-create' }
+                    : { name: 'home' },
+                )
+              }
+              onOpenIncident={(incidentId) =>
+                setCitizenRoute({ name: 'incident-follow-up', incidentId })
+              }
+              canOpenSelected={(incident) =>
+                incident.userId === session.user.id
+              }
             />
           ) : (
             <HomeScreen
@@ -631,7 +658,10 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
                 key: 'map',
                 label: 'Mapa',
                 icon: 'map',
-                onPress: () => setCitizenRoute({ name: 'map' }),
+                onPress: () => {
+                  setCitizenMapReturn('home');
+                  setCitizenRoute({ name: 'map' });
+                },
               },
             ]}
             activeKey={citizenNavActiveKey}

@@ -55,10 +55,12 @@ const {
 const {
   toPublicIncident,
   toPublicIncidentListItem,
+  toPublicMapIncident,
   toPublicEvidence,
   NO_REOPEN,
 } = require('../utils/incidentMappers');
 const { toPublicLocation } = require('../utils/location');
+const { MAX_MAP_INCIDENTS, resolveMapScope } = require('../utils/mapScope');
 const statusService = require('./status.service');
 
 /** Único estado en el que el ciudadano puede editar o eliminar su reporte. */
@@ -711,6 +713,17 @@ const incidentService = {
     return { id: incident.id, code: incident.code };
   },
 
+  /**
+   * Mapa interactivo de incidentes con ubicación registrada.
+   *
+   * El alcance no lo decide el cliente: se deriva del rol de la sesión
+   * (utils/mapScope). El ciudadano ve todos los reportes para comprobar
+   * si el suyo ya existe; el personal municipal ve únicamente lo que le
+   * corresponde —los que le llegan a recepción, los que le asignaron
+   * verificar, los verificados que debe asignar a solución y los que le
+   * asignaron para atender. El filtro de estado solo puede Estrechar ese
+   * alcance, nunca ampliarlo.
+   */
   async getMapIncidents(user, query = {}) {
     const userId = user && user.id;
 
@@ -726,22 +739,33 @@ const incidentService = {
     const status = query.status ? String(query.status).trim() : null;
     const search = query.search ? String(query.search).trim() : '';
 
+    if (status && !INCIDENT_STATUSES.includes(status)) {
+      throw buildError(
+        'El estado indicado no es válido.',
+        422,
+        'VALIDATION_ERROR',
+        'status',
+      );
+    }
+
+    const scope = resolveMapScope(user);
+
     const incidents = await incidentRepository.findMapIncidents({
       categoryId,
       status,
+      statuses: scope.statuses,
+      assignment: scope.assignment,
       search,
     });
 
-    const reopenFlags = await historyRepository.findReopenFlags(
-      incidents.map((item) => item.id),
-    );
-
-    return incidents.map((item) =>
-      toPublicIncidentListItem(item, {
-        reopenState: reopenFlags.get(item.id),
-        viewer: user,
-      }),
-    );
+    return {
+      incidents: incidents.map((item) =>
+        toPublicMapIncident(item, { viewer: user }),
+      ),
+      // El alcance puede devolver más reportes de los que caben en el mapa:
+      // se avisa para que la interfaz no insinúe que se ven todos.
+      truncated: incidents.length >= MAX_MAP_INCIDENTS,
+    };
   },
 };
 

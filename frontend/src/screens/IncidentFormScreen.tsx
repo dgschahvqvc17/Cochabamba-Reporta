@@ -72,6 +72,12 @@ type IncidentFormScreenProps = {
   onSaved: () => void;
   mode?: 'create' | 'edit';
   incidentId?: number;
+  /**
+   * Abre el mapa de la ciudad. Permite al ciudadano comprobar si el
+   * problema que va a describir ya fue reportado en esa ubicación antes de
+   * enviar un reporte duplicado.
+   */
+  onOpenMap?: () => void;
 };
 
 const MIN_TITLE_LENGTH = 8;
@@ -116,6 +122,7 @@ export default function IncidentFormScreen({
   onSaved,
   mode = 'create',
   incidentId,
+  onOpenMap,
 }: IncidentFormScreenProps) {
   const insets = useSafeAreaInsets();
   const { dialog, error, confirm, success, close } = useDialog();
@@ -174,7 +181,7 @@ export default function IncidentFormScreen({
       const incident = result.data;
       setCategoryId(incident.categoryId);
       setTitle(incident.title);
-      setDescription(incident.description);
+      setDescription(incident.description ?? '');
     })();
   }, [isEdit, incidentId, error, onBack]);
 
@@ -599,6 +606,33 @@ export default function IncidentFormScreen({
                     </>
                   )}
 
+                  {!isEdit && onOpenMap ? (
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.mapHint,
+                        pressed && styles.mapHintPressed,
+                      ]}
+                      onPress={onOpenMap}
+                      testID="incident-open-map"
+                    >
+                      <Icon name="map" size={18} color={Colors.accentDim} />
+                      <View style={styles.mapHintTextBox}>
+                        <Text style={styles.mapHintTitle}>
+                          ¿Ya fue reportado antes?
+                        </Text>
+                        <Text style={styles.mapHintSub}>
+                          Revisa el mapa de la ciudad para ver si el problema
+                          ya está registrado en esa ubicación.
+                        </Text>
+                      </View>
+                      <Icon
+                        name="chevronRight"
+                        size={18}
+                        color={Colors.accentDim}
+                      />
+                    </Pressable>
+                  ) : null}
+
                   <PrimaryButton
                     label={
                       isSubmitting
@@ -827,6 +861,34 @@ const styles = StyleSheet.create({
   progressText: {
     color: Colors.textSecondary,
     fontSize: fontSizes.caption,
+  },
+  mapHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: 'rgba(59, 130, 184, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 184, 0.28)',
+    borderRadius: radius.element,
+    padding: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  mapHintPressed: {
+    backgroundColor: 'rgba(59, 130, 184, 0.16)',
+  },
+  mapHintTextBox: {
+    flex: 1,
+  },
+  mapHintTitle: {
+    color: Colors.textPrimary,
+    fontSize: fontSizes.caption,
+    fontWeight: fontWeights.semiBold,
+  },
+  mapHintSub: {
+    color: Colors.textSecondary,
+    fontSize: fontSizes.micro,
+    lineHeight: 16,
+    marginTop: 2,
   },
   loadingEditBox: {
     alignItems: 'center',

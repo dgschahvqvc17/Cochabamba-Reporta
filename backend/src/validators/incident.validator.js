@@ -100,6 +100,17 @@ const listIncidentsValidation = [
   validateListOrder,
 ];
 
+/**
+ * Mapa interactivo: mismos filtros que el listado (estado, categoría y
+ * búsqueda) sin paginación. El alcance por rol lo aplica el service
+ * (utils/mapScope), nunca los parámetros de la consulta.
+ */
+const mapIncidentsValidation = [
+  validateListStatus,
+  validateListCategoryId,
+  validateListSearch,
+];
+
 /** Sin espacios al principio, al final ni duplicados ("  bache  roto "). */
 const noUselessSpaces = (label) => (value) => {
   if (hasUselessSpaces(value)) {
@@ -272,6 +283,7 @@ const closeIncidentValidation = [validateActionsOptional, validateObservations];
 module.exports = {
   createIncidentValidation,
   listIncidentsValidation,
+  mapIncidentsValidation,
   assignVerificationValidation,
   reassignVerificationValidation,
   assignSolutionValidation,

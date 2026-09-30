@@ -48,6 +48,9 @@
  *                                             (ATENDIDO → CERRADO).
  *   - POST /api/v1/incidents/:id/evidence → evidencia del trabajo
  *                                             realizado (personal de solución).
+ * Mapa interactivo (acotado por rol y por asignación):
+ *   - GET  /api/v1/incidents/map-incidents → incidentes con ubicación dentro
+ *                                             del alcance del rol (HU09-HU13).
  * Transición de estados:
  *   - PATCH /api/v1/incidents/:id/status    → cambiar estado (transiciones
  *                                             autorizadas por rol, con
@@ -85,6 +88,7 @@ const {
 const {
   createIncidentValidation,
   listIncidentsValidation,
+  mapIncidentsValidation,
   assignVerificationValidation,
   reassignVerificationValidation,
   assignSolutionValidation,
@@ -128,7 +132,9 @@ router.get(
 /**
  * Mapa interactivo de incidentes con ubicación registrada.
  * Todos los roles autenticados pueden consultar este endpoint;
- * el service filtra la vista según el rol del usuario.
+ * el service acota la vista al alcance de cada rol (utils/mapScope):
+ * el ciudadano ve todos los reportes (para no duplicar uno ya hecho), el
+ * personal municipal ve solo lo que le corresponde y el administrador ve todo.
  */
 router.get(
   '/map-incidents',
@@ -141,6 +147,7 @@ router.get(
     ROLES.PERSONAL_SOLUCION,
     ROLES.ADMINISTRADOR,
   ),
+  validate(mapIncidentsValidation),
   incidentController.getMapIncidents,
 );
 

@@ -172,13 +172,20 @@ export interface IncidentHistoryEntry {
 export interface Incident {
   id: number;
   code: string;
+  /** Ciudadano que creó el reporte (no viaja en las vistas del personal). */
+  userId?: number;
   categoryId: number;
   category: {
     id: number;
     name: string;
   } | null;
   title: string;
-  description: string;
+  /**
+   * Descripción del reporte. En el mapa llega como `null` cuando el
+   * reporte es de otra persona y quien consulta es un ciudadano: en ese
+   * caso solo se necesita saber que ya existe (código, categoría y estado).
+   */
+  description?: string | null;
   status: IncidentStatus;
   createdAt: string;
   updatedAt: string;
