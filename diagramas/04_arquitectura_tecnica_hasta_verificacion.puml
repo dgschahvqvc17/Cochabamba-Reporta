@@ -1,0 +1,55 @@
+@startuml ArquitecturaTecnica
+' ============================================================
+' Arquitectura técnica actualizada hasta la etapa de verificación.
+' Capas: Presentación → API REST (Express) → Services → Repositories → Supabase.
+' ============================================================
+title Arquitectura técnica actualizada (hasta HU11 - verificación)
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam defaultFontSize 10
+
+package "Presentación (Cliente)" {
+  component "App React Native\n(ciudadano y personal municipal)" as FE
+}
+
+package "API REST /api/v1 — Node.js + Express 5" as apiPkg {
+  component "Middlewares\nauthenticate · requireRole\nvalidate · upload" as MW
+  package "Controllers por dominio" as ctrlPkg {
+    component "Auth/User/Category/\nNotification Controller" as c1
+    component "Incident/Evidence/\nLocation Controller" as c2
+    component "Assignment/Verification/\nStatus Controller" as c3
+  }
+  package "Services por dominio (reglas de negocio)" as svcPkg {
+    component "Auth / User / Category\nNotification Service" as s1
+    component "Incident / Evidence\nLocation Service" as s2
+    component "Assignment / Verification\nStatus Service" as s3
+  }
+  package "Repositories (acceso a datos)" as repoPkg {
+    component "user / role / audit / category" as r1
+    component "incident / evidence / location\nhistory / notification" as r2
+    component "assignment / storage (Supabase)" as r3
+  }
+}
+
+package "Supabase Cloud" as infra {
+  component "Supabase Auth\n(registro, login, JWT)" as auth
+  database "PostgreSQL\n(roles, users, categories, incidents,\nevidence, locations, assignments,\nhistory, notifications, user_audit_log)" as db
+  component "Supabase Storage\n(bucket 'evidence', URL pública)" as storage
+}
+
+FE -down-> MW : HTTPS\n/api/v1/*
+MW -down-> ctrlPkg
+ctrlPkg -down-> svcPkg
+svcPkg -down-> repoPkg
+repoPkg -right-> auth : service_role / anon key
+repoPkg -right-> db : service_role (omite RLS)
+repoPkg -right-> storage : service_role (upload/remove evidence)
+
+note bottom of svcPkg
+  Avance verificado por pruebas E2E: HU01, HU02, HU03, HU06,
+  HU07, HU08, HU09, HU10 y HU11. Las historias de solución
+  (HU12-HU14) agregan services/repos nuevos sin cambiar esta estructura.
+end note
+
+@enduml

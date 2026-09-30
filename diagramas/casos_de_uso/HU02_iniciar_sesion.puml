@@ -1,0 +1,25 @@
+@startuml HU02 - Iniciar sesión
+title HU02 — Iniciar sesión
+left to right direction
+skinparam actorStyle awesome
+
+actor "Usuario registrado" as usuario
+
+rectangle "Iniciar sesión" {
+  usecase "Acceder a la pantalla de inicio de sesión" as UC1
+  usecase "Ingresar correo electrónico y contraseña" as UC2
+  usecase "Validar credenciales" as UC3
+  usecase "Verificar usuario activo" as UC4
+  usecase "Identificar rol del usuario" as UC5
+  usecase "Redirigir al módulo correspondiente" as UC6
+  usecase "Cerrar sesión" as UC7
+}
+
+usuario --> UC1
+UC1 ..> UC2
+UC2 ..> UC3
+UC3 ..> UC4
+UC4 ..> UC5
+UC5 ..> UC6
+usuario --> UC7
+@enduml

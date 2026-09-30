@@ -1,32 +1,690 @@
 /**
  * Configuración de navegación de la aplicación (MVC - src/navigation).
  *
- * En este módulo se definen las rutas y la estructura de navegación
- * entre las diferentes pantallas de la aplicación.
+ * HU02 — Navegación por estado:
+ *   - Sin sesión: pantallas de Registro / Inicio de sesión.
+ *   - Con sesión: módulo principal (ciudadano) y, si el rol es
+ *     ADMINISTRADOR, el panel de gestión de usuarios (HU03).
+ * La sesión se restaura al abrir la app y se limpia al cerrar sesión.
  *
  * @format
  */
 
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import type { EdgeInsets } from 'react-native-safe-area-context';
-import { Colors } from '../assets/colors';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import HomeScreen from '../screens/HomeScreen';
+import AdminScreen from '../screens/AdminScreen';
+import DashboardScreen from '../screens/DashboardScreen';
+import StaffHomeScreen from '../screens/StaffHomeScreen';
+import UsersScreen from '../screens/UsersScreen';
+import UserFormScreen from '../screens/UserFormScreen';
+import UserDetailScreen from '../screens/UserDetailScreen';
+import CategoriesScreen from '../screens/CategoriesScreen';
+import CategoryFormScreen from '../screens/CategoryFormScreen';
+import IncidentFormScreen from '../screens/IncidentFormScreen';
+import ReportsScreen from '../screens/ReportsScreen';
+import IncidentsScreen from '../screens/IncidentsScreen';
+import IncidentDetailScreen from '../screens/IncidentDetailScreen';
+import PendingVerificationScreen from '../screens/PendingVerificationScreen';
+import AssignVerificationScreen from '../screens/AssignVerificationScreen';
+import VerificationQueueScreen from '../screens/VerificationQueueScreen';
+import VerifyIncidentScreen from '../screens/VerifyIncidentScreen';
+import PendingSolutionScreen from '../screens/PendingSolutionScreen';
+import AssignSolutionScreen from '../screens/AssignSolutionScreen';
+import SolutionQueueScreen from '../screens/SolutionQueueScreen';
+import AttendIncidentScreen from '../screens/AttendIncidentScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import SeguimientoScreen from '../screens/SeguimientoScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import MapScreen from '../screens/MapScreen';
+import AppNavBar from '../components/AppNavBar';
+import OfflineBanner from '../components/OfflineBanner';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import {
+  isSessionValid,
+  peekStoredSession,
+  type StoredSession,
+} from '../utils/session';
+import { SESSION_CLOSED_MESSAGE } from '../utils/errorMessages';
+import { Colors } from '../theme';
 
 type AppNavigatorProps = {
   safeAreaInsets: EdgeInsets;
 };
 
+type AuthScreen = 'register' | 'login';
+
+type AdminRoute =
+  | { name: 'dashboard' }
+  | { name: 'dashboard-kpi' }
+  | { name: 'users' }
+  | { name: 'user-create' }
+  | { name: 'user-edit'; userId: number }
+  | { name: 'user-detail'; userId: number }
+  | { name: 'categories' }
+  | { name: 'category-create' }
+  | { name: 'category-edit'; categoryId: number }
+  | { name: 'notifications' }
+  | { name: 'profile' }
+  | { name: 'map' };
+
+type CitizenRoute =
+  | { name: 'home' }
+  | { name: 'incident-create' }
+  | { name: 'incident-edit'; incidentId: number }
+  | { name: 'my-reports' }
+  | { name: 'incident-follow-up'; incidentId: number }
+  | { name: 'notifications' }
+  | { name: 'profile' }
+  | { name: 'map' };
+
+/** Roles municipales que usan el módulo de recepción/consulta (HU09). */
+type StaffRoute =
+  | { name: 'home' }
+  | { name: 'incidents' }
+  | { name: 'incident-detail'; incidentId: number }
+  | { name: 'pending-verification' }
+  | { name: 'assign-verification'; incidentId: number }
+  | { name: 'reassign-verification'; incidentId: number; currentVerifier?: { id: number; firstName: string; lastName: string; email?: string } | null }
+  | { name: 'verification-queue' }
+  | { name: 'verify-incident'; incidentId: number }
+  | { name: 'pending-solution' }
+  | { name: 'assign-solution'; incidentId: number }
+  | { name: 'solution-queue' }
+  | { name: 'attend-incident'; incidentId: number }
+  | { name: 'notifications' }
+  | { name: 'profile' }
+  | { name: 'map' };
+
+const STAFF_ROLES: string[] = [
+  'RECEPCION',
+  'VERIFICADOR',
+  'ENCARGADO_SOLUCION',
+  'PERSONAL_SOLUCION',
+];
+
+const SESSION_CHECK_INTERVAL_MS = 10000;
+
 function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
+  // `peekStoredSession` a propósito: al abrir la app sin internet la sesión
+  // se conserva y solo se evalúa su vigencia cuando hay conexión.
+  const [session, setSession] = useState<StoredSession | null>(() =>
+    peekStoredSession(),
+  );
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+  const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
+  const [adminRoute, setAdminRoute] = useState<AdminRoute>({ name: 'dashboard' });
+  const [citizenRoute, setCitizenRoute] = useState<CitizenRoute>({ name: 'home' });
+  /**
+   * A dónde vuelve el mapa del ciudadano: al inicio si se abrió desde la
+   * barra de navegación, o al formulario si se abrió para revisar si el
+   * reporte ya existe (y así no perder lo ya escrito).
+   */
+  const [citizenMapReturn, setCitizenMapReturn] = useState<'home' | 'incident-create'>(
+    'home',
+  );
+  const [staffRoute, setStaffRoute] = useState<StaffRoute>({ name: 'home' });
+  const isOnline = useNetworkStatus();
+  const offlineBanner = (
+    <OfflineBanner visible={!isOnline} topInset={safeAreaInsets.top} />
+  );
+
+  useEffect(() => {
+    if (!session) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      // Sin internet no se puede comprobar la sesión: no se cierra la sesión
+      // del usuario ni se le informa de que "caducó", porque el cierre real
+      // se evaluará apenas vuelva la conexión.
+      if (!isOnline) {
+        return;
+      }
+
+      if (!isSessionValid()) {
+        setSession(null);
+        setAdminRoute({ name: 'dashboard' });
+        setStaffRoute({ name: 'home' });
+        setCitizenRoute({ name: 'home' });
+        setAuthScreen('login');
+        setSessionNotice(SESSION_CLOSED_MESSAGE);
+      }
+    }, SESSION_CHECK_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [session, isOnline]);
+
+  /**
+   * Al volver la conexión, si la sesión ya no es válida, se cierra con un
+   * aviso claro (nunca con un mensaje técnico sobre el token).
+   */
+  useEffect(() => {
+    if (!session || !isOnline) {
+      return;
+    }
+
+    if (!isSessionValid()) {
+      setSession(null);
+      setAdminRoute({ name: 'dashboard' });
+      setStaffRoute({ name: 'home' });
+      setCitizenRoute({ name: 'home' });
+      setAuthScreen('login');
+      setSessionNotice(SESSION_CLOSED_MESSAGE);
+    }
+  }, [session, isOnline]);
+
+  const goToLogin = () => {
+    setAuthScreen('login');
+    setSessionNotice(null);
+  };
+  const goToRegister = () => {
+    setAuthScreen('register');
+    setSessionNotice(null);
+  };
+
+  const handleLoginSuccess = (newSession: StoredSession) => {
+    setAdminRoute({ name: 'dashboard' });
+    setStaffRoute({ name: 'home' });
+    setCitizenRoute({ name: 'home' });
+    setSessionNotice(null);
+    setSession(newSession);
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    setAdminRoute({ name: 'dashboard' });
+    setStaffRoute({ name: 'home' });
+    setSessionNotice(null);
+    setAuthScreen('login');
+  };
+
+  if (session) {
+    if (session.user.role === 'ADMINISTRADOR') {
+      // Sub-routes where the navbar is still shown but "back" is the only action
+      const isSubRoute =
+        adminRoute.name === 'user-create' ||
+        adminRoute.name === 'user-edit' ||
+        adminRoute.name === 'user-detail' ||
+        adminRoute.name === 'category-create' ||
+        adminRoute.name === 'category-edit' ||
+        adminRoute.name === 'notifications' ||
+        adminRoute.name === 'profile';
+
+      // Active key for the navbar
+      const navActiveKey =
+        adminRoute.name === 'users' ||
+        adminRoute.name === 'user-create' ||
+        adminRoute.name === 'user-edit' ||
+        adminRoute.name === 'user-detail'
+          ? 'users'
+          : adminRoute.name === 'categories' ||
+              adminRoute.name === 'category-create' ||
+              adminRoute.name === 'category-edit'
+            ? 'categories'
+            : adminRoute.name === 'map'
+              ? 'map'
+              : 'panel';
+
+      return (
+        <View style={styles.container}>
+          {/* Screen slot always shrinks to give the navbar its height */}
+          <View style={styles.screenSlot}>
+            {adminRoute.name === 'dashboard' ? (
+              <AdminScreen
+                user={session.user}
+                onGoToUsers={() => setAdminRoute({ name: 'users' })}
+                onGoToCategories={() => setAdminRoute({ name: 'categories' })}
+                onGoToDashboard={() => setAdminRoute({ name: 'dashboard-kpi' })}
+                onViewNotifications={() => setAdminRoute({ name: 'notifications' })}
+                onViewProfile={() => setAdminRoute({ name: 'profile' })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'dashboard-kpi' ? (
+              <DashboardScreen onBack={() => setAdminRoute({ name: 'dashboard' })} />
+            ) : null}
+
+            {adminRoute.name === 'users' ? (
+              <UsersScreen
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+                onCreate={() => setAdminRoute({ name: 'user-create' })}
+                onOpenDetail={(userId) => setAdminRoute({ name: 'user-detail', userId })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'user-create' ? (
+              <UserFormScreen
+                mode="create"
+                onBack={() => setAdminRoute({ name: 'users' })}
+                onSaved={() => setAdminRoute({ name: 'users' })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'user-edit' ? (
+              <UserFormScreen
+                mode="edit"
+                userId={adminRoute.userId}
+                onBack={() =>
+                  setAdminRoute({ name: 'user-detail', userId: adminRoute.userId })
+                }
+                onSaved={() => setAdminRoute({ name: 'users' })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'user-detail' ? (
+              <UserDetailScreen
+                userId={adminRoute.userId}
+                onBack={() => setAdminRoute({ name: 'users' })}
+                onEdit={(userId) => setAdminRoute({ name: 'user-edit', userId })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'categories' ? (
+              <CategoriesScreen
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+                onCreate={() => setAdminRoute({ name: 'category-create' })}
+                onOpenEdit={(categoryId) =>
+                  setAdminRoute({ name: 'category-edit', categoryId })
+                }
+              />
+            ) : null}
+
+            {adminRoute.name === 'category-create' ? (
+              <CategoryFormScreen
+                mode="create"
+                onBack={() => setAdminRoute({ name: 'categories' })}
+                onSaved={() => setAdminRoute({ name: 'categories' })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'category-edit' ? (
+              <CategoryFormScreen
+                mode="edit"
+                categoryId={adminRoute.categoryId}
+                onBack={() => setAdminRoute({ name: 'categories' })}
+                onSaved={() => setAdminRoute({ name: 'categories' })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'notifications' ? (
+              <NotificationsScreen
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+              />
+            ) : null}
+
+            {adminRoute.name === 'profile' ? (
+              <ProfileScreen
+                user={session.user}
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+                showRole
+              />
+            ) : null}
+
+            {adminRoute.name === 'map' ? (
+              <MapScreen
+                role={session.user.role}
+                onBack={() => setAdminRoute({ name: 'dashboard' })}
+              />
+            ) : null}
+          </View>
+
+          {/* Navbar always visible — dimmed on sub-routes */}
+          <AppNavBar
+            items={[
+              {
+                key: 'panel',
+                label: 'Panel',
+                icon: 'dashboard',
+                onPress: () => !isSubRoute && setAdminRoute({ name: 'dashboard' }),
+              },
+              {
+                key: 'users',
+                label: 'Usuarios',
+                icon: 'users',
+                onPress: () => !isSubRoute && setAdminRoute({ name: 'users' }),
+              },
+              {
+                key: 'categories',
+                label: 'Categorías',
+                icon: 'category',
+                onPress: () => !isSubRoute && setAdminRoute({ name: 'categories' }),
+              },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => setAdminRoute({ name: 'map' }),
+              },
+            ]}
+            activeKey={navActiveKey}
+            dimmed={isSubRoute}
+            onLogout={handleLogout}
+          />
+          {offlineBanner}
+        </View>
+      );
+    }
+
+    const isStaff = STAFF_ROLES.includes(session.user.role);
+
+    if (isStaff) {
+      const isStaffSubRoute =
+        staffRoute.name === 'incident-detail' ||
+        staffRoute.name === 'pending-verification' ||
+        staffRoute.name === 'assign-verification' ||
+        staffRoute.name === 'verification-queue' ||
+        staffRoute.name === 'verify-incident' ||
+        staffRoute.name === 'pending-solution' ||
+        staffRoute.name === 'assign-solution' ||
+        staffRoute.name === 'solution-queue' ||
+        staffRoute.name === 'attend-incident' ||
+        staffRoute.name === 'notifications' ||
+        staffRoute.name === 'profile';
+
+      const staffNavActiveKey =
+        staffRoute.name === 'incidents' || staffRoute.name === 'incident-detail'
+          ? 'incidents'
+          : staffRoute.name === 'map'
+            ? 'map'
+            : 'home';
+
+      return (
+        <View style={styles.container}>
+          <View style={styles.screenSlot}>
+            {staffRoute.name === 'incidents' ? (
+              <IncidentsScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenDetail={(incidentId) =>
+                  setStaffRoute({ name: 'incident-detail', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'incident-detail' ? (
+              <IncidentDetailScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'incidents' })}
+              />
+            ) : staffRoute.name === 'pending-verification' ? (
+              <PendingVerificationScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'assign-verification', incidentId })
+                }
+                onReassign={(incident) =>
+                  setStaffRoute({
+                    name: 'reassign-verification',
+                    incidentId: incident.id,
+                    currentVerifier: incident.verifier ?? undefined,
+                  })
+                }
+              />
+            ) : staffRoute.name === 'assign-verification' ? (
+              <AssignVerificationScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'pending-verification' })}
+                onAssigned={() => setStaffRoute({ name: 'pending-verification' })}
+              />
+            ) : staffRoute.name === 'reassign-verification' ? (
+              <AssignVerificationScreen
+                incidentId={staffRoute.incidentId}
+                reassign
+                currentVerifier={staffRoute.currentVerifier ?? null}
+                onBack={() => setStaffRoute({ name: 'pending-verification' })}
+                onAssigned={() => setStaffRoute({ name: 'pending-verification' })}
+              />
+            ) : staffRoute.name === 'verification-queue' ? (
+              <VerificationQueueScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'verify-incident', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'verify-incident' ? (
+              <VerifyIncidentScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'verification-queue' })}
+                onVerified={() => setStaffRoute({ name: 'verification-queue' })}
+              />
+            ) : staffRoute.name === 'pending-solution' ? (
+              <PendingSolutionScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'assign-solution', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'assign-solution' ? (
+              <AssignSolutionScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'pending-solution' })}
+                onAssigned={() => setStaffRoute({ name: 'pending-solution' })}
+              />
+            ) : staffRoute.name === 'solution-queue' ? (
+              <SolutionQueueScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'attend-incident', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'attend-incident' ? (
+              <AttendIncidentScreen
+                incidentId={staffRoute.incidentId}
+                onBack={() => setStaffRoute({ name: 'solution-queue' })}
+                onProcessed={() => setStaffRoute({ name: 'solution-queue' })}
+              />
+            ) : staffRoute.name === 'notifications' ? (
+              <NotificationsScreen
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenFollowUp={(incidentId) =>
+                  setStaffRoute({ name: 'incident-detail', incidentId })
+                }
+              />
+            ) : staffRoute.name === 'profile' ? (
+              <ProfileScreen
+                user={session.user}
+                onBack={() => setStaffRoute({ name: 'home' })}
+                showRole
+              />
+            ) : staffRoute.name === 'map' ? (
+              <MapScreen
+                role={session.user.role}
+                onBack={() => setStaffRoute({ name: 'home' })}
+                onOpenIncident={(incidentId) =>
+                  setStaffRoute({ name: 'incident-detail', incidentId })
+                }
+              />
+            ) : (
+              <StaffHomeScreen
+                user={session.user}
+                onGoToIncidents={() => setStaffRoute({ name: 'incidents' })}
+                onGoToPendingVerification={() =>
+                  setStaffRoute({ name: 'pending-verification' })
+                }
+                onGoToVerificationQueue={() =>
+                  setStaffRoute({ name: 'verification-queue' })
+                }
+                onGoToPendingSolution={() =>
+                  setStaffRoute({ name: 'pending-solution' })
+                }
+                onGoToSolutionQueue={() =>
+                  setStaffRoute({ name: 'solution-queue' })
+                }
+                onViewNotifications={() =>
+                  setStaffRoute({ name: 'notifications' })
+                }
+                onViewProfile={() => setStaffRoute({ name: 'profile' })}
+              />
+            )}
+          </View>
+
+          <AppNavBar
+            items={[
+              {
+                key: 'home',
+                label: 'Inicio',
+                icon: 'home',
+                onPress: () => setStaffRoute({ name: 'home' }),
+              },
+              {
+                key: 'incidents',
+                label: 'Incidentes',
+                icon: 'report',
+                onPress: () =>
+                  setStaffRoute({ name: 'incidents' }),
+              },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => setStaffRoute({ name: 'map' }),
+              },
+            ]}
+            activeKey={staffNavActiveKey}
+            dimmed={isStaffSubRoute}
+            onLogout={handleLogout}
+          />
+          {offlineBanner}
+        </View>
+      );
+    }
+
+    // Citizen home — navbar always visible
+    const isCitizenSubRoute = citizenRoute.name !== 'home';
+    const citizenNavActiveKey =
+      citizenRoute.name === 'my-reports' ||
+      citizenRoute.name === 'incident-follow-up'
+        ? 'reports'
+        : citizenRoute.name === 'map'
+          ? 'map'
+          : 'home';
+    return (
+      <View style={styles.container}>
+        <View style={styles.screenSlot}>
+          {citizenRoute.name === 'incident-create' ? (
+            <IncidentFormScreen
+              mode="create"
+              onBack={() => setCitizenRoute({ name: 'home' })}
+              onSaved={() => setCitizenRoute({ name: 'home' })}
+              onOpenMap={() => {
+                setCitizenMapReturn('incident-create');
+                setCitizenRoute({ name: 'map' });
+              }}
+            />
+          ) : citizenRoute.name === 'incident-edit' ? (
+            <IncidentFormScreen
+              mode="edit"
+              incidentId={citizenRoute.incidentId}
+              onBack={() => setCitizenRoute({ name: 'my-reports' })}
+              onSaved={() => setCitizenRoute({ name: 'my-reports' })}
+            />
+          ) : citizenRoute.name === 'my-reports' ? (
+            <ReportsScreen
+              onBack={() => setCitizenRoute({ name: 'home' })}
+              onNewReport={() => setCitizenRoute({ name: 'incident-create' })}
+              onEdit={(incidentId) =>
+                setCitizenRoute({ name: 'incident-edit', incidentId })
+              }
+              onOpenFollowUp={(incidentId) =>
+                setCitizenRoute({ name: 'incident-follow-up', incidentId })
+              }
+            />
+          ) : citizenRoute.name === 'incident-follow-up' ? (
+            <SeguimientoScreen
+              incidentId={citizenRoute.incidentId}
+              onBack={() => setCitizenRoute({ name: 'my-reports' })}
+              onEdit={(incidentId) =>
+                setCitizenRoute({ name: 'incident-edit', incidentId })
+              }
+            />
+          ) : citizenRoute.name === 'notifications' ? (
+            <NotificationsScreen
+              onBack={() => setCitizenRoute({ name: 'home' })}
+              onOpenFollowUp={(incidentId) =>
+                setCitizenRoute({ name: 'incident-follow-up', incidentId })
+              }
+            />
+          ) : citizenRoute.name === 'profile' ? (
+            <ProfileScreen
+              user={session.user}
+              onBack={() => setCitizenRoute({ name: 'home' })}
+            />
+          ) : citizenRoute.name === 'map' ? (
+            <MapScreen
+              role={session.user.role}
+              onBack={() =>
+                setCitizenRoute(
+                  citizenMapReturn === 'incident-create'
+                    ? { name: 'incident-create' }
+                    : { name: 'home' },
+                )
+              }
+              onOpenIncident={(incidentId) =>
+                setCitizenRoute({ name: 'incident-follow-up', incidentId })
+              }
+              canOpenSelected={(incident) =>
+                incident.userId === session.user.id
+              }
+            />
+          ) : (
+            <HomeScreen
+              user={session.user}
+              onNewIncident={() => setCitizenRoute({ name: 'incident-create' })}
+              onViewReports={() => setCitizenRoute({ name: 'my-reports' })}
+              onViewNotifications={() =>
+                setCitizenRoute({ name: 'notifications' })
+              }
+              onViewProfile={() => setCitizenRoute({ name: 'profile' })}
+            />
+          )}
+        </View>
+          <AppNavBar
+            items={[
+              {
+                key: 'home',
+                label: 'Inicio',
+                icon: 'home',
+                onPress: () => setCitizenRoute({ name: 'home' }),
+              },
+              {
+                key: 'reports',
+                label: 'Reportes',
+                icon: 'report',
+                onPress: () => setCitizenRoute({ name: 'my-reports' }),
+              },
+              {
+                key: 'map',
+                label: 'Mapa',
+                icon: 'map',
+                onPress: () => {
+                  setCitizenMapReturn('home');
+                  setCitizenRoute({ name: 'map' });
+                },
+              },
+            ]}
+            activeKey={citizenNavActiveKey}
+          dimmed={isCitizenSubRoute}
+          onLogout={handleLogout}
+        />
+        {offlineBanner}
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingTop: safeAreaInsets.top, paddingBottom: safeAreaInsets.bottom },
-      ]}
-    >
-      <Text style={styles.title}>Alcaldía de Cochabamba</Text>
-      <Text style={styles.subtitle}>Reporte de Incidentes Urbanos</Text>
+    <View style={styles.container}>
+      {authScreen === 'login' ? (
+        <LoginScreen
+          notice={sessionNotice}
+          onGoToRegister={goToRegister}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      ) : (
+        <RegisterScreen onGoToLogin={goToLogin} />
+      )}
+      {offlineBanner}
     </View>
   );
 }
@@ -34,19 +692,17 @@ function AppNavigator({ safeAreaInsets }: AppNavigatorProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.bgDeep,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: Colors.primary,
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    color: Colors.textSecondary,
+  /**
+   * screenSlot: flex:1 + minHeight:0 (web key!) forces the screen to shrink
+   * when its sibling AppNavBar needs height, instead of pushing it off screen.
+   */
+  screenSlot: {
+    flex: 1,
+    // @ts-ignore — minHeight:0 is needed on web to allow flex children to shrink
+    minHeight: 0,
+    overflow: 'hidden',
   },
 });
 

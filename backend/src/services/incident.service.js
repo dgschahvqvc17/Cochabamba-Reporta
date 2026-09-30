@@ -1,0 +1,772 @@
+/**
+ * Servicio de incidentes (MVC - Service).
+ *
+ * HU06 — Registro de incidentes por parte del ciudadano.
+ * HU09 — Consultar y gestionar incidentes (personal municipal).
+ * Editar / eliminar el reporte del ciudadano (estado REPORTADO, edición única).
+ *
+ * Responsabilidades:
+ *   - Crear, consultar y listar incidentes (rol-aware).
+ *   - Editar y eliminar el reporte del ciudadano (delega la eliminación de
+ *     archivos de Storage en storage.repository).
+ * La evidencia (HU07), la ubicación (HU08), la asignación a verificación
+ * (HU10) y la verificación (HU11) viven en sus propios services.
+ *
+ * @format
+ */
+
+'use strict';
+
+const incidentRepository = require('../repositories/incident.repository');
+const categoryRepository = require('../repositories/category.repository');
+const evidenceRepository = require('../repositories/evidence.repository');
+const locationRepository = require('../repositories/location.repository');
+const storageRepository = require('../repositories/storage.repository');
+const historyRepository = require('../repositories/history.repository');
+const notificationRepository = require('../repositories/notification.repository');
+const userRepository = require('../repositories/user.repository');
+const ROLES = require('../utils/roles');
+const { buildError } = require('../utils/errors');
+const { normalizeText, textSimilarity } = require('../utils/text');
+const { parsePositiveInt, buildPaginationResponse } = require('../utils/pagination');
+const {
+  INCIDENT_STATUS,
+  INCIDENT_STATUSES,
+  INCIDENT_STATUS_LABELS,
+} = require('../utils/incidentStatus');
+const {
+  MIN_TITLE_LENGTH,
+  MAX_TITLE_LENGTH,
+  MIN_DESCRIPTION_LENGTH,
+  MAX_DESCRIPTION_LENGTH,
+  DEFAULT_LIST_PAGE_SIZE,
+  MAX_LIST_PAGE_SIZE,
+  INCIDENT_ORDER_VALUES,
+  DEFAULT_INCIDENT_ORDER,
+  MIN_CATEGORY_ID,
+  DEFAULT_RESPONSE_DEADLINE_DAYS,
+  EDITABLE_STATUS,
+  DUPLICATE_WINDOW_DAYS,
+  DUPLICATE_SIMILARITY_THRESHOLD,
+  DUPLICATE_MAX_CANDIDATES,
+  DUPLICATE_EXCLUDED_STATUSES,
+  truncateNotificationMessage,
+} = require('../utils/incidentRules');
+const {
+  toPublicIncident,
+  toPublicIncidentListItem,
+  toPublicMapIncident,
+  toPublicEvidence,
+  NO_REOPEN,
+} = require('../utils/incidentMappers');
+const { toPublicLocation } = require('../utils/location');
+const { MAX_MAP_INCIDENTS, resolveMapScope } = require('../utils/mapScope');
+const statusService = require('./status.service');
+
+/** Único estado en el que el ciudadano puede editar o eliminar su reporte. */
+const buildIncidentCode = (sequence) => {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `INC-${year}${month}${day}-${String(sequence).padStart(3, '0')}`;
+};
+
+/**
+ * Fecha límite de atención comprometida al ciudadano: creado + N días
+ * (SLA por defecto de 1 día, ver incidentRules).
+ */
+const buildResponseDeadline = () =>
+  new Date(
+    Date.now() + DEFAULT_RESPONSE_DEADLINE_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+/** Formatea una fecha ISO a DD/MM/AAAA (solo para mensajes de notificación). */
+const formatShortDate = (value) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value ?? '');
+  }
+
+  return [
+    String(date.getDate()).padStart(2, '0'),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    date.getFullYear(),
+  ].join('/');
+};
+
+/**
+ * Valida el payload de creación/edición (categoría + título + descripción)
+ * y devuelve los valores ya normalizados. Usado por createIncident y
+ * updateIncident para no duplicar reglas (principio DRY).
+ */
+const validateIncidentPayload = (userId, payload) => {
+  if (!userId) {
+    throw buildError(
+      'Debe iniciar sesión para registrar un incidente.',
+      401,
+      'AUTHENTICATION_REQUIRED',
+    );
+  }
+
+  const categoryId = Number(payload && payload.categoryId);
+  const title = normalizeText(payload && payload.title);
+  const description = normalizeText(payload && payload.description);
+
+  if (!categoryId || categoryId < MIN_CATEGORY_ID) {
+    throw buildError(
+      'Debe seleccionar una categoría.',
+      422,
+      'VALIDATION_ERROR',
+      'categoryId',
+    );
+  }
+
+  if (!title) {
+    throw buildError(
+      'El título es obligatorio.',
+      422,
+      'VALIDATION_ERROR',
+      'title',
+    );
+  }
+
+  if (
+    title.length < MIN_TITLE_LENGTH ||
+    title.length > MAX_TITLE_LENGTH
+  ) {
+    throw buildError(
+      `El título debe tener entre ${MIN_TITLE_LENGTH} y ${MAX_TITLE_LENGTH} caracteres.`,
+      422,
+      'VALIDATION_ERROR',
+      'title',
+    );
+  }
+
+  if (!description) {
+    throw buildError(
+      'La descripción es obligatoria.',
+      422,
+      'VALIDATION_ERROR',
+      'description',
+    );
+  }
+
+  if (
+    description.length < MIN_DESCRIPTION_LENGTH ||
+    description.length > MAX_DESCRIPTION_LENGTH
+  ) {
+    throw buildError(
+      `La descripción debe tener entre ${MIN_DESCRIPTION_LENGTH} y ${MAX_DESCRIPTION_LENGTH} caracteres.`,
+      422,
+      'VALIDATION_ERROR',
+      'description',
+    );
+  }
+
+  return { categoryId, title, description };
+};
+
+/**
+ * Anti-duplicados (creación de reportes): compara el título + descripción
+ * del nuevo reporte con los de la misma categoría recientes (ventana
+ * configurable, excluyendo rechazados y cerrados) usando similitud de
+ * Jaccard entre las palabras. Si hay coincidencia alta, bloquea la
+ * creación con 409 y avisa con el(los) código(s) del reporte existente.
+ */
+const assertNoDuplicateIncident = async ({ categoryId, title, description }) => {
+  const since = new Date(
+    Date.now() - DUPLICATE_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const candidates = await incidentRepository.findPotentialDuplicates({
+    categoryId,
+    since,
+    excludedStatuses: DUPLICATE_EXCLUDED_STATUSES,
+    limit: DUPLICATE_MAX_CANDIDATES,
+  });
+
+  const haystack = `${title} ${description}`;
+  const similar = candidates
+    .filter(
+      (candidate) =>
+        textSimilarity(haystack, `${candidate.title} ${candidate.description}`) >=
+        DUPLICATE_SIMILARITY_THRESHOLD,
+    )
+    .slice(0, 3);
+
+  if (similar.length === 0) {
+    return;
+  }
+
+  const codes = similar.map((candidate) => candidate.code).join(', ');
+
+  throw buildError(
+    `Ya existe un reporte muy similar en la misma categoría (${
+      codes
+    }). Consulta su seguimiento para evitar reportes duplicados.`,
+    409,
+    'DUPLICATE_INCIDENT',
+  );
+};
+
+/**
+ * Aviso al personal cuando entra un reporte nuevo (HU06/HU09): recepción y
+ * administración son los que deben verlo aunque el reporte todavía no esté
+ * asignado. Si el aviso falla no se cae el reporte ya registrado, porque el
+ * ciudadano sí lo guardó; el personal también lo ve al listar incidentes.
+ */
+const notifyStaffAboutNewIncident = async (incident, category) => {
+  const staff = await userRepository.findActiveStaffByRoles([
+    ROLES.RECEPCION,
+    ROLES.ADMINISTRADOR,
+  ]);
+
+  if (staff.length === 0) {
+    return;
+  }
+
+  const categoryName = category && category.name ? category.name : 'Sin categoría';
+  const message = truncateNotificationMessage(
+    `Nuevo reporte ${incident.code} en ${categoryName}: ${incident.title}. Plazo máximo de respuesta: hasta el ${formatShortDate(
+      incident.response_deadline_at,
+    )}.`,
+  );
+
+  await notificationRepository.createMany({
+    incidentId: incident.id,
+    userIds: staff.map((person) => person.id),
+    message,
+  });
+};
+
+const incidentService = {
+  async createIncident(user, payload) {
+    const userId = user && user.id;
+    const { categoryId, title, description } = validateIncidentPayload(
+      userId,
+      payload,
+    );
+
+    const category = await categoryRepository.findById(categoryId);
+
+    if (!category) {
+      throw buildError(
+        'La categoría seleccionada no existe.',
+        422,
+        'VALIDATION_ERROR',
+        'categoryId',
+      );
+    }
+
+    if (!category.active) {
+      throw buildError(
+        'La categoría seleccionada no está activa.',
+        422,
+        'VALIDATION_ERROR',
+        'categoryId',
+      );
+    }
+
+    await assertNoDuplicateIncident({ categoryId, title, description });
+
+    const countToday = await incidentRepository.countToday();
+    const code = buildIncidentCode(countToday + 1);
+
+    const created = await incidentRepository.create({
+      code,
+      userId,
+      categoryId,
+      title,
+      description,
+      responseDeadlineAt: buildResponseDeadline(),
+    });
+
+    // HU14 — El ciudadano recibe notificación y registra el primer estado
+    // (REPORTADO) en el historial, con él como responsable del cambio.
+    await historyRepository.create({
+      incidentId: created.id,
+      fromStatus: null,
+      toStatus: created.status,
+      changedBy: userId,
+      comment: 'Reporte registrado por el ciudadano.',
+    });
+
+    await notificationRepository.create({
+      incidentId: created.id,
+      userId,
+      message: `Su reporte ${code} fue registrado correctamente y su estado actual es ${
+        INCIDENT_STATUS_LABELS[created.status] ?? created.status
+      }. Plazo máximo de respuesta: hasta el ${formatShortDate(
+        created.response_deadline_at,
+      )}.`,
+    });
+
+    // El personal de recepción y la administración deben enterarse de que
+    // entró un reporte nuevo aunque todavía nadie lo asigne. Un aviso por
+    // persona: si alguien tiene más de un rol, no se duplica.
+    try {
+      await notifyStaffAboutNewIncident(created, category);
+    } catch (error) {
+      // El reporte ya quedó registrado: no se descarta por un aviso fallido.
+      console.error(
+        `[ERROR] No se pudo notificar el reporte ${created.code} al personal`,
+        error,
+      );
+    }
+
+    return toPublicIncident(created, { viewer: user });
+  },
+
+  async getIncidentById(id, user) {
+    const incident = await incidentRepository.findById(id);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    const userId = user && user.id;
+
+    if (userId && user.role === ROLES.CIUDADANO) {
+      if (Number(incident.user_id) !== Number(userId)) {
+        throw buildError(
+          'Solo puedes consultar el detalle de tus propios reportes.',
+          403,
+          'FORBIDDEN',
+        );
+      }
+    }
+
+    const evidence = await evidenceRepository.findByIncident(incident.id);
+    const location = await locationRepository.findLatestByIncidentId(
+      incident.id,
+    );
+
+    const reopenFlags = await historyRepository.findReopenFlags([incident.id]);
+
+    return {
+      ...toPublicIncident(incident, {
+        reopenState: reopenFlags.get(incident.id),
+        viewer: user,
+      }),
+      location: location ? toPublicLocation(location) : null,
+      evidence: evidence.map(toPublicEvidence),
+    };
+  },
+
+  async listMyIncidents(user, query) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para consultar sus reportes.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const status = query && query.status ? String(query.status) : null;
+
+    if (status && !INCIDENT_STATUSES.includes(status)) {
+      throw buildError(
+        'El estado indicado no es válido.',
+        422,
+        'VALIDATION_ERROR',
+        'status',
+      );
+    }
+
+    const incidents = await incidentRepository.findByUserId({ userId, status });
+
+    const reopenFlags = await historyRepository.findReopenFlags(
+      incidents.map((item) => item.id),
+    );
+
+    return incidents.map((item) =>
+      toPublicIncidentListItem(item, {
+        reopenState: reopenFlags.get(item.id),
+        viewer: user,
+      }),
+    );
+  },
+
+  /**
+   * Lista de incidentes según el rol (HU09).
+   * - Ciudadano: solo sus reportes.
+   * - Personal municipal (RECEPCION y demás): todos los incidentes con
+   *   búsqueda, filtros y paginación.
+   */
+  async listIncidents(user, query = {}) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para consultar incidentes.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    if (user.role === ROLES.CIUDADANO) {
+      const incidents = await this.listMyIncidents(user, query);
+      return { incidents };
+    }
+
+    return this.listManagedIncidents(user, query);
+  },
+
+  /**
+   * Consulta y gestión de incidentes para el personal municipal
+   * (HU09, actor Encargado de recepción). Filtros por estado, categoría,
+   * fecha (desde/hasta) y búsqueda por código, título o descripción.
+   */
+  async listManagedIncidents(user, query = {}) {
+    const page = parsePositiveInt(query.page, 1, Number.MAX_SAFE_INTEGER);
+    const limit = parsePositiveInt(
+      query.limit,
+      DEFAULT_LIST_PAGE_SIZE,
+      MAX_LIST_PAGE_SIZE,
+    );
+    const status =
+      query && query.status ? String(query.status).trim() : null;
+    const categoryId = query.categoryId ? Number(query.categoryId) : null;
+    const from = query && query.from ? String(query.from).trim() : null;
+    const to = query && query.to ? String(query.to).trim() : null;
+    const search = query && query.search ? String(query.search).trim() : '';
+    const order =
+      query && query.order
+        ? String(query.order).trim().toLowerCase()
+        : DEFAULT_INCIDENT_ORDER;
+
+    if (order && !INCIDENT_ORDER_VALUES.includes(order)) {
+      throw buildError(
+        'El orden indicado no es válido. Usa "asc" o "desc".',
+        422,
+        'VALIDATION_ERROR',
+        'order',
+      );
+    }
+
+    if (status && !INCIDENT_STATUSES.includes(status)) {
+      throw buildError(
+        'El estado indicado no es válido.',
+        422,
+        'VALIDATION_ERROR',
+        'status',
+      );
+    }
+
+    if (
+      from &&
+      to &&
+      /^\d{4}-\d{2}-\d{2}$/.test(from) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(to) &&
+      from > to
+    ) {
+      throw buildError(
+        'La fecha "desde" no puede ser posterior a la fecha "hasta".',
+        422,
+        'VALIDATION_ERROR',
+        'from',
+      );
+    }
+
+    const { incidents, total } = await incidentRepository.findAllManaged({
+      page,
+      limit,
+      status,
+      categoryId,
+      from: from ? `${from}T00:00:00.000` : null,
+      to: to ? `${to}T23:59:59.999` : null,
+      search,
+      order,
+    });
+
+    return {
+      incidents: incidents.map((item) => toPublicIncidentListItem(item, { viewer: user })),
+      order,
+      ...buildPaginationResponse({ total, page, limit }),
+    };
+  },
+
+  async updateIncident(user, incidentId, payload) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para editar un reporte.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.user_id !== userId) {
+      throw buildError(
+        'Solo puedes editar tus propios reportes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    if (incident.status !== EDITABLE_STATUS) {
+      throw buildError(
+        'Solo puedes editar un reporte en estado REPORTADO.',
+        409,
+        'INCIDENT_NOT_EDITABLE',
+      );
+    }
+
+    const reopenFlags = await historyRepository.findReopenFlags([incident.id]);
+    const reopenState = reopenFlags.get(incident.id) ?? NO_REOPEN;
+
+    const originalEditAvailable =
+      String(incident.updated_at) === String(incident.created_at);
+    const reopenEditAvailable = Boolean(
+      reopenState.reopened && !reopenState.editedAfterReopen,
+    );
+
+    if (!originalEditAvailable && !reopenEditAvailable) {
+      throw buildError(
+        'Este reporte ya fue editado anteriormente. Solo se permite una edición.',
+        409,
+        'INCIDENT_ALREADY_EDITED',
+      );
+    }
+
+    const { categoryId, title, description } = validateIncidentPayload(
+      userId,
+      payload,
+    );
+
+    const category = await categoryRepository.findById(categoryId);
+
+    if (!category || !category.active) {
+      throw buildError(
+        'La categoría seleccionada no está disponible.',
+        422,
+        'VALIDATION_ERROR',
+        'categoryId',
+      );
+    }
+
+    const updated = await incidentRepository.update({
+      id: incident.id,
+      userId,
+      categoryId,
+      title,
+      description,
+    });
+
+    // Si la edición es la única permitida tras reabrir el reporte rechazado,
+    // se marca en el historial para que no pueda editarse una segunda vez.
+    if (reopenEditAvailable) {
+      await historyRepository.create({
+        incidentId: incident.id,
+        fromStatus: INCIDENT_STATUS.REPORTADO,
+        toStatus: INCIDENT_STATUS.REPORTADO,
+        changedBy: userId,
+        comment: historyRepository.REOPEN_EDIT_COMMENT,
+      });
+    }
+
+    return toPublicIncident(updated, { viewer: user });
+  },
+
+  /**
+   * Reapertura de un reporte rechazado por el ciudadano (solo una vez).
+   *
+   * Devuelve el reporte a REPORTADO (reingresa a la cola de recepción),
+   * limpia el motivo del rechazo, renueva el plazo de respuesta y habilita
+   * una única edición para mejorarlo. Permite una sola reapertura en todo
+   * el ciclo de vida del reporte; la marca de reapertura y de edición-única
+   * se registran en el historial.
+   */
+  async reopenIncident(user, incidentId) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para reabrir un reporte.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.user_id !== userId) {
+      throw buildError(
+        'Solo puedes reabrir tus propios reportes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    if (incident.status !== INCIDENT_STATUS.RECHAZADO) {
+      throw buildError(
+        'Solo puedes reabrir un reporte que haya sido rechazado.',
+        409,
+        'INCIDENT_NOT_REOPENABLE',
+      );
+    }
+
+    const reopenFlags = await historyRepository.findReopenFlags([incident.id]);
+
+    if (reopenFlags.get(incident.id)?.reopened) {
+      throw buildError(
+        'Este reporte ya fue reabierto anteriormente. Solo se permite una reapertura.',
+        409,
+        'INCIDENT_ALREADY_REOPENED',
+      );
+    }
+
+    const updated = await statusService.applyStatusChange(
+      incident,
+      INCIDENT_STATUS.REPORTADO,
+      userId,
+      'Reporte reabierto por el ciudadano para mejorarlo.',
+      {
+        response_deadline_at: buildResponseDeadline(),
+        rejected_reason: null,
+      },
+      { suppressCitizenNotification: true },
+    );
+
+    await notificationRepository.create({
+      incidentId: incident.id,
+      userId,
+      message: truncateNotificationMessage(
+        `Su reporte ${incident.code} fue reabierto y vuelve a estar en estado Reportado. Puede mejorar su información editándolo una sola vez.`,
+      ),
+    });
+
+    return toPublicIncident(updated, {
+      reopenState: {
+        reopened: true,
+        editedAfterReopen: false,
+      },
+      viewer: user,
+    });
+  },
+
+  async deleteIncident(user, incidentId) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para eliminar un reporte.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const incident = await incidentRepository.findById(incidentId);
+
+    if (!incident) {
+      throw buildError('El incidente no existe.', 404, 'INCIDENT_NOT_FOUND');
+    }
+
+    if (incident.user_id !== userId) {
+      throw buildError(
+        'Solo puedes eliminar tus propios reportes.',
+        403,
+        'FORBIDDEN',
+      );
+    }
+
+    if (incident.status !== EDITABLE_STATUS) {
+      throw buildError(
+        'Solo puedes eliminar un reporte en estado REPORTADO.',
+        409,
+        'INCIDENT_NOT_EDITABLE',
+      );
+    }
+
+    const evidence = await evidenceRepository.findByIncident(incident.id);
+
+    if (evidence.length > 0) {
+      await evidenceRepository.deleteByIncident(incident.id);
+
+      const storagePaths = evidence
+        .map((item) => item.storage_path)
+        .filter(Boolean);
+
+      await storageRepository.removeEvidence(storagePaths);
+    }
+
+    await locationRepository.deleteByIncident(incident.id);
+    await incidentRepository.remove(incident.id);
+
+    return { id: incident.id, code: incident.code };
+  },
+
+  /**
+   * Mapa interactivo de incidentes con ubicación registrada.
+   *
+   * El alcance no lo decide el cliente: se deriva del rol de la sesión
+   * (utils/mapScope). El ciudadano ve todos los reportes para comprobar
+   * si el suyo ya existe; el personal municipal ve únicamente lo que le
+   * corresponde —los que le llegan a recepción, los que le asignaron
+   * verificar, los verificados que debe asignar a solución y los que le
+   * asignaron para atender. El filtro de estado solo puede Estrechar ese
+   * alcance, nunca ampliarlo.
+   */
+  async getMapIncidents(user, query = {}) {
+    const userId = user && user.id;
+
+    if (!userId) {
+      throw buildError(
+        'Debe iniciar sesión para consultar el mapa de incidentes.',
+        401,
+        'AUTHENTICATION_REQUIRED',
+      );
+    }
+
+    const categoryId = query.categoryId ? Number(query.categoryId) : null;
+    const status = query.status ? String(query.status).trim() : null;
+    const search = query.search ? String(query.search).trim() : '';
+
+    if (status && !INCIDENT_STATUSES.includes(status)) {
+      throw buildError(
+        'El estado indicado no es válido.',
+        422,
+        'VALIDATION_ERROR',
+        'status',
+      );
+    }
+
+    const scope = resolveMapScope(user);
+
+    const incidents = await incidentRepository.findMapIncidents({
+      categoryId,
+      status,
+      statuses: scope.statuses,
+      assignment: scope.assignment,
+      search,
+    });
+
+    return {
+      incidents: incidents.map((item) =>
+        toPublicMapIncident(item, { viewer: user }),
+      ),
+      // El alcance puede devolver más reportes de los que caben en el mapa:
+      // se avisa para que la interfaz no insinúe que se ven todos.
+      truncated: incidents.length >= MAX_MAP_INCIDENTS,
+    };
+  },
+};
+
+module.exports = incidentService;

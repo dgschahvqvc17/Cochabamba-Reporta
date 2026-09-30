@@ -1,0 +1,33 @@
+@startuml HU05 - Validar formularios y mostrar alertas
+title HU05 — Validar formularios y mostrar alertas
+left to right direction
+skinparam actorStyle awesome
+
+actor "Usuario" as usuario
+
+rectangle "Validar formularios y mostrar alertas" {
+  usecase "Completar / enviar un formulario" as UC1
+  usecase "Validar campos obligatorios, formatos y rangos" as UC2
+  usecase "Mostrar mensajes junto a campos incorrectos" as UC3
+  usecase "Mostrar alertas de error" as UC4
+  usecase "Mostrar alertas de advertencia" as UC5
+  usecase "Mostrar alertas de confirmación" as UC6
+  usecase "Mostrar alertas de operación exitosa" as UC7
+  usecase "Evitar envío de formularios inválidos" as UC8
+}
+
+usuario --> UC1
+UC1 ..> UC2
+UC2 ..> UC8
+UC2 ..> UC3
+UC3 ..> UC4
+UC3 ..> UC5
+UC1 ..> UC6
+UC1 ..> UC7
+
+note bottom of UC2
+  La validación se realiza tanto en el
+  Frontend (React Native) como en el
+  Backend (Express).
+end note
+@enduml

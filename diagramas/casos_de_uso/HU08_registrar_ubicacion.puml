@@ -1,0 +1,28 @@
+@startuml HU08 - Registrar ubicación del incidente
+title HU08 — Registrar ubicación del incidente
+left to right direction
+skinparam actorStyle awesome
+
+actor "Ciudadano" as ciudadano
+
+rectangle "Registrar ubicación del incidente" {
+  usecase "Solicitar permiso de ubicación" as UC1
+  usecase "Obtener ubicación actual" as UC2
+  usecase "Registrar latitud y longitud" as UC3
+  usecase "Mostrar ubicación en mapa" as UC4
+  usecase "Confirmar ubicación" as UC5
+  usecase "Asociar ubicación al incidente" as UC6
+}
+
+ciudadano --> UC1
+UC1 ..> UC2
+UC2 ..> UC3
+UC3 ..> UC4
+UC4 ..> UC5
+UC5 ..> UC6
+
+note bottom of UC2
+  Mostrar alerta si no se
+  puede obtener la ubicación.
+end note
+@enduml

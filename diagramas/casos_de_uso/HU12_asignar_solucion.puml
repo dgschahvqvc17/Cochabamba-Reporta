@@ -1,0 +1,31 @@
+@startuml HU12 - Asignar incidente para solución
+title HU12 — Asignar incidente para solución
+left to right direction
+skinparam actorStyle awesome
+
+actor "Encargado de solución" as encargado
+actor "Personal de solución" as solucion
+
+rectangle "Asignar incidente para solución" {
+  usecase "Ver incidentes verificados" as UC1
+  usecase "Ver información completa y resultado de verificación" as UC2
+  usecase "Ver funcionarios disponibles" as UC3
+  usecase "Seleccionar responsable" as UC4
+  usecase "Registrar asignación (quién, fecha, hora)" as UC5
+  usecase "Cambiar estado a ASIGNADO_PARA_SOLUCION" as UC6
+  usecase "Notificar al responsable" as UC7
+  usecase "Notificar al ciudadano" as UC8
+  usecase "Registrar en historial" as UC9
+}
+
+encargado --> UC1
+encargado --> UC2
+encargado --> UC3
+encargado --> UC4
+UC4 --> UC5
+UC5 --> UC6
+UC6 --> UC7
+UC6 --> UC8
+UC6 --> UC9
+solucion <-- UC7 : recibe
+@enduml

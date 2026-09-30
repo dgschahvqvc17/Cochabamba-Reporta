@@ -1,0 +1,77 @@
+@startuml Arquitectura del Proyecto
+title Arquitectura General - Sistema de Reporte de Incidentes Urbanos
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+' ============================================================
+' FRONTEND
+' ============================================================
+package "FRONTEND (React Native + TypeScript - MVC)" as frontend {
+  package "View" as view {
+    component "Screens\n(Pantallas)" as screens
+    component "Components\n(Reutilizables)" as components
+  }
+
+  package "Controller" as frontController {
+    component "Controllers\n(AuthController, IncidentController)" as controllers
+  }
+
+  package "Model & Services" as frontModel {
+    component "Services\n(consumo de API REST)" as services
+    component "Models\n(estructuras de datos)" as models
+  }
+
+  screen -right-> frontController : "acciones del usuario"
+  frontController -right-> services
+  services -down-> models
+}
+
+' ============================================================
+' COMUNICACIÓN
+' ============================================================
+component "API REST\nHTTP/HTTPS (JSON)" as api
+
+' ============================================================
+' BACKEND
+' ============================================================
+package "BACKEND (Node.js + Express - MVC por capas)" as backend {
+  component "Routes\n(Endpoints)" as routes
+  component "Middleware\n(Auth, Validación, Errores)" as middleware
+  component "Controller\n(Controladores HTTP)" as backController
+  component "Service\n(Lógica de negocio)" as service
+  component "Repository\n(Acceso a datos)" as repository
+  component "Models\n(Modelos de datos)" as backModels
+
+  routes -down-> middleware
+  middleware -down-> backController
+  backController -down-> service
+  service -down-> repository
+  repository -down-> backModels
+}
+
+' ============================================================
+' BASE DE DATOS
+' ============================================================
+package "SUPABASE (PostgreSQL + Auth + Storage)" as database {
+  component "PostgreSQL\n(users, incidents, categories, ...)" as postgres
+  component "Auth\n(JWT, identidades)" as supaAuth
+  component "Storage\n(evidencias fotográficas)" as supaStorage
+
+  database -right-> postgres : "ORM/cliente supabase-js"
+  backend -right-> database : "supabasePublic / supabaseAdmin"
+}
+
+note right of api
+  Comunicación por HTTP/HTTPS con
+  formato JSON y token JWT (Bearer).
+  **Nunca** se envía la clave secret al frontend.
+end note
+
+' ============================================================
+' CONEXIONES
+' ============================================================
+frontend -down-> api
+api -down-> backend
+
+@enduml

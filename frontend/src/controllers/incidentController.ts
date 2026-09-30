@@ -1,0 +1,753 @@
+/**
+ * Controlador de incidentes (MVC - Controller).
+ *
+ * HU06 — Registro de incidentes por parte del ciudadano.
+ * HU07 — Adjuntar evidencia fotográfica.
+ * HU08 — Registrar ubicación del incidente.
+ * HU09 — Consultar y gestionar incidentes (personal municipal).
+ * Traduce el resultado de la API (incidentService) en un `ActionResult`
+ * con `fieldErrors` tipados por campo, igual que categoryController.
+ * No contiene lógica de negocio ni llamadas directas a fetch.
+ *
+ * @format
+ */
+
+import {
+  assignSolution as assignSolutionRequest,
+  assignVerification as assignVerificationRequest,
+  attachEvidence as attachEvidenceRequest,
+  attachEvidenceNative as attachEvidenceNativeRequest,
+  attachLocation as attachLocationRequest,
+  attendIncident as attendIncidentRequest,
+  closeIncident as closeIncidentRequest,
+  createIncident as createIncidentRequest,
+  deleteIncident as deleteIncidentRequest,
+  getAssignedSolutionIncidents as getAssignedSolutionIncidentsRequest,
+  getAssignedVerificationIncidents as getAssignedVerificationIncidentsRequest,
+  getIncidentById as getIncidentByIdRequest,
+  getIncidentHistory as getIncidentHistoryRequest,
+  getIncidents as getIncidentsRequest,
+  getInVerificationIncidents as getInVerificationIncidentsRequest,
+  getMyIncidents as getMyIncidentsRequest,
+  getPendingSolutionIncidents as getPendingSolutionIncidentsRequest,
+  getPendingVerificationIncidents as getPendingVerificationIncidentsRequest,
+  getSolutionStaff as getSolutionStaffRequest,
+  getVerifiers as getVerifiersRequest,
+  markIncidentAttended as markIncidentAttendedRequest,
+  reassignVerification as reassignVerificationRequest,
+  rejectIncident as rejectIncidentRequest,
+  reopenIncident as reopenIncidentRequest,
+  updateIncident as updateIncidentRequest,
+  verifyIncident as verifyIncidentRequest,
+  type IncidentListParams,
+} from '../services/incidentService';
+import type {
+  AssignSolutionPayload,
+  AssignVerificationPayload,
+  AttendIncidentPayload,
+  AttendIncidentResult,
+  Evidence,
+  Incident,
+  IncidentAssignment,
+  IncidentHistoryEntry,
+  IncidentListData,
+  IncidentLocation,
+  IncidentPayload,
+  LocationPayload,
+  RejectIncidentPayload,
+  RejectIncidentResult,
+  SolutionUser,
+  VerifierUser,
+  VerifyIncidentPayload,
+  VerifyIncidentResult,
+} from '../models/Incident';
+import { getAccessToken } from '../utils/session';
+import { pickEvidence as pickEvidenceRequest, type PickerSource } from '../utils/imagePicker';
+import {
+  validateEvidence,
+  toUploadImage,
+  type PickedEvidence,
+} from '../utils/evidence';
+import {
+  getCurrentPosition as getCurrentPositionRequest,
+  type LocationResult,
+} from '../utils/location';
+
+export type FieldErrors = Record<string, string>;
+
+export interface ActionResult<T> {
+  success: boolean;
+  message: string;
+  data?: T;
+  fieldErrors?: FieldErrors;
+  code?: string;
+}
+
+export interface EvidenceActionResult extends ActionResult<Evidence> {}
+
+const toFieldErrors = (
+  details?: { field: string; message: string }[],
+): FieldErrors | undefined => {
+  if (!details || details.length === 0) return undefined;
+
+  const fieldErrors: FieldErrors = {};
+  details.forEach((detail) => {
+    fieldErrors[detail.field] = detail.message;
+  });
+
+  return fieldErrors;
+};
+
+export async function registerIncident(
+  payload: IncidentPayload,
+): Promise<ActionResult<Incident>> {
+  const accessToken = getAccessToken();
+  const result = await createIncidentRequest(accessToken, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incident,
+  };
+}
+
+/** Lista los reportes del ciudadano autenticado (Mis reportes). */
+export async function loadMyIncidents(
+  status?: string,
+): Promise<ActionResult<Incident[]>> {
+  const accessToken = getAccessToken();
+  const result = await getMyIncidentsRequest(accessToken, status);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incidents,
+  };
+}
+
+/** Detalle de un incidente (evidencia + ubicación) para ver seguimiento. */
+export async function loadIncidentById(
+  incidentId: number,
+): Promise<ActionResult<Incident>> {
+  const accessToken = getAccessToken();
+  const result = await getIncidentByIdRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incident,
+  };
+}
+
+/** HU09: listado paginado de incidentes para el personal municipal. */
+export async function loadManagedIncidents(
+  params: IncidentListParams = {},
+): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU10: lista los funcionarios de verificación disponibles. */
+export async function loadVerifiers(): Promise<ActionResult<VerifierUser[]>> {
+  const accessToken = getAccessToken();
+  const result = await getVerifiersRequest(accessToken);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.verifiers,
+  };
+}
+
+/** HU10: lista los incidentes pendientes de verificación (paginado). */
+export async function loadPendingVerification(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getPendingVerificationIncidentsRequest(
+    accessToken,
+    params,
+  );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU10: asigna un incidente a un funcionario de verificación. */
+export async function assignIncidentForVerification(
+  incidentId: number,
+  payload: AssignVerificationPayload,
+): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
+  const accessToken = getAccessToken();
+  const result = await assignVerificationRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/**
+ * HU: lista los incidentes actualmente en verificación (EN_VERIFICACION)
+ * con su verificador asignado, para poder reasignarlo.
+ */
+export async function loadInVerification(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getInVerificationIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU: reasigna el verificador de un incidente en verificación. */
+export async function reassignIncidentVerifier(
+  incidentId: number,
+  payload: AssignVerificationPayload,
+): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
+  const accessToken = getAccessToken();
+  const result = await reassignVerificationRequest(
+    accessToken,
+    incidentId,
+    payload,
+  );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU11: lista los incidentes asignados al verificador (paginado). */
+export async function loadAssignedVerification(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getAssignedVerificationIncidentsRequest(
+    accessToken,
+    params,
+  );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU11: envía la decisión de verificación del incidente asignado. */
+export async function verifyIncidentById(
+  incidentId: number,
+  payload: VerifyIncidentPayload,
+): Promise<ActionResult<VerifyIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await verifyIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** Rechazo del encargado de recepción de un reporte no válido. */
+export async function rejectIncidentById(
+  incidentId: number,
+  payload: RejectIncidentPayload,
+): Promise<ActionResult<RejectIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await rejectIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU12: lista el personal de solución disponible (encargado de solución). */
+export async function loadSolutionStaff(): Promise<
+  ActionResult<SolutionUser[]>
+> {
+  const accessToken = getAccessToken();
+  const result = await getSolutionStaffRequest(accessToken);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.staff,
+  };
+}
+
+/** HU12: lista los incidentes verificados pendientes de solución (paginado). */
+export async function loadPendingSolution(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getPendingSolutionIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU12: asigna un incidente verificado a un responsable de solución. */
+export async function assignIncidentForSolution(
+  incidentId: number,
+  payload: AssignSolutionPayload,
+): Promise<ActionResult<{ assignment: IncidentAssignment; incident: Incident }>> {
+  const accessToken = getAccessToken();
+  const result = await assignSolutionRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: lista los incidentes asignados al responsable de solución (paginado). */
+export async function loadAssignedSolution(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<ActionResult<IncidentListData>> {
+  const accessToken = getAccessToken();
+  const result = await getAssignedSolutionIncidentsRequest(accessToken, params);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: inicia la atención de un incidente asignado (EN_ATENCION). */
+export async function attendIncidentById(
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ActionResult<AttendIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await attendIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: marca un incidente en atención como atendido (ATENDIDO). */
+export async function markIncidentAttendedById(
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ActionResult<AttendIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await markIncidentAttendedRequest(
+    accessToken,
+    incidentId,
+    payload,
+  );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** HU13: cierra un incidente atendido (CERRADO). */
+export async function closeIncidentById(
+  incidentId: number,
+  payload: AttendIncidentPayload,
+): Promise<ActionResult<AttendIncidentResult>> {
+  const accessToken = getAccessToken();
+  const result = await closeIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}
+
+/** Historial de cambios de estado de un incidente (trazabilidad, HU12). */
+export async function loadIncidentHistory(
+  incidentId: number,
+): Promise<ActionResult<IncidentHistoryEntry[]>> {
+  const accessToken = getAccessToken();
+  const result = await getIncidentHistoryRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.history,
+  };
+}
+
+/** HU07: abre la cámara o la galería y devuelve la imagen ya normalizada. */
+export async function pickEvidence(
+  source: PickerSource,
+): Promise<{ ok: boolean; evidence?: PickedEvidence; cancelled?: boolean; message?: string }> {
+  const result = await pickEvidenceRequest(source);
+
+  if (result.cancelled) {
+    return { ok: false, cancelled: true };
+  }
+
+  if (!result.ok || !result.evidence) {
+    return {
+      ok: false,
+      message: result.message ?? 'No se pudo obtener la imagen.',
+    };
+  }
+
+  const validation = validateEvidence(result.evidence);
+  if (!validation.ok) {
+    return { ok: false, message: validation.message };
+  }
+
+  return { ok: true, evidence: result.evidence };
+}
+
+/**
+ * HU07: sube una imagen ya seleccionada al incidente recién creado.
+ * En nativo la subida se hace con XMLHttpRequest (el fetch de Expo no
+ * serializa el objeto {uri,name,type} de RN en FormData); en web con fetch.
+ */
+export async function attachEvidenceToIncident(
+  incidentId: number,
+  evidence: PickedEvidence,
+): Promise<EvidenceActionResult> {
+  const accessToken = getAccessToken();
+  const upload = toUploadImage(evidence);
+
+  const result =
+    upload.kind === 'native-file'
+      ? await attachEvidenceNativeRequest(
+          accessToken,
+          incidentId,
+          upload.object,
+          upload.name,
+        )
+      : await attachEvidenceRequest(
+          accessToken,
+          incidentId,
+          upload.object,
+          upload.name,
+        );
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.evidence,
+  };
+}
+
+/** HU08: pide permiso y obtiene la ubicación actual del dispositivo. */
+export async function captureCurrentLocation(): Promise<LocationResult> {
+  return getCurrentPositionRequest();
+}
+
+/** HU08: envía la ubicación ya capturada y confirmada al incidente. */
+export async function attachLocationToIncident(
+  incidentId: number,
+  payload: LocationPayload,
+): Promise<ActionResult<IncidentLocation>> {
+  const accessToken = getAccessToken();
+  const result = await attachLocationRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.location,
+  };
+}
+
+/** Edita un reporte propio en estado REPORTADO (una sola edición permitida). */
+export async function editIncident(
+  incidentId: number,
+  payload: IncidentPayload,
+): Promise<ActionResult<Incident>> {
+  const accessToken = getAccessToken();
+  const result = await updateIncidentRequest(accessToken, incidentId, payload);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      ...(toFieldErrors(result.error?.details) && {
+        fieldErrors: toFieldErrors(result.error?.details),
+      }),
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incident,
+  };
+}
+
+/** Reabre un reporte propio rechazado (una sola vez, para mejorarlo). */
+export async function reopenIncidentById(
+  incidentId: number,
+): Promise<ActionResult<Incident>> {
+  const accessToken = getAccessToken();
+  const result = await reopenIncidentRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+      code: result.error?.code,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data?.incident,
+  };
+}
+
+/** Elimina un reporte propio en estado REPORTADO. */
+export async function deleteIncidentById(
+  incidentId: number,
+): Promise<ActionResult<{ id: number; code: string }>> {
+  const accessToken = getAccessToken();
+  const result = await deleteIncidentRequest(accessToken, incidentId);
+
+  if (!result.success) {
+    return {
+      success: false,
+      message: result.message,
+    };
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    data: result.data,
+  };
+}

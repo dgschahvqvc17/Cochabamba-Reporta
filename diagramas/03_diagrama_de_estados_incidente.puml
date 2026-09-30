@@ -1,0 +1,61 @@
+@startuml EstadosIncidente
+' ============================================================
+' Diagrama de estados del incidente.
+' Avance actual cubre hasta la verificación (HU06-HU11);
+' HU12/HU13 se muestran como estados futuros del ciclo completo.
+' ============================================================
+title Diagrama de estados del incidente
+
+skinparam state {
+  BackgroundColor #F5F5F5
+  BorderColor #555555
+  FontSize 11
+}
+
+state "REPORTADO" as REPORTADO
+state "RECIBIDO" as RECIBIDO
+state "EN_VERIFICACION" as EN_VERIFICACION
+state "VERIFICADO" as VERIFICADO
+state "ASIGNADO_PARA_SOLUCION" as ASIGNADO
+state "EN_ATENCION" as EN_ATENCION
+state "ATENDIDO" as ATENDIDO
+state "CERRADO" as CERRADO
+state "RECHAZADO" as RECHAZADO
+
+[*] --> REPORTADO : Crear incidente (HU06)
+
+REPORTADO --> RECIBIDO : Encargado de recepción\nPATCH /:id/status (HU09)
+REPORTADO --> EN_VERIFICACION : Asignar verificación (HU10)
+RECIBIDO --> EN_VERIFICACION : Asignar verificación (HU10)
+
+EN_VERIFICACION --> VERIFICADO : Verificar verified=true (HU11)
+EN_VERIFICACION --> RECHAZADO : Verificar verified=false\n+ motivo obligatorio (HU11)
+
+VERIFICADO --> ASIGNADO : Asignar para solución (HU12)*
+ASIGNADO --> EN_ATENCION : Iniciar atención (HU13)*
+EN_ATENCION --> ATENDIDO : Solución aplicada (HU13)*
+ATENDIDO --> CERRADO : Cierre y retroalimentación (HU14)*
+EN_ATENCION --> RECHAZADO : Cierre por no solución (futuro)
+
+note bottom of RECHAZADO
+  Estado final. El reporte no se
+  consideró válido en verificación.
+end note
+
+note bottom of CERRADO
+  Estado final del ciclo de vida
+  (alcanzado en historias futuras HU12-HU14).
+end note
+
+note right of REPORTADO
+  El ciudadano solo puede EDITAR o ELIMINAR
+  su reporte en estado REPORTADO,
+  con una única edición permitida.
+end note
+
+note left of EN_VERIFICACION
+  Implica una asignación VERIFICACION activa
+  y notificaciones al verificador y ciudadano.
+end note
+
+@enduml

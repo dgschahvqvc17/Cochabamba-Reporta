@@ -1,0 +1,40 @@
+@startuml HU13 - Atender y cerrar incidente
+title HU13 — Atender y cerrar incidente
+left to right direction
+skinparam actorStyle awesome
+
+actor "Personal de solución" as solucion
+
+rectangle "Atender y cerrar incidente" {
+  usecase "Ver incidentes asignados" as UC1
+  usecase "Ver ubicación, descripción y evidencia inicial" as UC2
+  usecase "Registrar observaciones" as UC3
+  usecase "Registrar acciones realizadas" as UC4
+  usecase "Adjuntar evidencia del trabajo" as UC5
+  usecase "Cambiar estado a EN_ATENCION" as UC6
+  usecase "Marcar como ATENDIDO" as UC7
+  usecase "Cerrar la solicitud (CERRADO)" as UC8
+  usecase "Notificar al ciudadano" as UC9
+  usecase "Registrar en historial" as UC10
+}
+
+solucion --> UC1
+solucion --> UC2
+solucion --> UC3
+solucion --> UC4
+solucion --> UC5
+UC5 --> UC6
+UC6 --> UC7
+UC7 --> UC8
+UC6 --> UC9
+UC7 --> UC9
+UC8 --> UC9
+UC6 --> UC10
+UC7 --> UC10
+UC8 --> UC10
+
+note bottom of UC8
+  Evita cerrar un incidente sin registrar
+  la información requerida.
+end note
+@enduml

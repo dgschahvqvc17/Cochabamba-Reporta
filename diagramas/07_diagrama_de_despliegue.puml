@@ -1,0 +1,44 @@
+@startuml Despliegue
+' ============================================================
+' Diagrama de despliegue del sistema (avance hasta verificación).
+' ============================================================
+title Diagrama de despliegue
+
+skinparam nodeStyle rectangle
+skinparam defaultFontSize 10
+
+node "Dispositivo del Ciudadano" as deviceCitizen {
+  component "App React Native\n(modo CIUDADANO)" as appCitizen
+}
+
+node "Dispositivo del Personal Municipal" as deviceStaff {
+  component "App React Native\n(RECEPCION · VERIFICADOR · ADMIN)" as appStaff
+}
+
+node "Servidor Backend\n(Node.js + Express 5)" as backendNode {
+  artifact "API REST /api/v1\n(controllers → services → repositories)" as apiArtifact
+  artifact ".env\n(SUPABASE_URL · SERVICE_ROLE_KEY\nANON_KEY · PORT)" as envArtifact
+  artifact "Multer ≥ 2.4\n(carga multipart de evidencias)" as multerArtifact
+}
+
+node "Supabase Cloud (SaaS)" as supabaseNode {
+  component "Supabase Auth\n(registro, login, emisión de JWT)" as supabaseAuth
+  database "PostgreSQL\nroles · users · categories · incidents\nevidence · locations · assignments\nhistory · notifications · user_audit_log" as supabaseDb
+  component "Storage Service\n(bucket público 'evidence')" as supabaseStorage
+  component "API de Supabase\n(REST + Storage Admin)" as supabaseApi
+}
+
+appCitizen -down-> backendNode : "GET/POST...\nHTTP 3000 /api/v1"
+appStaff -down-> backendNode : "GET/POST/MULTIPART...\nHTTP 3000 /api/v1"
+backendNode -right-> supabaseNode : "HTTPS (service_role\n/ anon key)"
+supabaseApi -down-> supabaseAuth
+supabaseApi -down-> supabaseDb
+supabaseApi -down-> supabaseStorage
+
+note bottom of backendNode
+  Un solo proceso Node sirve todas las rutas;
+  la conexión a Supabase usa la clave service_role
+  (omite RLS de Postgres).
+end note
+
+@enduml

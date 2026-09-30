@@ -1,7 +1,8 @@
 /**
  * Controlador de autenticación (MVC - Controller).
  *
- * Recibe las solicitudes HTTP y devuelve las respuestas.
+ * Recibe las solicitudes HTTP de autenticación, delega la
+ * lógica de negocio al service y devuelve las respuestas.
  *
  * @format
  */
@@ -9,20 +10,62 @@
 'use strict';
 
 const authService = require('../services/auth.service');
+const { ok } = require('../utils/response');
 
 const authController = {
+  async register(req, res, next) {
+    try {
+      const user = await authService.register(req.body);
+
+      return ok(res, 201, 'Cuenta creada correctamente.', { user });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
-      const user = await authService.login(email, password);
+      const loginData = await authService.login(email, password);
 
-      res.json({
-        success: true,
-        message: 'Inicio de sesión exitoso',
-        data: { user },
-      });
+      return ok(res, 200, 'Inicio de sesión exitoso.', loginData);
     } catch (error) {
-      next(error);
+      return next(error);
+    }
+  },
+
+  async me(req, res, next) {
+    try {
+      const user = await authService.getCurrentUser(req.user.id);
+
+      return ok(res, 200, 'Sesión válida.', { user });
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async logout(req, res, next) {
+    try {
+      await authService.logout(req.accessToken);
+
+      return ok(res, 200, 'Sesión cerrada correctamente.');
+    } catch (error) {
+      return next(error);
+    }
+  },
+
+  async changePassword(req, res, next) {
+    try {
+      await authService.changePassword({
+        authId: req.user.authId,
+        email: req.user.email,
+        currentPassword: req.body.currentPassword,
+        newPassword: req.body.newPassword,
+      });
+
+      return ok(res, 200, 'Contraseña actualizada correctamente.');
+    } catch (error) {
+      return next(error);
     }
   },
 };

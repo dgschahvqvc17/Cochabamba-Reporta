@@ -1,0 +1,86 @@
+@startuml Tecnologías usadas
+title Tecnologías Utilizadas en el Proyecto
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+' ============================================================
+' FRONTEND
+' ============================================================
+package "FRONTEND" #F5F5F5 {
+  card "React Native" as rn << 0.87.1 >>
+  card "React" as react << 19.2.3 >>
+  card "TypeScript" as ts << 6.0.3 >>
+  card "react-native-web" as rnweb << 0.21.2 >>
+  card "react-native-safe-area-context" as safe << 5.5.2 >>
+  card "react-dom" as dom << 19.2.3 >>
+
+  rn -left-> react
+  rn -right-> ts
+  rn -down-> rnweb
+  rn -down-> safe
+  rn -down-> dom
+
+  card "Metro (Bundler)" as metro << preset 0.87.1 >>
+  card "Jest + React Test Renderer" as jest
+  card "ESLint + Prettier" as lint
+  card "Babel" as babel << preset 0.87.1 >>
+
+  rn -down-> metro
+  rn -down-> jest
+  rn -down-> lint
+  rn -down-> babel
+}
+
+' ============================================================
+' BACKEND
+' ============================================================
+package "BACKEND" #F5F5F5 {
+  card "Node.js" as node << engine >= 22.11.0 >>
+  card "Express" as express << 5.2.1 >>
+  card "Express Validator" as ev << 7.3.2 >>
+  card "CORS" as cors << 2.8.6 >>
+  card "dotenv" as dotenv << 17.4.2 >>
+  card "Nodemon" as nodemon << 3.1.14 (dev) >>
+
+  node -down-> express
+  express -down-> ev
+  express -down-> cors
+  express -down-> dotenv
+  node -right-> nodemon
+}
+
+' ============================================================
+' BASE DE DATOS / BaaS
+' ============================================================
+package "SUPABASE (Backend as a Service)" #F5F5F5 {
+  card "PostgreSQL" as postgres << Base de datos >>
+  card "Auth" as supaauth << JWT / Identidades >>
+  card "Storage" as supastorage << Evidencias fotográficas >>
+  card "@supabase/supabase-js" as supajs << 2.116.0 >>
+}
+
+' ============================================================
+' PLATAFORMAS
+' ============================================================
+package "PLATAFORMAS SOPORTADAS" #F5F5F5 {
+  card "Android" as android
+  card "iOS" as ios
+  card "Web" as web
+  card "Escritorio" as desktop
+}
+
+note top of rn
+  Frontend multiplataforma: Android, iOS,
+  Web y Escritorio (con react-native-web).
+end note
+
+' ============================================================
+' CONEXIONES
+' ============================================================
+supajs -up-> postgres : "cliente"
+supajs -up-> supaauth
+supajs -up-> supastorage
+
+' Comunicación Frontend <-> Backend (API REST en el backend)
+node -down-> supajs : "supabasePublic / supabaseAdmin"
+@enduml

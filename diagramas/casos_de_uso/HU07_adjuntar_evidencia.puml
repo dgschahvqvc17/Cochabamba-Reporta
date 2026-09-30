@@ -1,0 +1,32 @@
+@startuml HU07 - Adjuntar evidencia fotográfica
+title HU07 — Adjuntar evidencia fotográfica
+left to right direction
+skinparam actorStyle awesome
+
+actor "Ciudadano" as ciudadano
+
+rectangle "Adjuntar evidencia fotográfica" {
+  usecase "Seleccionar imagen del dispositivo" as UC1
+  usecase "Capturar fotografía con la cámara" as UC2
+  usecase "Mostrar vista previa" as UC3
+  usecase "Eliminar imagen antes de enviar" as UC4
+  usecase "Validar formato y tamaño" as UC5
+  usecase "Almacenar evidencia en Storage" as UC6
+  usecase "Asociar evidencia al incidente" as UC7
+}
+
+ciudadano --> UC1
+ciudadano --> UC2
+UC1 ..> UC3
+UC2 ..> UC3
+UC3 ..> UC4
+UC3 ..> UC5
+UC5 ..> UC6
+UC6 ..> UC7
+
+note bottom of UC5
+  Se valida formato de imagen, tamaño
+  máximo permitido y cantidad máxima
+  de imágenes.
+end note
+@enduml

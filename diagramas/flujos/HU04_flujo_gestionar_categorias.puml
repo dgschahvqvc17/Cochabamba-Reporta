@@ -1,0 +1,51 @@
+@startuml HU04 - Flujo: Gestionar categorías
+title Flujo HU04 — Gestionar categorías de incidentes
+skinparam shadowing false
+
+start
+
+:Administrador accede al módulo de categorías;
+
+if (¿No tiene sesión válida o no es administrador?) then (Sí)
+  :Mostrar alerta "Acceso denegado";
+  stop
+endif
+
+:Mostrar listado de categorías registradas;
+
+while (¿Desea realizar otra operación?) is (Sí)
+  if (¿Qué operación realiza?) then (Crear o editar categoría)
+    :Mostrar formulario de la categoría;
+    :Ingresar nombre y descripción;
+    if (¿El nombre está vacío o la categoría ya existe?) then (Sí)
+      :Mostrar alerta de validación;
+    else (No)
+      :Guardar la categoría en la base de datos;
+      if (¿Se guardó correctamente?) then (Sí)
+        :Mostrar alerta de éxito;
+      else (No)
+        :Mostrar alerta de error;
+      endif
+    endif
+  elseif (Activar o desactivar categoría) then
+    :Mostrar alerta de confirmación;
+    if (¿Confirma el cambio de estado?) then (Sí)
+      :Cambiar el estado de la categoría;
+      :Mostrar alerta de éxito;
+    else (No)
+      :Cancelar operación;
+    endif
+  else (Consultar categoría)
+    :Mostrar detalle de la categoría;
+  endif
+endwhile (No)
+
+note right
+  El ciudadano solo visualiza
+  categorías activas al
+  realizar reportes.
+end note
+
+stop
+
+@enduml

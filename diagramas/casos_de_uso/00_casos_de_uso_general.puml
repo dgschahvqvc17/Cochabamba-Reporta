@@ -1,0 +1,74 @@
+@startuml Casos de uso general del sistema
+title Casos de uso general — Sistema de Incidentes Urbanos
+left to right direction
+skinparam actorStyle awesome
+
+actor "Ciudadano" as ciudadano
+actor "Encargado de recepción" as recepcion
+actor "Personal de verificación" as verificador
+actor "Encargado de solución" as encSolucion
+actor "Personal de solución" as solucion
+actor "Administrador" as admin
+
+rectangle "Sistema" {
+  ' --- HU01 / HU02 ---
+  usecase "Registrar ciudadano" as A1
+  usecase "Iniciar sesión / cerrar sesión" as A2
+
+  ' --- HU06-08 ---
+  usecase "Registrar incidente" as A3
+  usecase "Adjuntar evidencia" as A4
+  usecase "Registrar ubicación" as A5
+
+  ' --- HU09 / HU10 / HU12 ---
+  usecase "Consultar y gestionar incidentes" as A6
+  usecase "Asignar incidente para verificación" as A7
+  usecase "Asignar incidente para solución" as A8
+
+  ' --- HU11 / HU13 ---
+  usecase "Verificar incidente" as A9
+  usecase "Atender y cerrar incidente" as A10
+
+  ' --- HU14 ---
+  usecase "Recibir notificaciones y seguimiento" as A11
+
+  ' --- HU03 / HU04 / HU15 ---
+  usecase "Gestionar usuarios y roles" as A12
+  usecase "Gestionar categorías" as A13
+  usecase "Administrar y supervisar" as A14
+}
+
+ciudadano --> A1
+ciudadano --> A2
+ciudadano --> A3
+ciudadano --> A4
+ciudadano --> A5
+ciudadano --> A11
+
+recepcion --> A2
+recepcion --> A6
+recepcion --> A7
+
+verificador --> A2
+verificador --> A9
+
+encSolucion --> A2
+encSolucion --> A8
+
+solucion --> A2
+solucion --> A10
+
+admin --> A2
+admin --> A12
+admin --> A13
+admin --> A14
+admin --> A6
+
+note bottom of A3
+  Estados del incidente:
+  REPORTADO -> RECIBIDO -> EN_VERIFICACION ->
+  VERIFICADO -> ASIGNADO_PARA_SOLUCION ->
+  EN_ATENCION -> ATENDIDO -> CERRADO
+  (también RECHAZADO)
+end note
+@enduml

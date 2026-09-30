@@ -1,54 +1,248 @@
 /**
- * Componente compartido: Botón principal (MVC - componentes).
+ * Componente: Botón principal (MVC - componentes).
+ *
+ * Diseño refinado: gradiente azul institucional, borde sutil, sombra
+ * premium, spring de escala al presionar, estados loading/disabled.
+ *
+ * useNativeDriver: false (web no tiene native driver).
+ * Sombras via boxShadow (no shadow* props obsoletas).
  *
  * @format
  */
 
-import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import React, { useRef } from 'react';
+import {
+  Animated,
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-import { Colors } from '../assets/colors';
+import { Colors, fontWeights, radius, spacing } from '../theme';
+import GradientOverlay from './GradientOverlay';
+
+type Variant = 'primary' | 'ghost' | 'danger';
 
 type PrimaryButtonProps = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  loading?: boolean;
+  variant?: Variant;
+  fullWidth?: boolean;
 };
 
-function PrimaryButton({ label, onPress, disabled = false }: PrimaryButtonProps) {
+function PrimaryButton({
+  label,
+  onPress,
+  disabled = false,
+  loading = false,
+  variant = 'primary',
+  fullWidth = true,
+}: PrimaryButtonProps) {
+  const isDisabled = disabled || loading;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Removed glow pulse animation — Animated.Value driving boxShadow
+  // requires useNativeDriver:false and interpolating non-layout props,
+  // which is unreliable on web. Static boxShadow looks fine.
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: false,
+      speed: 40,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: false,
+      speed: 30,
+      bounciness: 8,
+    }).start();
+  };
+
+  if (variant === 'ghost') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.ghostWrapper,
+          !fullWidth && styles.inline,
+          isDisabled && styles.disabled,
+        ]}
+      >
+        <Animated.View
+          style={[styles.ghostBtn, { transform: [{ scale: scaleAnim }] }]}
+        >
+          {loading ? (
+            <View style={styles.loadingContent}>
+              <ActivityIndicator color={Colors.accent} size="small" />
+              <Text style={styles.ghostLabel}>{label}</Text>
+            </View>
+          ) : (
+            <Text style={styles.ghostLabel}>{label}</Text>
+          )}
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  if (variant === 'danger') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[
+          styles.wrapper,
+          !fullWidth && styles.inline,
+          isDisabled && styles.disabled,
+        ]}
+      >
+        <Animated.View
+          style={[
+            styles.btn,
+            styles.dangerBtn,
+            { transform: [{ scale: scaleAnim }] },
+          ]}
+        >
+          {loading ? (
+            <View style={styles.loadingContent}>
+              <ActivityIndicator color={Colors.textOnPrimary} size="small" />
+              <Text style={styles.label}>{label}</Text>
+            </View>
+          ) : (
+            <Text style={styles.label}>{label}</Text>
+          )}
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.button,
-        pressed && styles.buttonPressed,
-        disabled && styles.buttonDisabled,
+    <View
+      style={[
+        styles.glowWrap,
+        !fullWidth && styles.inline,
+        isDisabled && styles.disabled,
       ]}
     >
-      <Text style={styles.label}>{label}</Text>
-    </Pressable>
+      <Pressable
+        onPress={onPress}
+        disabled={isDisabled}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.wrapper}
+      >
+        <Animated.View
+          style={[styles.btn, { transform: [{ scale: scaleAnim }] }]}
+        >
+          <GradientOverlay
+            colors={['#0E3D63', Colors.accentDim, Colors.accent]}
+            style={styles.gradient}
+          />
+          <View style={styles.shimmer} />
+          {loading ? (
+            <View style={styles.loadingContent}>
+              <ActivityIndicator color={Colors.textOnPrimary} size="small" />
+              <Text style={styles.label}>{label}</Text>
+            </View>
+          ) : (
+            <Text style={styles.label}>{label}</Text>
+          )}
+        </Animated.View>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
+  glowWrap: {
+    borderRadius: radius.pill,
+    marginVertical: spacing.base,
+    // boxShadow replaces deprecated shadow* props
+    // @ts-ignore
+    boxShadow: '0 12px 28px -10px rgba(4, 18, 32, 0.55)',
+  },
+  wrapper: {
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  ghostWrapper: {
+    marginVertical: spacing.base,
+  },
+  inline: {
+    alignSelf: 'flex-start',
+  },
+  btn: {
+    borderRadius: radius.pill,
+    minHeight: 56,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
   },
-  buttonPressed: {
-    opacity: 0.85,
+  dangerBtn: {
+    backgroundColor: Colors.danger,
+    borderRadius: radius.pill,
+    minHeight: 56,
+    borderColor: 'rgba(255,255,255,0.14)',
   },
-  buttonDisabled: {
-    opacity: 0.5,
+  ghostBtn: {
+    borderRadius: radius.pill,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    borderWidth: 1.5,
+    borderColor: Colors.accent,
+    backgroundColor: Colors.accentSoft,
+  },
+  loadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  gradient: {
+    borderRadius: radius.pill,
+  },
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderTopLeftRadius: radius.pill,
+    borderTopRightRadius: radius.pill,
   },
   label: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    color: Colors.textOnPrimary,
+    fontSize: 16,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.6,
+  },
+  ghostLabel: {
+    color: Colors.accent,
+    fontSize: 16,
+    fontWeight: fontWeights.bold,
+    letterSpacing: 0.6,
+  },
+  disabled: {
+    opacity: 0.45,
   },
 });
 

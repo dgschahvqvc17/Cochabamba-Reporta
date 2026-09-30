@@ -1,0 +1,44 @@
+@startuml FlujoVerificacion
+' ============================================================
+' Flujo funcional de verificación (HU11).
+' Copiar este código en https://www.plantuml.com/plantuml → render.
+' ============================================================
+title Flujo funcional de verificación (HU11)
+
+skinparam activityDiamondFontSize 12
+
+|Verificador|
+start
+:Recibe incidente asignado\n(estado EN_VERIFICACION);
+
+if (Incidente EN_VERIFICACION\ny asignación activa?) then (sí)
+  if (Es el verificador asignado\no administrador?) then (sí)
+    :Adjunta evidencia de constatación\nPOST /incidents/:id/evidence;
+    :Verifica en campo y registra resultado;
+    if (verified = true?) then (sí)
+      :Observaciones (opcional, máx. 500 caracteres);
+      :Cambia estado → VERIFICADO;
+      :Completa la asignación (active = false);
+      :Notifica al ciudadano "verificado";
+    else (no)
+      if (Indica rejectedReason?) then (sí)
+        :Cambia estado → RECHAZADO\ncon rejected_reason;
+        :Completa la asignación (active = false);
+        :Notifica al ciudadano "rechazado:\nmotivo";
+      else (no)
+        :[422] "Debe indicar el motivo\npor el que rechaza el incidente.";
+        stop
+      endif
+    endif
+  else (no)
+    :[403] "Este incidente no está\nasignado a ti para verificación.";
+    stop
+  endif
+else (no)
+  :[409] "El incidente no está\nen verificación.";
+  stop
+endif
+
+stop
+
+@enduml

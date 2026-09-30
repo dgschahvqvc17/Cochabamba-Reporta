@@ -1,0 +1,66 @@
+@startuml HU05 - Flujo: Validar formularios y mostrar alertas
+title Flujo HU05 — Validar formularios y mostrar alertas
+skinparam shadowing false
+
+start
+
+:Usuario completa un formulario o realiza una operación;
+
+repeat
+  :Usuario presiona enviar o continuar;
+
+  ' ============================================================
+  ' VALIDACIÓN EN FRONTEND (React Native)
+  ' ============================================================
+  :Validar campos obligatorios, formatos y rangos;
+
+  if (¿Existen campos incorrectos?) then (Sí)
+    :Mostrar mensajes junto a los campos incorrectos;
+    :Mostrar alerta de error o advertencia;
+    repeat while (¿El usuario corrige la información?) is (Sí)
+  endif
+
+  note right
+    Validación inicial en el
+    Frontend (React Native).
+  end note
+
+  ' ============================================================
+  ' VALIDACIÓN EN BACKEND (Express)
+  ' ============================================================
+  :Enviar los datos a la API y validar nuevamente en el backend;
+
+  if (¿La validación del backend falla?) then (Sí)
+    :Mostrar alerta de error;
+    repeat while (¿El usuario corrige la información?) is (Sí)
+  endif
+
+  note right
+    Validación independiente en el
+    Backend (Express) para no depender
+    únicamente del frontend.
+  end note
+
+  if (¿La operación requiere confirmación?) then (Sí)
+    :Mostrar alerta de confirmación;
+    if (¿El usuario confirma?) then (Sí)
+      :Ejecutar la operación;
+    else (No)
+      :Cancelar la operación;
+      stop
+    endif
+  else (No)
+    :Ejecutar la operación;
+  endif
+
+  if (¿La operación terminó correctamente?) then (Sí)
+    :Mostrar alerta de operación exitosa;
+  else (No)
+    :Mostrar alerta de error;
+  endif
+
+repeat while (¿El usuario realiza otra operación?) is (Sí)
+
+stop
+
+@enduml

@@ -1,0 +1,63 @@
+@startuml Tabla de endpoints de la API REST
+title Tabla de Endpoints de la API REST
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+' ============================================================
+' AUTENTICACIÓN
+' ============================================================
+class "POST /api/v1/auth/register\nRegistrar ciudadano\nBody: {firstName,lastName,birthDate,identityNumber,phone,email,password,...}\nResp: 201 {success,message,data:{user}}" as r1
+class "POST /api/v1/auth/login\nIniciar sesión\nBody: {email,password}\nResp: 200 {success,message,data:{user,session}}" as r2
+class "GET /api/v1/auth/me\nSesión actual (protegido)\nHeader: Authorization: Bearer <JWT>\nResp: 200 {success,message,data:{user}}" as r3
+class "POST /api/v1/auth/logout\nCerrar sesión (protegido)\nHeader: Authorization: Bearer <JWT>\nResp: 200 {success,message}" as r4
+
+package "AUTENTICACIÓN (/api/v1/auth)" {
+  r1
+  r2
+  r3
+  r4
+}
+
+' ============================================================
+' INCIDENTES
+' ============================================================
+class "GET /api/v1/incidents\nListar incidentes\nResp: 200 {success,data:[incident]}" as i1
+class "POST /api/v1/incidents\nRegistrar incidente\nBody: {category_id,title,description,...}\nResp: 201 {success,data:{incident}}" as i2
+class "GET /api/v1/incidents/:id\nDetalle de incidente\nResp: 200 {success,data:{incident}}" as i3
+class "POST /api/v1/incidents/:id/evidence\nAdjuntar evidencia\nResp: 201 {success,data:{evidence}}" as i4
+class "POST /api/v1/incidents/:id/location\nRegistrar ubicación\nResp: 201 {success,data:{location}}" as i5
+class "PATCH /api/v1/incidents/:id/status\nCambiar estado\nBody: {status,...}\nResp: 200 {success,data:{incident}}" as i6
+class "GET /api/v1/incidents/:id/history\nHistorial de estados\nResp: 200 {success,data:[history]}" as i7
+
+package "INCIDENTES (/api/v1/incidents)" {
+  i1
+  i2
+  i3
+  i4
+  i5
+  i6
+  i7
+}
+
+' ============================================================
+' CATEGORÍAS / NOTIFICACIONES / SALUD
+' ============================================================
+class "GET /api/v1/categories\nCategorías activas\nResp: 200 {success,data:[category]}" as c1
+class "GET /api/v1/notifications\nNotificaciones del usuario (protegido)\nResp: 200 {success,data:[notification]}" as n1
+class "GET /api/health\nEstado del servicio y Supabase\nResp: 200 {success,data:{database,status}}" as h1
+
+package "OTROS" {
+  c1
+  n1
+  h1
+}
+
+note bottom
+  Formato JSON de respuesta estándar:
+  { success, message, data }  |  { success, message, error:{code,details} }
+
+  Endpoints protegidos exigen:
+  Authorization: Bearer <access_token> (JWT de Supabase).
+end note
+
+@enduml

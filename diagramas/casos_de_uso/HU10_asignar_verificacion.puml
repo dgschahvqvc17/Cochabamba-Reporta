@@ -1,0 +1,31 @@
+@startuml HU10 - Asignar incidente para verificación
+title HU10 — Asignar incidente para verificación
+left to right direction
+skinparam actorStyle awesome
+
+actor "Encargado de recepción" as recepcion
+actor "Personal de verificación" as verificador
+
+rectangle "Asignar incidente para verificación" {
+  usecase "Ver incidentes pendientes de verificación" as UC1
+  usecase "Ver ubicación y evidencia del incidente" as UC2
+  usecase "Ver funcionarios disponibles" as UC3
+  usecase "Seleccionar funcionario" as UC4
+  usecase "Registrar asignación (quién, fecha, hora)" as UC5
+  usecase "Cambiar estado a EN_VERIFICACION" as UC6
+  usecase "Notificar al funcionario asignado" as UC7
+  usecase "Notificar al ciudadano" as UC8
+  usecase "Registrar en historial" as UC9
+}
+
+recepcion --> UC1
+recepcion --> UC2
+recepcion --> UC3
+recepcion --> UC4
+UC4 --> UC5
+UC5 --> UC6
+UC6 --> UC7
+UC6 --> UC8
+UC6 --> UC9
+verificador <-- UC7 : recibe
+@enduml

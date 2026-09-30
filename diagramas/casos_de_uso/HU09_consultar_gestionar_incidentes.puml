@@ -1,0 +1,26 @@
+@startuml HU09 - Consultar y gestionar incidentes
+title HU09 — Consultar y gestionar incidentes
+left to right direction
+skinparam actorStyle awesome
+
+actor "Encargado de recepción" as recepcion
+
+rectangle "Consultar y gestionar incidentes" {
+  usecase "Listar incidentes" as UC1
+  usecase "Ver detalles (categoría, descripción, ciudadano, fecha, ubicación, evidencia, estado)" as UC2
+  usecase "Buscar incidentes" as UC3
+  usecase "Filtrar por categoría" as UC4
+  usecase "Filtrar por estado" as UC5
+  usecase "Filtrar por fecha" as UC6
+  usecase "Restringir funcionalidades según rol" as UC7
+}
+
+recepcion --> UC1
+recepcion --> UC2
+recepcion --> UC3
+recepcion --> UC4
+recepcion --> UC5
+recepcion --> UC6
+UC1 ..> UC7
+UC2 ..> UC7
+@enduml

@@ -1,0 +1,310 @@
+/**
+ * Validaciones de los datos de las personas (HU01 y HU03).
+ *
+ * Reglas aplicadas conforme a los criterios de aceptación:
+ *   - Campos obligatorios completos y sin espacios en blanco inútiles.
+ *   - Longitudes correctas de nombre, apellido y dirección de residencia.
+ *   - Sin letras repetidas (teclado pulsado sin querer).
+ *   - Formato de correo electrónico.
+ *   - Formato de teléfono.
+ *   - Fecha de nacimiento válida.
+ *   - Documento de identidad con formato válido.
+ *   - Contraseñas coinciden y con longitud mínima.
+ *
+ * @format
+ */
+
+'use strict';
+
+const { body } = require('express-validator');
+
+const ROLES = require('../utils/roles');
+const {
+  MAX_REPEATED_LETTERS_RUN,
+  hasExcessiveRepeatedLetters,
+  hasUselessSpaces,
+} = require('../utils/text');
+const {
+  MIN_NAME_LENGTH,
+  MAX_NAME_LENGTH,
+  MIN_LAST_NAME_LENGTH,
+  MAX_LAST_NAME_LENGTH,
+  MAX_ADDRESS_LENGTH,
+} = require('../utils/userRules');
+
+const MIN_PASSWORD_LENGTH = 8;
+const ROLE_VALUES = Object.values(ROLES);
+
+const LETTERS_ONLY = /^[\p{L}\p{M}\s'’-]+$/u;
+
+/** Sin espacios al principio, al final ni duplicados ("  Ana   María "). */
+const noUselessSpaces = (label) => (value) => {
+  if (hasUselessSpaces(value)) {
+    throw new Error(
+      `${label} no puede empezar ni terminar con espacios, ni tener espacios de más.`,
+    );
+  }
+
+  return true;
+};
+
+/** Detecta el relleno con teclado: "aaa", "lllooo", "bbbb". */
+const noRepeatedLetters = (label) => (value) => {
+  if (hasExcessiveRepeatedLetters(value, MAX_REPEATED_LETTERS_RUN)) {
+    throw new Error(
+      `${label} no puede tener más de ${MAX_REPEATED_LETTERS_RUN} letras iguales seguidas. Revisa que esté bien escrito.`,
+    );
+  }
+
+  return true;
+};
+
+const validateFirstName = body('firstName')
+  .trim()
+  .notEmpty()
+  .withMessage('El nombre es obligatorio.')
+  .isLength({ min: MIN_NAME_LENGTH, max: MAX_NAME_LENGTH })
+  .withMessage(
+    `El nombre debe tener entre ${MIN_NAME_LENGTH} y ${MAX_NAME_LENGTH} caracteres.`,
+  )
+  .matches(LETTERS_ONLY)
+  .withMessage('El nombre solo puede contener letras.')
+  .custom(noUselessSpaces('El nombre'))
+  .custom(noRepeatedLetters('El nombre'));
+
+const validateLastName = body('lastName')
+  .trim()
+  .notEmpty()
+  .withMessage('El apellido es obligatorio.')
+  .isLength({ min: MIN_LAST_NAME_LENGTH, max: MAX_LAST_NAME_LENGTH })
+  .withMessage(
+    `El apellido debe tener entre ${MIN_LAST_NAME_LENGTH} y ${MAX_LAST_NAME_LENGTH} caracteres.`,
+  )
+  .matches(LETTERS_ONLY)
+  .withMessage('El apellido solo puede contener letras.')
+  .custom(noUselessSpaces('El apellido'))
+  .custom(noRepeatedLetters('El apellido'));
+
+const validateBirthDate = body('birthDate')
+  .trim()
+  .notEmpty()
+  .withMessage('La fecha de nacimiento es obligatoria.')
+  .matches(/^\d{4}-\d{2}-\d{2}$/)
+  .withMessage('La fecha de nacimiento debe tener el formato AAAA-MM-DD.')
+  .custom((value) => {
+    const birthDate = new Date(value);
+    const now = new Date();
+
+    if (Number.isNaN(birthDate.getTime())) {
+      throw new Error('La fecha de nacimiento no es válida.');
+    }
+
+    if (birthDate >= now) {
+      throw new Error('La fecha de nacimiento debe ser anterior a hoy.');
+    }
+
+    const minDate = new Date();
+    minDate.setFullYear(minDate.getFullYear() - 18);
+
+    if (birthDate > minDate) {
+      throw new Error('Debes ser mayor de edad (18 años) para registrarte.');
+    }
+
+    return true;
+  });
+
+const validateIdentityNumber = body('identityNumber')
+  .trim()
+  .notEmpty()
+  .withMessage('El número de documento de identidad es obligatorio.')
+  .matches(/^\d{5,8}$/)
+  .withMessage('El documento de identidad debe contener entre 5 y 8 dígitos.');
+
+const validatePhone = body('phone')
+  .trim()
+  .notEmpty()
+  .withMessage('El número de teléfono es obligatorio.')
+  .matches(/^\d{7,8}$/)
+  .withMessage('El número de teléfono debe contener entre 7 y 8 dígitos.');
+
+const validateEmail = body('email')
+  .trim()
+  .notEmpty()
+  .withMessage('El correo electrónico es obligatorio.')
+  .isEmail()
+  .withMessage('El correo electrónico no tiene un formato válido.')
+  .isLength({ max: 150 })
+  .withMessage('El correo electrónico no debe superar los 150 caracteres.');
+
+const validatePassword = body('password')
+  .notEmpty()
+  .withMessage('La contraseña es obligatoria.')
+  .isLength({ min: MIN_PASSWORD_LENGTH })
+  .withMessage(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+
+const validateConfirmPassword = body('confirmPassword').custom((value, { req }) => {
+  if (value !== req.body.password) {
+    throw new Error('Las contraseñas no coinciden.');
+  }
+
+  return true;
+});
+
+const validateCurrentPassword = body('currentPassword')
+  .notEmpty()
+  .withMessage('La contraseña actual es obligatoria.');
+
+const validateNewPassword = body('newPassword')
+  .notEmpty()
+  .withMessage('La nueva contraseña es obligatoria.')
+  .isLength({ min: MIN_PASSWORD_LENGTH })
+  .withMessage(
+    `La nueva contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+  );
+
+const validateConfirmNewPassword = body('confirmPassword').custom(
+  (value, { req }) => {
+    if (value !== req.body.newPassword) {
+      throw new Error('Las contraseñas no coinciden.');
+    }
+
+    return true;
+  },
+);
+
+const validateAddress = body('address')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: MAX_ADDRESS_LENGTH })
+  .withMessage(
+    `La dirección de residencia no debe superar los ${MAX_ADDRESS_LENGTH} caracteres.`,
+  )
+  .custom(noUselessSpaces('La dirección de residencia'));
+
+const validateLoginEmail = body('email')
+  .trim()
+  .notEmpty()
+  .withMessage('El correo electrónico es obligatorio.')
+  .isEmail()
+  .withMessage('El correo electrónico no tiene un formato válido.')
+  .isLength({ max: 150 })
+  .withMessage('El correo electrónico no debe superar los 150 caracteres.');
+
+const validateLoginPassword = body('password')
+  .notEmpty()
+  .withMessage('La contraseña es obligatoria.');
+
+const validateUserEmail = body('email')
+  .trim()
+  .notEmpty()
+  .withMessage('El correo electrónico es obligatorio.')
+  .isEmail()
+  .withMessage('El correo electrónico no tiene un formato válido.')
+  .isLength({ max: 150 })
+  .withMessage('El correo electrónico no debe superar los 150 caracteres.');
+
+const validateUserPassword = body('password')
+  .notEmpty()
+  .withMessage('La contraseña es obligatoria.')
+  .isLength({ min: MIN_PASSWORD_LENGTH })
+  .withMessage(
+    `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+  );
+
+const validateRoleRequired = body('role')
+  .trim()
+  .notEmpty()
+  .withMessage('El rol es obligatorio.')
+  .isIn(ROLE_VALUES)
+  .withMessage('El rol seleccionado no es válido.');
+
+const validateOptionalPhone = body('phone')
+  .optional({ values: 'falsy' })
+  .trim()
+  .matches(/^\d{7,8}$/)
+  .withMessage('El teléfono debe contener entre 7 y 8 dígitos.');
+
+const validateOptionalIdentity = body('identityNumber')
+  .optional({ values: 'falsy' })
+  .trim()
+  .matches(/^\d{5,8}$/)
+  .withMessage('El documento de identidad debe contener entre 5 y 8 dígitos.');
+
+const validateOptionalBirthDate = body('birthDate')
+  .optional({ values: 'falsy' })
+  .trim()
+  .matches(/^\d{4}-\d{2}-\d{2}$/)
+  .withMessage('La fecha de nacimiento debe tener el formato AAAA-MM-DD.');
+
+const validateOptionalAddress = body('address')
+  .optional({ values: 'falsy' })
+  .trim()
+  .isLength({ max: MAX_ADDRESS_LENGTH })
+  .withMessage(
+    `La dirección de residencia no debe superar los ${MAX_ADDRESS_LENGTH} caracteres.`,
+  )
+  .custom(noUselessSpaces('La dirección de residencia'));
+
+const validateUserStatus = body('active')
+  .toBoolean()
+  .isBoolean()
+  .withMessage('El estado debe ser un valor booleano.');
+
+const loginValidation = [validateLoginEmail, validateLoginPassword];
+
+const registerValidation = [
+  validateFirstName,
+  validateLastName,
+  validateBirthDate,
+  validateIdentityNumber,
+  validatePhone,
+  validateEmail,
+  validatePassword,
+  validateConfirmPassword,
+  validateAddress,
+];
+
+const createInternalUserValidation = [
+  validateFirstName,
+  validateLastName,
+  validateUserEmail,
+  validateUserPassword,
+  validateRoleRequired,
+  validateOptionalPhone,
+  validateOptionalIdentity,
+  validateOptionalBirthDate,
+  validateOptionalAddress,
+];
+
+const updateUserValidation = [
+  validateFirstName.optional(),
+  validateLastName.optional(),
+  validateOptionalPhone,
+  validateOptionalIdentity,
+  validateOptionalBirthDate,
+  validateOptionalAddress,
+];
+
+const updateUserStatusValidation = [validateUserStatus];
+
+const updateUserRoleValidation = [validateRoleRequired];
+
+const changePasswordValidation = [
+  validateCurrentPassword,
+  validateNewPassword,
+  validateConfirmNewPassword,
+];
+
+module.exports = {
+  registerValidation,
+  loginValidation,
+  createInternalUserValidation,
+  updateUserValidation,
+  updateUserStatusValidation,
+  updateUserRoleValidation,
+  changePasswordValidation,
+  MIN_PASSWORD_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_LAST_NAME_LENGTH,
+  MAX_ADDRESS_LENGTH,
+};

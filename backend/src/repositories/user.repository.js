@@ -1,0 +1,369 @@
+/**
+ * Repositorio de usuarios (MVC - Repository).
+ *
+ * Responsable únicamente del acceso a datos de la tabla `users`
+ * y de la gestión de identidades en Supabase Auth.
+ *
+ * @format
+ */
+
+'use strict';
+
+const { supabaseAdmin } = require('../config/supabase');
+const { sanitizeSearchTerm } = require('../utils/text');
+
+const findByEmail = async (email) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findByEmailExcludingId = async (email, excludeId) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .neq('id', excludeId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findByIdentityNumberExcludingId = async (identityNumber, excludeId) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('identity_number', identityNumber)
+    .neq('id', excludeId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findByEmailWithRole = async (email) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*, roles(name)')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findByIdWithRole = async (id) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*, roles(name)')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findByIdentityNumber = async (identityNumber) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*')
+    .eq('identity_number', identityNumber)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const createAuthUser = async ({ email, password, metadata }) => {
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: metadata,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.user;
+};
+
+const create = async (user) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .insert(user)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findById = async (id) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findAll = async ({ page, limit, search, role, active }) => {
+  let query = supabaseAdmin
+    .from('users')
+    .select('*, roles!inner(id, name)', { count: 'exact' });
+
+  if (role) {
+    query = query.eq('roles.name', role);
+  }
+
+  if (typeof active === 'boolean') {
+    query = query.eq('active', active);
+  }
+
+  const term = search ? sanitizeSearchTerm(search) : '';
+  if (term) {
+    query = query.or(
+      `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,identity_number.ilike.%${term}%`,
+    );
+  }
+
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    throw error;
+  }
+
+  return { users: data, total: count ?? data.length };
+};
+
+const countActiveByRoleName = async (roleName) => {
+  const { count, error } = await supabaseAdmin
+    .from('users')
+    .select('roles!inner(id)', { count: 'exact', head: true })
+    .eq('active', true)
+    .eq('roles.name', roleName);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+};
+
+/**
+ * Funcionarios activos de un rol municipal (HU10 verificación / HU12
+ * solución). Fuente única para no repetir la consulta por rol.
+ */
+const findStaffByRole = async (roleName) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id, first_name, last_name, email, roles!inner(name)')
+    .eq('active', true)
+    .eq('roles.name', roleName)
+    .order('first_name');
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
+const findVerifiers = async () => findStaffByRole('VERIFICADOR');
+
+/**
+ * Funcionarios activos de varios roles a la vez. Se usa para avisar a todo
+ * el personal que debe enterarse de un reporte nuevo (recepción y
+ * administración), sin repetir consultas ni duplicar avisos cuando alguien
+ * tiene más de un rol.
+ */
+const findActiveStaffByRoles = async (roleNames) => {
+  const roles = Array.isArray(roleNames) ? roleNames : [roleNames];
+
+  if (roles.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id, roles!inner(name)')
+    .eq('active', true)
+    .in('roles.name', roles);
+
+  if (error) {
+    throw error;
+  }
+
+  const seen = new Set();
+  const unique = [];
+
+  for (const staff of data ?? []) {
+    if (seen.has(staff.id)) {
+      continue;
+    }
+
+    seen.add(staff.id);
+    unique.push(staff);
+  }
+
+  return unique;
+};
+
+/** HU12 — Personal de solución activo disponible para asignar. */
+const findSolutionStaff = async () => findStaffByRole('PERSONAL_SOLUCION');
+
+const update = async (id, fields) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .update(fields)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const updateActive = async (id, active) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .update({ active })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const updateRole = async (id, roleId) => {
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .update({ role_id: roleId })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const findUsersByIds = async (ids) => {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('users')
+    .select('id, email, first_name, last_name')
+    .in('id', ids);
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+/**
+ * Candidatos a duplicados de persona: usuarios cuyo nombre o apellido se
+ * parece al indicado. La confirmación exacta (nombre + apellido + teléfono
+ * o documento) la hace userDuplicates.service, para no dar falsos positivos
+ * con nombres comunes.
+ */
+const findSameNameCandidates = async ({ firstName, lastName, excludeId }) => {
+  const first = sanitizeSearchTerm(firstName);
+  const last = sanitizeSearchTerm(lastName);
+
+  if (!first || !last) {
+    return [];
+  }
+
+  let query = supabaseAdmin
+    .from('users')
+    .select('id, first_name, last_name, phone, identity_number')
+    .or(`first_name.ilike.%${first}%,last_name.ilike.%${last}%`);
+
+  if (excludeId) {
+    query = query.neq('id', excludeId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+};
+
+module.exports = {
+  findByEmail,
+  findByEmailWithRole,
+  findByIdWithRole,
+  findById,
+  findByIdentityNumber,
+  findByEmailExcludingId,
+  findByIdentityNumberExcludingId,
+  findSameNameCandidates,
+  createAuthUser,
+  create,
+  findAll,
+  countActiveByRoleName,
+  update,
+  updateActive,
+  updateRole,
+  findUsersByIds,
+  findVerifiers,
+  findSolutionStaff,
+  findStaffByRole,
+  findActiveStaffByRoles,
+};

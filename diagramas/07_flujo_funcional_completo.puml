@@ -1,0 +1,113 @@
+@startuml Diagrama de flujo funcional completo
+title Diagrama de Flujo Funcional Completo del Sistema
+skinparam shadowing false
+
+start
+
+:Usuario accede al sistema;
+
+if (¿Tiene cuenta?) then (No)
+  :Registrar ciudadano (HU01);
+  :Iniciar sesión (HU02);
+else (Sí)
+  :Iniciar sesión (HU02);
+endif
+
+:Muestra módulos según rol;
+
+' ============================================================
+' RAMA CIUDADANO
+' ============================================================
+if (¿Es ciudadano?) then (Sí)
+  :Registrar incidente (HU06);
+  :Seleccionar categoría / título / descripción;
+  :Adjuntar evidencia fotográfica (HU07);
+  :Registrar ubicación (HU08);
+  :Guardar incidente -> estado REPORTADO;
+  :Recibe notificaciones / consulta seguimiento (HU14);
+
+  while (¿El incidente sigue abierto?) is (Sí)
+    :Estado cambia | notificación al ciudadano;
+  endwhile (No)
+
+  note right
+    Estados:
+    REPORTADO -> RECIBIDO -> EN_VERIFICACION ->
+    VERIFICADO -> ASIGNADO_PARA_SOLUCION ->
+    EN_ATENCION -> ATENDIDO -> CERRADO
+  end note
+
+  stop
+endif
+
+' ============================================================
+' RAMA ENCARGADO DE RECEPCIÓN
+' ============================================================
+if (¿Es encargado de recepción?) then (Sí)
+  :Consultar y gestionar incidentes (HU09);
+  :Revisar reporte, evidencia y ubicación;
+  :Asignar incidente para verificación (HU10);
+  :Estado -> EN_VERIFICACION;
+  :Notificar verificador y ciudadano;
+  stop
+endif
+
+' ============================================================
+' RAMA PERSONAL DE VERIFICACIÓN
+' ============================================================
+if (¿Es personal de verificación?) then (Sí)
+  :Verificar incidente en sitio (HU11);
+
+  if (¿Problema existe?) then (Sí)
+    :Estado -> VERIFICADO;
+  else (No)
+    :Solicitar motivo;
+    :Estado -> RECHAZADO;
+  endif
+
+  :Notificar ciudadano / registrar historial;
+  stop
+endif
+
+' ============================================================
+' RAMA ENCARGADO DE SOLUCIÓN
+' ============================================================
+if (¿Es encargado de solución?) then (Sí)
+  :Asignar incidente para solución (HU12);
+  :Estado -> ASIGNADO_PARA_SOLUCION;
+  :Notificar responsable y ciudadano;
+  stop
+endif
+
+' ============================================================
+' RAMA PERSONAL DE SOLUCIÓN
+' ============================================================
+if (¿Es personal de solución?) then (Sí)
+  :Atender y cerrar incidente (HU13);
+  :Registrar acciones / evidencia;
+  :Estado -> EN_ATENCION;
+  :Marcar ATENDIDO;
+  if (¿Información completa?) then (Sí)
+    :Estado -> CERRADO;
+    :Notificar ciudadano;
+  else (No)
+    :Mostrar alerta: faltan datos;
+  endif
+  stop
+endif
+
+' ============================================================
+' RAMA ADMINISTRADOR
+' ============================================================
+if (¿Es administrador?) then (Sí)
+  :Panel de administración y supervisión (HU15);
+  :Gestionar usuarios y roles (HU03);
+  :Gestionar categorías (HU04);
+  :Consultar incidentes / historial / estadísticas;
+  stop
+endif
+
+:Finalizar;
+stop
+
+@enduml

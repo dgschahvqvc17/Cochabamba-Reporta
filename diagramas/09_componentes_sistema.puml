@@ -1,0 +1,99 @@
+@startuml Diagrama general de componentes del sistema
+title Diagrama General de Componentes del Sistema
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+' ============================================================
+' CAPA DE PRESENTACIÓN (FRONTEND)
+' ============================================================
+package "FRONTEND — React Native (MVC)" as frontend {
+
+  package "View" as view {
+    component "Screens\n(Login, Register, Home,\nReportar, Seguimiento...)" as screens
+    component "Components\n(PrimaryButton, AppTextInput,\nCalendarModal...)" as components
+  }
+
+  package "Controller" as frontController {
+    component "Controllers\n(AuthController, ...)" as controllers
+  }
+
+  package "Model + Services" as frontModel {
+    component "Services\n(authService, ...)" as services
+    component "Models\n(Citizen, Incident, Session, User)" as models
+  }
+
+  package "Utilidades" as frontUtils {
+    component "Navigation\n(AppNavigator)" as navigation
+    component "Theme\n(colors, spacing, typography)" as theme
+    component "Utils\n(session, validators)" as utils
+  }
+
+  screens -down-> controllers
+  components -down-> controllers
+  controllers -down-> services
+  services -down-> models
+  screens -down-> navigation
+  screens -down-> theme
+  controllers -down-> utils
+}
+
+' ============================================================
+' COMUNICACIÓN
+' ============================================================
+component "API REST\nHTTP/HTTPS (JSON)" as api
+component "Auth: Bearer JWT" as jwt
+
+' ============================================================
+' CAPA DE LÓGICA (BACKEND)
+' ============================================================
+package "BACKEND — Node.js + Express" as backend {
+
+  component "Routes\n(auth.routes, incident.routes...)" as routes
+
+  package "Middlewares" as mw {
+    component "auth.middleware\n(JWT + roles)" as authMw
+    component "validation.middleware" as valMw
+    component "error.middleware" as errMw
+  }
+
+  component "Controllers\n(auth, incident, category, ...)" as bcontrollers
+
+  component "Services\n(lógica de negocio)" as bservices
+
+  component "Repositories\n(acceso a datos)" as brepos
+
+  component "Models\n(modelos de datos)" as bmodels
+
+  component "config\n(supabase, environment, database)" as bconfig
+
+  routes --> authMw
+  routes --> valMw
+  routes --> bcontrollers
+  bcontrollers --> bservices
+  bservices --> brepos
+  brepos --> bmodels
+  bservices --> bconfig
+  routes --> errMw
+}
+
+' ============================================================
+' CAPA DE DATOS (SUPABASE)
+' ============================================================
+package "SUPABASE (BaaS)" as supa {
+  component "PostgreSQL\n(tablas del sistema)" as supadb
+  component "Auth\n(identidades, JWT)" as supauth
+  component "Storage\n(evidencias fotográficas)" as supastore
+}
+
+' ============================================================
+' CONEXIONES
+' ============================================================
+frontend -down-> api : "fetch() JSON"
+api -down-> routes
+jwt -right-> authMw
+backend -right-> supa : supabasePublic / supabaseAdmin
+authMw -right-> supauth
+bservices -right-> supadb
+bservices -right-> supastore
+
+@enduml
